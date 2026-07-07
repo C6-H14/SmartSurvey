@@ -243,3 +243,30 @@
 - Specification alignment:
   - General fields match SPEC §6.1 exactly.
   - Domain field sets cover industrial anomaly detection, Brauer-Manin, and matrix multiplication complexity per SPEC §6.2.
+
+## Task 6.1 - Keyring credential failing tests (TDD Red)
+
+- Timestamp: 2026-07-07 11:15 +08:00
+- Triggered Superpowers skills: `test-driven-development`
+- Key decisions and actions:
+  - Created `tests/test_credentials.py` with `FakeKeyring` backend and 2 tests: set/get/clear cycle and missing-key error.
+  - Ran `python -m pytest tests/test_credentials.py -v` → Red confirmed: `ModuleNotFoundError: No module named 'core.credentials'`.
+- Notes:
+  - User placed anomaly-detection sample PDFs under `data/input_pdfs/` for future integration tests (directory is gitignored per `.gitignore`):
+    - `2503.07901v2.pdf`
+    - `Costanzino_Multimodal_Industrial_Anomaly_Detection_by_Crossmodal_Feature_Mapping_CVPR_2024_paper.pdf`
+    - `fmech-12-1806266.pdf`
+    - `s11263-022-01578-9.pdf`
+
+## Task 6.2 - Keyring credential implementation and agent refactor (TDD Green)
+
+- Timestamp: 2026-07-07 11:16 +08:00
+- Triggered Superpowers skills: `test-driven-development`
+- Key decisions and actions:
+  - Created `core/credentials.py` with `CredentialStore`, `MissingCredentialError`, OS keyring via `keyring` library.
+  - Refactored `core/agent.py` to read API key through `CredentialStore` instead of `.env` `OPENAI_API_KEY`; removed `load_dotenv()` from agent module.
+  - `get_llm_agent` accepts optional `credential_store` for testing/injection.
+  - Ran `python -m pytest tests -v` → `15 passed`.
+- Specification alignment:
+  - §9.1 local keyring storage: set, get, clear, has_api_key.
+  - §9.2 no API key in source; agent no longer reads key from env by default.
