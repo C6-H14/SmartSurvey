@@ -348,3 +348,40 @@
 - Specification alignment:
   - §7.3 containment gate before writing limitations/risks to output artifacts.
   - §8.1–8.5 Markdown preview and three LaTeX/BibTeX download targets.
+
+## Task 10.1 - Streamlit UI failing import test (TDD Red)
+
+- Timestamp: 2026-07-07 11:22 +08:00
+- Triggered Superpowers skills: `test-driven-development`
+- Key decisions and actions:
+  - Created `tests/test_main_import.py` asserting `main.run_app` is callable.
+  - Ran pytest → Red confirmed: `AttributeError: module 'main' has no attribute 'run_app'`.
+
+## Task 10.2 - Streamlit UI vertical slice (TDD Green)
+
+- Timestamp: 2026-07-07 11:22 +08:00
+- Triggered Superpowers skills: `test-driven-development`
+- Key decisions and actions:
+  - Implemented `main.py` with `run_app`: keyring credential sidebar, topic input, multi-PDF upload, parse summary, artifact preview/download.
+  - LLM matrix extraction not wired yet; preview uses placeholder blocked warning per PLAN intentional slice.
+  - Ran `python -m pytest tests -v` → `24 passed`.
+- Specification alignment:
+  - US1 batch PDF upload and parse status in UI.
+  - US5 Markdown preview and three LaTeX/BibTeX downloads.
+  - §9.1 credential status without displaying full API key.
+
+## Task 11.1 - Docker distribution files
+
+- Timestamp: 2026-07-07 11:23 +08:00
+- Key decisions and actions:
+  - Created `Dockerfile` (python:3.12-slim, Streamlit on 8501) and `.dockerignore` (excludes `.env`, `.venv`, `data/input_pdfs`).
+  - `docker build -t smartsurvey:local .` skipped locally: Docker Desktop engine not running on this machine.
+- Specification alignment:
+  - §10.1 image installs requirements, copies `core/` + `main.py`, no secrets or user PDFs in image layers.
+
+## Task 12.1 - GitLab CI unit-test job
+
+- Timestamp: 2026-07-07 11:23 +08:00
+- Key decisions and actions:
+  - Created `.gitlab-ci.yml` with required `unit-test` job running `python -m pytest tests -v`.
+  - Validated locally: `24 passed`.
