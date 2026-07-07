@@ -198,3 +198,29 @@
   - §5.2 core section extraction with `missing` default preserved.
   - §5.3 page slices per physical page; parse errors captured per file.
   - §5.4 output shape matches `ParsedPaper` model from Task 2.
+
+## Task 4.1 - Evidence containment failing tests (TDD Red)
+
+- Timestamp: 2026-07-07 11:07 +08:00
+- Triggered Superpowers skills: `test-driven-development`
+- Key decisions and actions:
+  - Created `tests/test_evidence.py` with 3 tests:
+    - `test_normalize_for_containment_collapses_whitespace_and_hyphen_breaks`
+    - `test_validate_evidence_accepts_quote_on_page`
+    - `test_validate_evidence_rejects_missing_quote`
+  - Ran `python -m pytest tests/test_evidence.py -v` → Red confirmed:
+    - `ModuleNotFoundError: No module named 'core.evidence'`
+- Specification alignment:
+  - Tests cover SPEC §7.2 (`evidence_page` + `evidence_quote`), §7.3 containment check, and UI message for blocked air warnings.
+
+## Task 4.2 - Evidence containment implementation (TDD Green)
+
+- Timestamp: 2026-07-07 11:08 +08:00
+- Triggered Superpowers skills: `test-driven-development`
+- Key decisions and actions:
+  - Created `core/evidence.py` with `AIR_WARNING_BLOCKED`, `normalize_for_containment`, `validate_evidence`.
+  - Normalization uses `re.sub(r"-\s*\n\s*", "", text)` instead of plain `-\n` replacement so PDF hyphenation like `light-\n ing` joins to `lighting` (PLAN snippet alone did not pass the test case).
+  - Ran `python -m pytest tests -v` → `9 passed`.
+- Specification alignment:
+  - `validate_evidence` implements `evidence_quote in page_text[evidence_page]` with normalized whitespace and hyphen-break handling.
+  - Rejected quotes return `AIR_WARNING_BLOCKED` = `发现无事实根据的空气警告，已自动拦截`.
