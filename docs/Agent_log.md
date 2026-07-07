@@ -270,3 +270,44 @@
 - Specification alignment:
   - §9.1 local keyring storage: set, get, clear, has_api_key.
   - §9.2 no API key in source; agent no longer reads key from env by default.
+
+## Task 7.1 - Academic extraction boundary failing tests (TDD Red)
+
+- Timestamp: 2026-07-07 11:17 +08:00
+- Triggered Superpowers skills: `test-driven-development`
+- Key decisions and actions:
+  - Created `tests/test_extractor.py` with prompt-building and JSON parsing tests.
+  - Ran `python -m pytest tests/test_extractor.py -v` → Red confirmed: `ModuleNotFoundError: No module named 'core.extractor'`.
+
+## Task 7.2 - Academic extraction boundary implementation (TDD Green)
+
+- Timestamp: 2026-07-07 11:17 +08:00
+- Triggered Superpowers skills: `test-driven-development`
+- Key decisions and actions:
+  - Created `core/extractor.py` with `build_extraction_prompt` and `parse_matrix_json`.
+  - Prompt includes general + domain fields and evidence-binding rules; parser fills absent fields with `"missing"`.
+  - Ran `python -m pytest tests -v` → `17 passed`.
+- Specification alignment:
+  - §6.1–6.2 two-layer matrix extraction boundary without live LLM in unit tests.
+  - Sample PDFs in `data/input_pdfs/` reserved for later end-to-end runs with industrial anomaly detection topic.
+
+## Task 7.1 - Academic extraction boundary failing tests (TDD Red)
+
+- Timestamp: 2026-07-07 11:17 +08:00
+- Triggered Superpowers skills: `test-driven-development`
+- Key decisions and actions:
+  - Created `tests/test_extractor.py` with 2 tests: prompt field coverage and JSON parsing with `missing` defaults.
+  - Ran `python -m pytest tests/test_extractor.py -v` → Red confirmed: `ModuleNotFoundError: No module named 'core.extractor'`.
+
+## Task 7.2 - Academic extraction boundary implementation (TDD Green)
+
+- Timestamp: 2026-07-07 11:17 +08:00
+- Triggered Superpowers skills: `test-driven-development`
+- Key decisions and actions:
+  - Created `core/extractor.py` with `build_extraction_prompt` and `parse_matrix_json`.
+  - Prompt includes general fields, `trigger_reason`, domain fields, and evidence-binding rules.
+  - `parse_matrix_json` maps absent fields to `"missing"` per SPEC §6.1.
+  - Ran `python -m pytest tests -v` → `17 passed`.
+- Specification alignment:
+  - LLM adapter boundary: deterministic prompt building and JSON parsing without live API calls.
+  - Sample PDFs in `data/input_pdfs/` reserved for later end-to-end extraction tests once pipeline/UI tasks land.
