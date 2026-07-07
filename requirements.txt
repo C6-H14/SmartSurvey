@@ -3,3 +3,5 @@ langchain
 langchain-openai
 pymupdf
 python-dotenv
+pytest
+keyring

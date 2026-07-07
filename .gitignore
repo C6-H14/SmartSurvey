@@ -1,6 +1,17 @@
+# Python
 .venv/
-.env
 __pycache__/
+*.pyc
+*.pyo
+
+# Test artifacts
+.pytest_cache/
+
+# Environment
+.env
+.worktrees/
+
+# Data directories
 data/input_pdfs/
 data/output_docs/
-*.pyc
+data/
