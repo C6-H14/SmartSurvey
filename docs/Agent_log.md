@@ -385,3 +385,28 @@
 - Key decisions and actions:
   - Created `.gitlab-ci.yml` with required `unit-test` job running `python -m pytest tests -v`.
   - Validated locally: `24 passed`.
+
+## Task 13.1 - README and credential documentation alignment
+
+- Timestamp: 2026-07-07 11:24 +08:00
+- Key decisions and actions:
+  - Created root `README.md` with install, run, test, Docker, credential safety, and known limits.
+  - Rewrote `docs/切换API说明.md`: API Key via OS keyring + Streamlit sidebar; `.env` limited to `OPENAI_API_BASE` and `LLM_MODEL_NAME` only.
+  - Verified no real API keys in `README.md` / `docs/` via pattern scan (placeholders only).
+
+## Task 14.1 - Cold-start verification protocol in SPEC_PROCESS
+
+- Timestamp: 2026-07-07 11:25 +08:00
+- Key decisions and actions:
+  - Appended §8 冷启动验证计划 to `docs/SPEC_PROCESS.md` with four verification rules.
+  - Confirmed `docs/SPEC.md`, `docs/PLAN.md`, `docs/SPEC_PROCESS.md` present.
+
+## Task 15.1 - Full verification gate
+
+- Timestamp: 2026-07-07 11:25 +08:00
+- Key decisions and actions:
+  - `python -m pytest tests -v` → `24 passed`.
+  - Secret hygiene scan: no committed real API keys.
+  - Root Markdown placement: only `README.md` at repository root (excluding `.venv` / cache).
+  - UI entrypoint: `main.run_app` import test passes; manual `streamlit run main.py` recommended before demo.
+- Outcome: Tasks 1–15 vertical slice complete per PLAN.md.
