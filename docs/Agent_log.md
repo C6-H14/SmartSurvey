@@ -311,3 +311,40 @@
 - Specification alignment:
   - LLM adapter boundary: deterministic prompt building and JSON parsing without live API calls.
   - Sample PDFs in `data/input_pdfs/` reserved for later end-to-end extraction tests once pipeline/UI tasks land.
+
+## Task 8.1 - Rendering failing tests (TDD Red)
+
+- Timestamp: 2026-07-07 11:19 +08:00
+- Triggered Superpowers skills: `test-driven-development`
+- Key decisions and actions:
+  - Created `tests/test_templates.py` with 4 tests for matrix table, survey tex, markdown preview, and bibtex.
+  - Ran `python -m pytest tests/test_templates.py -v` → Red confirmed: render functions missing from empty `core/templates.py`.
+
+## Task 8.2 - Rendering implementation (TDD Green)
+
+- Timestamp: 2026-07-07 11:20 +08:00
+- Triggered Superpowers skills: `test-driven-development`
+- Key decisions and actions:
+  - Implemented `core/templates.py`: `render_matrix_table_tex`, `render_survey_tex`, `render_markdown_preview`, `render_bibtex`.
+  - Survey tex uses `ctexart`, six required `\section{...}` blocks, and embedded `booktabs` matrix per SPEC §8.
+  - Ran template tests → `4 passed`.
+
+## Task 9.1 - Pipeline failing tests (TDD Red)
+
+- Timestamp: 2026-07-07 11:20 +08:00
+- Triggered Superpowers skills: `test-driven-development`
+- Key decisions and actions:
+  - Created `tests/test_pipeline.py` with evidence gate and artifact generation tests.
+  - Ran `python -m pytest tests/test_pipeline.py -v` → Red confirmed: `ModuleNotFoundError: No module named 'core.pipeline'`.
+
+## Task 9.2 - Pipeline implementation (TDD Green)
+
+- Timestamp: 2026-07-07 11:20 +08:00
+- Triggered Superpowers skills: `test-driven-development`
+- Key decisions and actions:
+  - Created `core/pipeline.py` with `filter_rows_by_evidence` and `generate_artifacts`.
+  - Evidence gate blocks uncontained quotes before artifact export; wires templates + evidence modules.
+  - Ran `python -m pytest tests -v` → `23 passed`.
+- Specification alignment:
+  - §7.3 containment gate before writing limitations/risks to output artifacts.
+  - §8.1–8.5 Markdown preview and three LaTeX/BibTeX download targets.
