@@ -1,10 +1,43 @@
 import json
+import time
 from typing import Callable
 
 from core.evidence import validate_evidence
 from core.extractor import build_extraction_prompt, build_self_healing_prompt, parse_matrix_json
 from core.models import AcademicMatrixRow, GeneratedArtifacts, ParsedPaper
 from core.templates import render_bibtex, render_markdown_preview, render_matrix_table_tex, render_survey_tex
+
+
+def _call_with_rate_limit_backoff(
+    extraction_fn: Callable[[str], str],
+    prompt: str,
+    max_retries: int = 3,
+) -> str:
+    """Call extraction_fn with rate-limit (429) and timeout retry + exponential backoff.
+
+    Catches HTTP 429 errors and timeout errors, prints error type and wait
+    duration to console, then retries up to max_retries times with 1s/2s/4s backoff.
+    """
+    for attempt in range(max_retries + 1):
+        try:
+            return extraction_fn(prompt)
+        except Exception as e:
+            status = getattr(e, 'status_code', None)
+            is_timeout = isinstance(e, TimeoutError) or 'timed out' in str(e).lower() or 'timeout' in type(e).__name__.lower()
+            should_retry = (status == 429 or is_timeout) and attempt < max_retries
+            if should_retry:
+                wait = 2 ** attempt  # 1, 2, 4 seconds
+                error_type = "RateLimit" if status == 429 else "Timeout"
+                print(
+                    f"  [{error_type}] {type(e).__name__}: "
+                    f"{wait}s后重试... "
+                    f"(attempt {attempt + 1}/{max_retries})"
+                )
+                time.sleep(wait)
+                continue
+            raise
+    # Fallback (should not reach here)
+    return extraction_fn(prompt)
 
 
 def filter_rows_by_evidence(
@@ -56,7 +89,8 @@ def extract_with_self_healing(
     warnings: list[str] = []
 
     for attempt in range(max_retries + 1):  # +1 for the initial attempt
-        raw_json = extraction_fn(prompt)
+        raw_json = _call_with_rate_limit_backoff(extraction_fn, prompt)
+        time.sleep(0.1)  # Base delay between requests to reduce rate-limit risk
         try:
             rows = parse_matrix_json(raw_json, domain_fields)
         except (ValueError, json.JSONDecodeError):

@@ -19,7 +19,7 @@ def get_llm_agent(temperature: float = 0.2, credential_store: CredentialStore | 
         openai_api_base=api_base,
         temperature=temperature,
         max_retries=2,
-        timeout=60.0,
+        timeout=180.0,
     )
 
 
