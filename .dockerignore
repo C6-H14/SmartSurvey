@@ -1,0 +1,9 @@
+.git
+.venv
+.env
+data/input_pdfs
+data/output_docs
+__pycache__
+.pytest_cache
+*.pyc
+*.log
