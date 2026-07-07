@@ -224,3 +224,22 @@
 - Specification alignment:
   - `validate_evidence` implements `evidence_quote in page_text[evidence_page]` with normalized whitespace and hyphen-break handling.
   - Rejected quotes return `AIR_WARNING_BLOCKED` = `发现无事实根据的空气警告，已自动拦截`.
+
+## Task 5.1 - Two-layer schema failing tests (TDD Red)
+
+- Timestamp: 2026-07-07 11:09 +08:00
+- Triggered Superpowers skills: `test-driven-development`
+- Key decisions and actions:
+  - Created `tests/test_schema.py` with 4 tests for `GENERAL_FIELDS` and `domain_fields_for_topic` across three SPEC §3 test domains.
+  - Ran `python -m pytest tests/test_schema.py -v` → Red confirmed: `ModuleNotFoundError: No module named 'core.schema'`.
+
+## Task 5.2 - Two-layer schema implementation (TDD Green)
+
+- Timestamp: 2026-07-07 11:09 +08:00
+- Triggered Superpowers skills: `test-driven-development`
+- Key decisions and actions:
+  - Created `core/schema.py` with `GENERAL_FIELDS` (11 fields per SPEC §6.1) and topic-driven `domain_fields_for_topic`.
+  - Ran `python -m pytest tests -v` → `13 passed`.
+- Specification alignment:
+  - General fields match SPEC §6.1 exactly.
+  - Domain field sets cover industrial anomaly detection, Brauer-Manin, and matrix multiplication complexity per SPEC §6.2.
