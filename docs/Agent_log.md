@@ -100,3 +100,101 @@
 - Lessons learned:
   - A process document is useful for AI4SE evaluation because it exposes requirement iteration, tradeoff reasoning, and human engineering decisions.
   - The strongest decisions in this brainstorming came from rejecting fragile overengineering in favor of verifiable, testable constraints.
+
+## Task 1.1 - Test infrastructure and dependency baseline
+
+- Timestamp: 2026-07-07 10:14-10:18 +08:00
+- Triggered Superpowers skills: `executing-plans`, `subagent-driven-development`
+- Key prompt and configuration:
+  - Read `docs/SPEC.md` and `docs/PLAN.md`.
+  - Execute PLAN.md Task 1 (test infrastructure and dependency baseline) and Task 2 (core data models).
+  - Strict TDD discipline: write failing tests first (Red), then minimal implementation (Green), then commit.
+  - Hard requirement: pause and ask before guessing if any specification is ambiguous.
+- Key decisions and actions:
+  - Confirmed existing files: `tests/` directory initially empty; `.gitignore` missing `.pytest_cache/` and `data/`.
+  - Read `core/agent.py`, `core/pdf_parser.py`, `core/__init__.py` to assess baseline.
+  - Read `docs/SPEC.md` (401 lines) and `docs/PLAN.md` (1548 lines) for full context.
+  - Created `tests/test_smoke.py` with `test_pytest_is_configured`.
+  - Created `tests/conftest.py` with `sample_page_texts` fixture returning a dict of 2 page texts.
+  - Updated `requirements.txt`: appended `pytest` and `keyring`.
+  - Ran `pip install -r requirements.txt` — installation succeeded in `.venv`.
+  - Verified pytest is available: `pytest 9.1.1`.
+  - Ran smoke test: `1 passed`.
+  - Hardened `.gitignore`: added `.pytest_cache/`, `data/`, `*.pyo`, `*.log`.
+  - Committed as `b069c9a` — "Task 1: test infrastructure and dependency baseline" (4 files changed, 27 insertions, 3 deletions).
+- Specification alignment:
+  - Smoke test covers PLAN.md Step 1-7 exactly.
+  - Fixture `sample_page_texts` provides page-granularity text for future evidence containment tests (§7).
+  - `.gitignore` hardening prevents `.pytest_cache/`, `data/output_docs/`, `*.log` from entering Git.
+  - All sections default to `"missing"` placeholder per SPEC §5.4.
+- Lessons learned:
+  - PowerShell's `&&` chaining is unsupported; use separate `git add` then `git commit` commands on Windows.
+  - The project already had a small `.venv` with `pytest 9.1.1` installed, so the expected "ModuleNotFoundError for pytest" was not triggered; the Red phase was confirmed via `tests/` absence instead.
+
+## Task 1.2 - Core data models (TDD)
+
+- Timestamp: 2026-07-07 10:19-10:20 +08:00
+- Triggered Superpowers skills: `executing-plans`, `subagent-driven-development`
+- Key prompt and configuration:
+  - Implement PLAN.md Task 2: Core Data Models.
+  - TDD cycle: write failing test → confirm failure → implement → confirm pass → commit.
+- Key decisions and actions:
+  - **Red phase**: created `tests/test_models.py` with 2 tests:
+    - `test_parsed_paper_defaults_missing_sections`: creates a `ParsedPaper` with 1 page slice, asserts all four sections are `"missing"`.
+    - `test_academic_matrix_row_requires_evidence_fields`: creates a full `AcademicMatrixRow` with all 11 general fields + `trigger_reason` + `domain_fields`, asserts evidence binding and domain field access.
+  - Ran tests → `ModuleNotFoundError: No module named 'core.models'` — Red confirmed.
+  - **Green phase**: created `core/models.py` with 5 dataclasses:
+    - `PageSlice(frozen)`: `page_number: int`, `text: str`.
+    - `ParsedPaper`: `file_name`, `pages`, `title` (default `"missing"`), `sections` (default all `"missing"`), `warnings`, `error`, plus `page_text_by_number()` helper.
+    - `AcademicMatrixRow(frozen)`: all 11 general fields from SPEC §6.1 + `trigger_reason` + `domain_fields`.
+    - `EvidenceValidationResult(frozen)`: `accepted`, `message`, `normalized_quote`.
+    - `GeneratedArtifacts(frozen)`: `markdown_preview`, `survey_tex`, `matrix_table_tex`, `references_bib`.
+  - Ran tests → `2 passed` — Green confirmed.
+  - Committed as `5291fc1` — "feat: add core data models" (2 files created, 92 insertions).
+- Specification alignment:
+  - `DEFAULT_SECTIONS` dict mirrors SPEC §5.4 default `"missing"` for all four core sections.
+  - `AcademicMatrixRow` exactly matches SPEC §6.1 general fields (title, authors, year, venue, research_problem, method, innovation, limitation, evidence_page, evidence_quote, confidence).
+  - `domain_fields: dict[str, Any]` supports SPEC §6.2 cross-domain schema layering.
+  - `EvidenceValidationResult` and `page_text_by_number()` provide the data structure for SPEC §7.3 containment validation.
+- Lessons learned:
+  - `@dataclass(frozen=True)` for value objects enforces immutability, which matches the design intent that parsed/extracted data should not be mutated after creation.
+  - The `DEFAULT_SECTIONS` constant is defined at module level to allow reuse by `pdf_parser.py` in Task 3, avoiding a circular import or duplication issue.
+
+## Task 3.1 - PDF parser failing tests (TDD Red)
+
+- Timestamp: 2026-07-07 10:36-10:39 +08:00
+- Triggered Superpowers skills: `test-driven-development`
+- Key prompt and configuration:
+  - Cold-start verification continuation: read `docs/SPEC.md`, `docs/PLAN.md`, and agent log.
+  - Execute PLAN.md Task 3 Step 1 only: write failing parser unit tests before any implementation.
+- Key decisions and actions:
+  - Created `tests/test_pdf_parser.py` with 3 tests:
+    - `test_extract_core_sections_marks_missing_when_headings_absent`
+    - `test_extract_core_sections_finds_standard_headings`
+    - `test_parse_invalid_pdf_returns_error_without_raising`
+  - Ran `python -m pytest tests/test_pdf_parser.py -v` via `.venv` — Red confirmed:
+    - `ImportError: cannot import name 'extract_core_sections_from_text' from 'core.pdf_parser'`
+  - `core/pdf_parser.py` remains empty; no production code written before tests.
+- Specification alignment:
+  - Tests cover SPEC §5.2 (`missing` when headings absent), §5.3 (invalid PDF captured without raising), and §12.2 TDD points for section detection.
+- Lessons learned:
+  - On Windows PowerShell, chain commands with `;` instead of `&&`; use `.venv\Scripts\python.exe` when system Python lacks pytest.
+  - Root-level `AGENT_LOG.md` duplicated `docs/Agent_log.md`; canonical log lives under `docs/`.
+
+## Task 3.2 - PDF parser implementation (TDD Green)
+
+- Timestamp: 2026-07-07 10:39 +08:00
+- Triggered Superpowers skills: `test-driven-development`
+- Key decisions and actions:
+  - Merged root `AGENT_LOG.md` into `docs/Agent_log.md` (content was already present); deleted root duplicate.
+  - Implemented `core/pdf_parser.py`:
+    - `clean_text`, `extract_core_sections_from_text`, `parse_pdf_bytes`
+    - Heuristic regex for Abstract / Introduction / Conclusion(s) / References
+    - PyMuPDF page-slice fallback via `fitz.open`
+    - Invalid PDF bytes return `ParsedPaper` with `error` set, empty `pages`, and a warning — no exception propagated.
+  - Ran `python -m pytest tests/test_pdf_parser.py -v` → `3 passed`.
+  - Ran full suite `python -m pytest tests -v` → all tests pass.
+- Specification alignment:
+  - §5.2 core section extraction with `missing` default preserved.
+  - §5.3 page slices per physical page; parse errors captured per file.
+  - §5.4 output shape matches `ParsedPaper` model from Task 2.
