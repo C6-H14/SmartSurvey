@@ -141,6 +141,11 @@ def _build_latex_healing_prompt(
         + "\n\n<latex-validation-errors>\n"
         + error_xml
         + "\n</latex-validation-errors>\n"
+        + "<broken-latex>\n"
+        + "```latex\n"
+        + broken_latex
+        + "\n```\n"
+        + "</broken-latex>\n"
         + "<self-healing-instruction>\n"
         + "  The LaTeX source above contains syntax errors. "
         + "Fix ALL errors listed above and return ONLY the corrected LaTeX source.\n"
