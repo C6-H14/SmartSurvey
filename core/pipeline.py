@@ -13,6 +13,7 @@ def _call_with_rate_limit_backoff(
     extraction_fn: Callable[[str], str],
     prompt: str,
     max_retries: int = 3,
+    progress_callback: Callable[[int, int, str, str], None] | None = None,
 ) -> str:
     """Call extraction_fn with rate-limit (429) and timeout retry + exponential backoff.
 
@@ -34,6 +35,9 @@ def _call_with_rate_limit_backoff(
                     f"{wait}s后重试... "
                     f"(attempt {attempt + 1}/{max_retries})"
                 )
+                if progress_callback:
+                    progress_callback(0, 1, "self_healing",
+                        f"{error_type} backoff {wait}s (attempt {attempt + 1}/{max_retries})")
                 time.sleep(wait)
                 continue
             raise
@@ -120,7 +124,10 @@ def generate_artifacts(
     topic: str,
     rows: list[AcademicMatrixRow],
     blocked_warnings: list[str],
+    progress_callback: Callable[[int, int, str, str], None] | None = None,
 ) -> GeneratedArtifacts:
+    if progress_callback:
+        progress_callback(0, 1, "completed", "Generating artifacts...")
     return GeneratedArtifacts(
         markdown_preview=render_markdown_preview(topic, rows, blocked_warnings),
         survey_tex=render_survey_tex(topic, rows),
@@ -137,24 +144,20 @@ def generate_llm_artifacts(
     word_count_target: int = 3000,
     progress_callback: Callable[[int, int, str, str], None] | None = None,
 ) -> GeneratedArtifacts:
-    """Generate all artifacts with LLM-driven synthesis for the survey.
+    """Generate artifacts with LLM-driven LaTeX synthesis instead of template.
 
-    Args:
-        topic: Review topic string.
-        rows: Verified academic matrix rows.
-        extraction_fn: LLM callable (prompt -> raw response).
-        blocked_warnings: List of blocked evidence warnings.
-        word_count_target: Target word count for the manuscript.
-        progress_callback: Optional progress callback.
-
-    Returns:
-        GeneratedArtifacts with LLM-generated survey_tex.
+    Falls back to template-based generation if synthesis produces empty output.
     """
     survey_tex = render_survey_tex_with_llm(
         topic, rows, extraction_fn,
         word_count_target=word_count_target,
         progress_callback=progress_callback,
     )
+    # Fallback: if synthesis produced empty or broken output, use template
+    if not survey_tex or len(survey_tex) < 100:
+        from core.templates import render_survey_tex
+        survey_tex = render_survey_tex(topic, rows)
+
     return GeneratedArtifacts(
         markdown_preview=render_markdown_preview(topic, rows, blocked_warnings),
         survey_tex=survey_tex,
@@ -169,6 +172,7 @@ def extract_with_self_healing(
     topic: str,
     domain_fields: list[str],
     extraction_fn: Callable[[str], str],
+    progress_callback: Callable[[int, int, str, str], None] | None = None,
     max_retries: int = 3,
 ) -> tuple[list[AcademicMatrixRow], list[str]]:
     """Extract ONE consolidated AcademicMatrixRow per paper with self-healing.
@@ -179,6 +183,7 @@ def extract_with_self_healing(
         topic: Review topic string.
         domain_fields: Topic-specific domain field names.
         extraction_fn: DI callable (prompt → raw JSON string).
+        progress_callback: Optional callback for progress reporting.
         max_retries: Max retries after the initial attempt.
 
     Returns:
@@ -187,8 +192,11 @@ def extract_with_self_healing(
     prompt = build_extraction_prompt(topic, domain_fields, merged_context)
     warnings: list[str] = []
 
+    if progress_callback:
+        progress_callback(0, 1, "extracting", "Initial extraction attempt...")
+
     for attempt in range(max_retries + 1):  # +1 for the initial attempt
-        raw_json = _call_with_rate_limit_backoff(extraction_fn, prompt)
+        raw_json = _call_with_rate_limit_backoff(extraction_fn, prompt, progress_callback=progress_callback)
         try:
             rows = parse_matrix_json(raw_json, domain_fields)
         except (ValueError, json.JSONDecodeError) as parse_err:
@@ -196,6 +204,9 @@ def extract_with_self_healing(
             # instead of crashing or returning empty
             if attempt >= max_retries:
                 warnings.append(f"JSON parsing failed after {max_retries + 1} attempts: {parse_err}")
+                if progress_callback:
+                    progress_callback(0, 1, "completed",
+                        f"JSON parsing failed: {parse_err}")
                 return [], warnings
             prompt = build_json_healing_prompt(prompt)
             continue
@@ -222,10 +233,16 @@ def extract_with_self_healing(
                         warnings.append(result.message)
 
         if not blocked_any:
+            if progress_callback:
+                progress_callback(0, 1, "completed",
+                    f"Accepted {len(accepted)} rows, {len(warnings)} corrections")
             return accepted, warnings
 
         # Build XML correction prompt for next attempt
         if attempt < max_retries:
+            if progress_callback:
+                progress_callback(0, 1, "self_healing",
+                    f"Retry {attempt + 1}/{max_retries}: Evidence quote failed containment, rebuilding prompt...")
             # Use the evidence_page from the first failing row for the correction
             failed_page = rows[0].evidence_page
             failed_quote = rows[0].evidence_quote
@@ -235,6 +252,9 @@ def extract_with_self_healing(
                 prompt, failed_page, failed_quote, page_text_for_correction
             )
 
+    if progress_callback:
+        progress_callback(0, 1, "completed",
+            f"Accepted {len(accepted)} rows, {len(warnings)} corrections")
     return accepted, warnings
 
 

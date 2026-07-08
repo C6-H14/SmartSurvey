@@ -83,6 +83,7 @@ def run_app() -> None:
                     all_warnings.extend(warnings)
 
                 accepted, blocked = filter_rows_by_evidence(all_rows, parsed)
+                # Use LLM synthesis if we have accepted rows and extraction_fn
                 if accepted:
                     with st.spinner("Generating full-text manuscript with LLM..."):
                         artifacts = generate_llm_artifacts(
@@ -102,11 +103,18 @@ def run_app() -> None:
 
 
 def _get_merged_core_pages(paper: ParsedPaper) -> tuple[str, dict[int, str]]:
-    """Merge first 3 pages and last 2 non-reference pages into one context."""
-    import re
+    """Merge first 3 pages and last 2 non-reference pages into one context.
+
+    Returns:
+        (merged_context, page_text_by_number)
+    """
     page_text_by_number = paper.page_text_by_number()
     sorted_nums = sorted(page_text_by_number.keys())
+
+    # First 3 pages — metadata, method, introduction
     core_page_nums = set(sorted_nums[:3])
+
+    # Last 2 non-reference pages — conclusion, limitations
     for p in reversed(sorted_nums):
         if len(core_page_nums) >= 5:
             break
@@ -115,9 +123,16 @@ def _get_merged_core_pages(paper: ParsedPaper) -> tuple[str, dict[int, str]]:
         if _is_reference_page(page_text_by_number[p]):
             continue
         core_page_nums.add(p)
+
+    # Build merged context in page order
     core_pages_sorted = sorted(core_page_nums)
-    merged_parts = [f"--- PAGE {p} ---\n{page_text_by_number[p]}" for p in core_pages_sorted]
-    return "\n\n".join(merged_parts), page_text_by_number
+    merged_parts = []
+    for p in core_pages_sorted:
+        merged_parts.append(
+            f"--- PAGE {p} ---\n{page_text_by_number[p]}"
+        )
+    merged_context = "\n\n".join(merged_parts)
+    return merged_context, page_text_by_number
 
 
 def _is_reference_page(page_text: str) -> bool:
