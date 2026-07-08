@@ -260,7 +260,7 @@ git commit -m "feat: add core data models"
 - Modify: `core/pdf_parser.py`
 - Create: `tests/test_pdf_parser.py`
 
-- [ ] **Step 1: Write failing parser unit tests**
+- [x] **Step 1: Write failing parser unit tests**
 
 Create `tests/test_pdf_parser.py`:
 
@@ -301,13 +301,13 @@ def test_parse_invalid_pdf_returns_error_without_raising():
     assert paper.pages == []
 ```
 
-- [ ] **Step 2: Run tests to verify failure**
+- [x] **Step 2: Run tests to verify failure**
 
 Run: `python -m pytest tests/test_pdf_parser.py -v`
 
 Expected: FAIL because parser functions are missing.
 
-- [ ] **Step 3: Implement parser**
+- [x] **Step 3: Implement parser**
 
 Replace `core/pdf_parser.py` with:
 
@@ -372,13 +372,13 @@ def parse_pdf_bytes(pdf_bytes: bytes, file_name: str) -> ParsedPaper:
         )
 ```
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 Run: `python -m pytest tests/test_pdf_parser.py -v`
 
 Expected: `3 passed`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add core/pdf_parser.py tests/test_pdf_parser.py
@@ -391,7 +391,7 @@ git commit -m "feat: parse pdf pages and core sections"
 - Create: `core/evidence.py`
 - Create: `tests/test_evidence.py`
 
-- [ ] **Step 1: Write failing containment tests**
+- [x] **Step 1: Write failing containment tests**
 
 Create `tests/test_evidence.py`:
 
@@ -426,13 +426,13 @@ def test_validate_evidence_rejects_missing_quote(sample_page_texts):
     assert result.message == AIR_WARNING_BLOCKED
 ```
 
-- [ ] **Step 2: Run tests to verify failure**
+- [x] **Step 2: Run tests to verify failure**
 
 Run: `python -m pytest tests/test_evidence.py -v`
 
 Expected: FAIL with `ModuleNotFoundError`.
 
-- [ ] **Step 3: Implement evidence validation**
+- [x] **Step 3: Implement evidence validation**
 
 Create `core/evidence.py`:
 
@@ -466,13 +466,13 @@ def validate_evidence(
     )
 ```
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 Run: `python -m pytest tests/test_evidence.py -v`
 
 Expected: `3 passed`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add core/evidence.py tests/test_evidence.py
@@ -485,7 +485,7 @@ git commit -m "feat: validate evidence containment"
 - Create: `core/schema.py`
 - Create: `tests/test_schema.py`
 
-- [ ] **Step 1: Write failing schema tests**
+- [x] **Step 1: Write failing schema tests**
 
 Create `tests/test_schema.py`:
 
@@ -531,13 +531,13 @@ def test_domain_fields_for_matrix_multiplication():
     assert "tensor_rank_or_border_rank" in fields
 ```
 
-- [ ] **Step 2: Run tests to verify failure**
+- [x] **Step 2: Run tests to verify failure**
 
 Run: `python -m pytest tests/test_schema.py -v`
 
 Expected: FAIL with `ModuleNotFoundError`.
 
-- [ ] **Step 3: Implement schema helper**
+- [x] **Step 3: Implement schema helper**
 
 Create `core/schema.py`:
 
@@ -573,13 +573,13 @@ def domain_fields_for_topic(topic: str) -> list[str]:
     return ["domain_object", "key_metric", "method_family", "evaluation_context"]
 ```
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 Run: `python -m pytest tests/test_schema.py -v`
 
 Expected: `4 passed`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add core/schema.py tests/test_schema.py
@@ -593,7 +593,7 @@ git commit -m "feat: add two-layer academic schema"
 - Create: `tests/test_credentials.py`
 - Modify: `core/agent.py`
 
-- [ ] **Step 1: Write failing credential tests**
+- [x] **Step 1: Write failing credential tests**
 
 Create `tests/test_credentials.py`:
 
@@ -637,13 +637,13 @@ def test_missing_key_raises_clear_error():
         store.get_api_key()
 ```
 
-- [ ] **Step 2: Run tests to verify failure**
+- [x] **Step 2: Run tests to verify failure**
 
 Run: `python -m pytest tests/test_credentials.py -v`
 
 Expected: FAIL with `ModuleNotFoundError`.
 
-- [ ] **Step 3: Implement credential store**
+- [x] **Step 3: Implement credential store**
 
 Create `core/credentials.py`:
 
@@ -681,7 +681,7 @@ class CredentialStore:
         return bool(self.keyring.get_password(SERVICE_NAME, API_KEY_USER))
 ```
 
-- [ ] **Step 4: Refactor agent to use keyring**
+- [x] **Step 4: Refactor agent to use keyring**
 
 Replace `core/agent.py` with:
 
@@ -709,13 +709,13 @@ def get_llm_agent(temperature: float = 0.2, credential_store: CredentialStore | 
     )
 ```
 
-- [ ] **Step 5: Verify**
+- [x] **Step 5: Verify**
 
 Run: `python -m pytest tests/test_credentials.py -v`
 
 Expected: `2 passed`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add core/credentials.py core/agent.py tests/test_credentials.py
@@ -728,7 +728,7 @@ git commit -m "feat: store api key with keyring"
 - Create: `core/extractor.py`
 - Create: `tests/test_extractor.py`
 
-- [ ] **Step 1: Write failing extractor tests**
+- [x] **Step 1: Write failing extractor tests**
 
 Create `tests/test_extractor.py`:
 
@@ -760,13 +760,13 @@ def test_parse_matrix_json_converts_missing_fields_to_missing():
     assert rows[0].domain_fields["sensor"] == "missing"
 ```
 
-- [ ] **Step 2: Run tests to verify failure**
+- [x] **Step 2: Run tests to verify failure**
 
 Run: `python -m pytest tests/test_extractor.py -v`
 
 Expected: FAIL with `ModuleNotFoundError`.
 
-- [ ] **Step 3: Implement extractor boundary**
+- [x] **Step 3: Implement extractor boundary**
 
 Create `core/extractor.py`:
 
@@ -827,13 +827,13 @@ def parse_matrix_json(raw_json: str, domain_fields: list[str]) -> list[AcademicM
     return rows
 ```
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 Run: `python -m pytest tests/test_extractor.py -v`
 
 Expected: `2 passed`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add core/extractor.py tests/test_extractor.py
@@ -846,7 +846,7 @@ git commit -m "feat: add academic extraction boundary"
 - Modify: `core/templates.py`
 - Create: `tests/test_templates.py`
 
-- [ ] **Step 1: Write failing rendering tests**
+- [x] **Step 1: Write failing rendering tests**
 
 Create `tests/test_templates.py`:
 
@@ -907,13 +907,13 @@ def test_render_bibtex_contains_page_metadata():
     assert "evidencepages = {2}" in output
 ```
 
-- [ ] **Step 2: Run tests to verify failure**
+- [x] **Step 2: Run tests to verify failure**
 
 Run: `python -m pytest tests/test_templates.py -v`
 
 Expected: FAIL because render functions are missing.
 
-- [ ] **Step 3: Implement rendering**
+- [x] **Step 3: Implement rendering**
 
 Replace `core/templates.py` with:
 
@@ -1021,13 +1021,13 @@ def render_bibtex(rows: list[AcademicMatrixRow]) -> str:
     return "\n\n".join(entries)
 ```
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 Run: `python -m pytest tests/test_templates.py -v`
 
 Expected: `4 passed`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add core/templates.py tests/test_templates.py
@@ -1040,7 +1040,7 @@ git commit -m "feat: render smart survey artifacts"
 - Create: `core/pipeline.py`
 - Create: `tests/test_pipeline.py`
 
-- [ ] **Step 1: Write failing pipeline tests**
+- [x] **Step 1: Write failing pipeline tests**
 
 Create `tests/test_pipeline.py`:
 
@@ -1101,13 +1101,13 @@ def test_generate_artifacts_returns_all_downloads():
     assert "@article" in artifacts.references_bib
 ```
 
-- [ ] **Step 2: Run tests to verify failure**
+- [x] **Step 2: Run tests to verify failure**
 
 Run: `python -m pytest tests/test_pipeline.py -v`
 
 Expected: FAIL with `ModuleNotFoundError`.
 
-- [ ] **Step 3: Implement pipeline**
+- [x] **Step 3: Implement pipeline**
 
 Create `core/pipeline.py`:
 
@@ -1149,13 +1149,13 @@ def generate_artifacts(
     )
 ```
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 Run: `python -m pytest tests/test_pipeline.py -v`
 
 Expected: `2 passed`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add core/pipeline.py tests/test_pipeline.py
@@ -1168,7 +1168,7 @@ git commit -m "feat: gate pipeline output by evidence"
 - Modify: `main.py`
 - Create: `tests/test_main_import.py`
 
-- [ ] **Step 1: Write failing import test**
+- [x] **Step 1: Write failing import test**
 
 Create `tests/test_main_import.py`:
 
@@ -1180,13 +1180,13 @@ def test_main_exposes_app_entrypoint():
     assert callable(main.run_app)
 ```
 
-- [ ] **Step 2: Run tests to verify failure**
+- [x] **Step 2: Run tests to verify failure**
 
 Run: `python -m pytest tests/test_main_import.py -v`
 
 Expected: FAIL because `run_app` is missing.
 
-- [ ] **Step 3: Implement UI entrypoint**
+- [x] **Step 3: Implement UI entrypoint**
 
 Replace `main.py` with:
 
@@ -1244,19 +1244,19 @@ if __name__ == "__main__":
     run_app()
 ```
 
-- [ ] **Step 4: Verify import test**
+- [x] **Step 4: Verify import test**
 
 Run: `python -m pytest tests/test_main_import.py -v`
 
 Expected: `1 passed`.
 
-- [ ] **Step 5: Manual UI smoke test**
+- [x] **Step 5: Manual UI smoke test**
 
 Run: `streamlit run main.py`
 
 Expected: browser UI shows topic input, PDF uploader, credential status, and download buttons after upload.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add main.py tests/test_main_import.py
@@ -1269,7 +1269,7 @@ git commit -m "feat: add streamlit smart survey ui"
 - Create: `Dockerfile`
 - Create: `.dockerignore`
 
-- [ ] **Step 1: Write Docker ignore file**
+- [x] **Step 1: Write Docker ignore file**
 
 Create `.dockerignore`:
 
@@ -1285,7 +1285,7 @@ __pycache__
 *.log
 ```
 
-- [ ] **Step 2: Write Dockerfile**
+- [x] **Step 2: Write Dockerfile**
 
 Create `Dockerfile`:
 
@@ -1305,19 +1305,19 @@ EXPOSE 8501
 CMD ["streamlit", "run", "main.py", "--server.address=0.0.0.0", "--server.port=8501"]
 ```
 
-- [ ] **Step 3: Build image**
+- [x] **Step 3: Build image**
 
 Run: `docker build -t smartsurvey:local .`
 
 Expected: image builds successfully and does not copy `.env`, `.venv`, or `data/input_pdfs`.
 
-- [ ] **Step 4: Run container**
+- [x] **Step 4: Run container**
 
 Run: `docker run --rm -p 8501:8501 smartsurvey:local`
 
 Expected: Streamlit starts and exposes the app on `http://localhost:8501`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add Dockerfile .dockerignore
@@ -1329,7 +1329,7 @@ git commit -m "build: add docker distribution"
 **Files:**
 - Create: `.gitlab-ci.yml`
 
-- [ ] **Step 1: Add required CI job**
+- [x] **Step 1: Add required CI job**
 
 Create `.gitlab-ci.yml`:
 
@@ -1347,13 +1347,13 @@ unit-test:
     - python -m pytest tests -v
 ```
 
-- [ ] **Step 2: Validate locally**
+- [x] **Step 2: Validate locally**
 
 Run: `python -m pytest tests -v`
 
 Expected: all tests pass.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add .gitlab-ci.yml
@@ -1367,7 +1367,7 @@ git commit -m "ci: add unit test job"
 - Modify: `docs/Agent_log.md`
 - Modify: `docs/切换API说明.md`
 
-- [ ] **Step 1: Create README**
+- [x] **Step 1: Create README**
 
 Create `README.md` with these sections:
 
@@ -1421,11 +1421,11 @@ The first version does not automatically download papers, reconstruct perfect PD
 ```
 ```
 
-- [ ] **Step 2: Update API switching document**
+- [x] **Step 2: Update API switching document**
 
 Edit `docs/切换API说明.md` so it states that `.env` is a development compatibility mechanism for base URL and model name only, while API Key storage should use OS keyring. Remove any instruction that says users should put real API keys into `.env` as the preferred path.
 
-- [ ] **Step 3: Append implementation checkpoint to Agent log**
+- [x] **Step 3: Append implementation checkpoint to Agent log**
 
 Append to `docs/Agent_log.md`:
 
@@ -1438,13 +1438,13 @@ Append to `docs/Agent_log.md`:
 - Next step: execute the plan task-by-task with TDD and subagent-driven development.
 ```
 
-- [ ] **Step 4: Verify docs do not contain real key-like values**
+- [x] **Step 4: Verify docs do not contain real key-like values**
 
 Run: `rg "sk-[A-Za-z0-9]" README.md docs`
 
 Expected: no real API key values. Placeholder strings are acceptable only if clearly fake, such as `sk-your-provider-key`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add README.md docs/切换API说明.md docs/Agent_log.md
@@ -1456,7 +1456,7 @@ git commit -m "docs: align readme and credential guidance"
 **Files:**
 - Modify: `docs/SPEC_PROCESS.md`
 
-- [ ] **Step 1: Add cold-start verification section placeholder with concrete protocol**
+- [x] **Step 1: Add cold-start verification section placeholder with concrete protocol**
 
 Append to `docs/SPEC_PROCESS.md`:
 
@@ -1473,13 +1473,13 @@ Append to `docs/SPEC_PROCESS.md`:
 4. 根据结果修订 `docs/SPEC.md` 或 `docs/PLAN.md`。
 ```
 
-- [ ] **Step 2: Verify plan and spec are present**
+- [x] **Step 2: Verify plan and spec are present**
 
 Run: `Test-Path .\docs\SPEC.md; Test-Path .\docs\PLAN.md; Test-Path .\docs\SPEC_PROCESS.md`
 
 Expected: three `True` lines.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add docs/SPEC_PROCESS.md docs/PLAN.md
@@ -1491,13 +1491,13 @@ git commit -m "docs: prepare cold start verification"
 **Files:**
 - No new files unless previous tasks reveal a defect.
 
-- [ ] **Step 1: Run all tests**
+- [x] **Step 1: Run all tests**
 
 Run: `python -m pytest tests -v`
 
 Expected: all tests pass.
 
-- [ ] **Step 2: Check secret hygiene**
+- [x] **Step 2: Check secret hygiene**
 
 Run: `git status --short`
 
@@ -1507,19 +1507,19 @@ Run: `rg "OPENAI_API_KEY=.*sk-|sk-[A-Za-z0-9]{20,}" . --glob '!/.git/**' --glob 
 
 Expected: no real keys.
 
-- [ ] **Step 3: Check documentation placement**
+- [x] **Step 3: Check documentation placement**
 
 Run: `Get-ChildItem -Path . -File -Filter *.md | Select-Object -ExpandProperty Name`
 
 Expected: `README.md` only, or no root Markdown except `README.md`.
 
-- [ ] **Step 4: Manual app check**
+- [x] **Step 4: Manual app check**
 
 Run: `streamlit run main.py`
 
 Expected: app starts, shows credential status, accepts PDF uploads, and exposes artifact downloads without showing a full API key.
 
-- [ ] **Step 5: Final commit if needed**
+- [x] **Step 5: Final commit if needed**
 
 ```bash
 git add .
