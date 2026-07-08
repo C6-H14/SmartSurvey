@@ -1,4 +1,5 @@
 import re
+from typing import Callable
 
 from core.models import AcademicMatrixRow
 
@@ -33,6 +34,38 @@ def build_synthesis_prompt(
         f"- Target length: {word_count_target} Chinese characters\n"
         "- Output valid LaTeX only, no extra commentary."
     )
+
+
+def render_survey_tex_with_llm(
+    topic: str,
+    rows: list[AcademicMatrixRow],
+    extraction_fn: Callable[[str], str],
+    word_count_target: int = 3000,
+    progress_callback: Callable[[int, int, str, str], None] | None = None,
+) -> str:
+    """Generate a full LaTeX manuscript using LLM-driven synthesis.
+
+    Args:
+        topic: Review topic string.
+        rows: Verified academic matrix rows.
+        extraction_fn: LLM callable (prompt -> raw response).
+        word_count_target: Target word count for the manuscript.
+        progress_callback: Optional progress callback.
+
+    Returns:
+        Complete LaTeX manuscript string.
+    """
+    prompt = build_synthesis_prompt(topic, rows, word_count_target=word_count_target)
+
+    if progress_callback:
+        progress_callback(0, 1, "extracting", "Generating LaTeX manuscript...")
+
+    raw = extraction_fn(prompt)
+
+    if progress_callback:
+        progress_callback(0, 1, "completed", "LaTeX manuscript generated successfully.")
+
+    return raw
 
 
 def validate_latex_syntax(source: str) -> list[str]:
