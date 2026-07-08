@@ -565,6 +565,44 @@
   - **ASCII progress bar is Windows-safe**: `░` (U+2591) causes GBK encoding errors in Windows terminal. Simple `#` and `-` characters avoid this.
   - **Evidence gate works as designed**: 1 blocked paper is not a failure — it means the system correctly rejected a hallucinated limitation.
 
+## Task 18.1 - Unified State Callback — Pipeline & Console Integration
+
+- Timestamp: 2026-07-08 +08:00
+- Triggered Superpowers skills: `test-driven-development`
+- Key prompt and configuration:
+  - Implement Task 18 from docs/PLAN.md — add optional `progress_callback` parameter to `extract_with_self_healing` and `generate_artifacts`.
+  - Callback signature: `(current_idx: int, total_papers: int, state: str, detail: str) -> None`
+  - State values: `{'parsing', 'extracting', 'self_healing', 'completed'}`
+  - Wire console callback in `scripts/run_extraction.py` and Streamlit callback in `main.py`.
+- Key decisions and actions:
+  - **TDD RED 1**: Wrote `test_extract_with_self_healing_invokes_progress_callback` in `tests/test_pipeline.py` — expects `'extracting'` in states and `'completed'` as last state. Confirmed `TypeError: unexpected keyword argument 'progress_callback'`.
+  - **TDD GREEN 1**: Added `progress_callback` parameter to `extract_with_self_healing`:
+    - Signature: `progress_callback: Callable[[int, int, str, str], None] | None = None`
+    - Invokes callback at function start (`state="extracting"`), before each self-healing retry (`state="self_healing"`), and before every return (`state="completed"`).
+    - Also added `progress_callback` to `_call_with_rate_limit_backoff` for rate-limit/timeout backoff events.
+  - **TDD RED 2**: Wrote `test_generate_artifacts_accepts_optional_callback` — verifies callback is accepted but no-op.
+  - **TDD GREEN 2**: Added `progress_callback` to `generate_artifacts` — invokes callback with `state="completed"` and `detail="Generating artifacts..."`.
+  - **Console integration**: Created `_console_progress_callback` in `scripts/run_extraction.py` with per-state output behavior:
+    - `parsing` → calls `_print_progress(current_idx + 1, total_papers, detail)`
+    - `extracting` / `self_healing` → prints `\r  [{state}] {detail}...`
+    - `completed` → prints `\r  [{state}] {detail}\n`
+  - **Streamlit integration**: Created `_streamlit_progress_callback` in `main.py` with `st.progress()` and `st.empty()` status text.
+  - Replaced static `generate_artifacts(topic, [], ...)` in `main.py` with a live extraction pipeline: parsing → `extract_with_self_healing` per paper → `filter_rows_by_evidence` → `generate_artifacts`.
+  - Added `_get_merged_core_pages` and `_is_reference_page` helpers to `main.py` (duplicated from `scripts/run_extraction.py` for Streamlit isolation).
+- **TDD Evidence**:
+  - RED: `python -m pytest tests/test_pipeline.py::test_extract_with_self_healing_invokes_progress_callback -v` → FAIL with `TypeError: extract_with_self_healing() got an unexpected keyword argument 'progress_callback'`
+  - GREEN: `python -m pytest tests/test_pipeline.py::test_extract_with_self_healing_invokes_progress_callback -v` → PASS
+- **Test results**: 30/31 tests pass (1 pre-existing failure: `test_create_extraction_fn_returns_callable` requires real API key).
+- **Files changed**:
+  - `core/pipeline.py` — `progress_callback` param in `extract_with_self_healing`, `generate_artifacts`, `_call_with_rate_limit_backoff`
+  - `scripts/run_extraction.py` — `_console_progress_callback`, wired into extraction loop and `generate_artifacts`
+  - `main.py` — `_streamlit_progress_callback`, live extraction pipeline with progress bar and status text
+  - `tests/test_pipeline.py` — 2 new callback tests
+- **Commit**: `4ef9134` — "feat: add unified state progress callback for extraction pipeline (Task 18)"
+- **Specification alignment**:
+  - SPEC §14.1-14.5 Progress Reporting Protocol: callback signature, state machine, injection points.
+  - Callback is optional (`None` by default) — all existing callers remain compatible without changes.
+
 ## Task 17.3 - Phase 2 Closure
 
 - Timestamp: 2026-07-08 +08:00
@@ -594,3 +632,34 @@
 - Next steps (Phase 3):
   - Task 18: Streamlit dynamic progress bar (`st.progress`) with real-time extraction status
   - Task 19: Zotero auto-archive integration (RIS/CSV/Better BibTeX export)
+
+## Task 19.1 - LLM Full-Text Synthesis & LaTeX Stack Validator
+
+- Timestamp: 2026-07-08
+- Implementation details:
+  - Created `core/synthesis.py` with four functions:
+    - `validate_latex_syntax(latex_source) -> list[str]` — zero-dependency stack-based LaTeX validator checking inline math parity, display math parity, `\begin`/`\end` pairing, and curly brace balance
+    - `build_synthesis_prompt(topic, rows) -> str` — constrained system prompt forcing ctexart, 6 required sections, booktabs matrix, and strict LaTeX-only output
+    - `_build_latex_healing_prompt(original_prompt, errors, broken_latex) -> str` — XML error feedback for self-healing retry
+    - `render_survey_tex_with_llm(topic, rows, extraction_fn, progress_callback) -> str` — LLM-driven LaTeX generation with self-healing loop (MAX_SYNTHESIS_RETRIES=1)
+  - Created `tests/test_synthesis.py` with 11 tests:
+    - 8 LaTeX validation tests (valid, unclosed inline math, unclosed display math, mismatched begin/end, unclosed environment, unbalanced braces, escaped dollar, escaped brace)
+    - 1 build_synthesis_prompt content test
+    - 2 render_survey_tex_with_llm integration tests (ValidLaTeXExtractor, InvalidLaTeXExtractor with self-healing)
+  - Modified `core/pipeline.py`: added `generate_llm_artifacts` function with template fallback
+  - Modified `scripts/run_extraction.py`: uses `generate_llm_artifacts` when accepted rows exist
+  - Modified `main.py`: uses `generate_llm_artifacts` with st.spinner when accepted rows exist
+- Key design decisions:
+  - State-tracking approach for math parity (in_display_math, in_inline_math flags) instead of simple dollar counting, which correctly catches unclosed `$$...$$` display math
+  - Escaped characters (`\$`, `\{`, `\}`) are properly skipped by advancing past the backslash, avoiding false positives
+  - Self-healing retry limited to 1 attempt (MAX_SYNTHESIS_RETRIES=1) to avoid infinite loops
+  - Template-based fallback in `generate_llm_artifacts` for cases where LLM returns empty or undersized output
+- TDD evidence:
+  - Phase 1 RED: `ModuleNotFoundError: No module named 'core.synthesis'` when running 8 LaTeX validation tests
+  - Phase 1 GREEN: All 8 LaTeX validation tests pass after implementing `validate_latex_syntax`
+  - Phase 2 RED: `ImportError: cannot import name 'build_synthesis_prompt'` when running prompt test
+  - Phase 2 GREEN: `build_synthesis_prompt` test passes after implementation
+  - Phase 3 RED: `ImportError: cannot import name 'render_survey_tex_with_llm'` when running self-healing tests
+  - Phase 3 GREEN: All 11 synthesis tests pass after implementing `render_survey_tex_with_llm`
+- Test results: 41/42 tests passing (1 pre-existing failure in test_agent.py due to SSL/API key issue)
+- **Commit**: `2cd70e8` — "feat: add llm-driven latex synthesis with stack-based validator (Task 19)"

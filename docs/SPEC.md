@@ -245,9 +245,9 @@ evidence_quote in page_text[evidence_page]
 2. `matrix_table.tex`
 3. `references.bib`
 
-### 8.3 `survey_draft.tex`
+### 8.3 `survey_draft.tex`（LLM 驱动合成）
 
-`survey_draft.tex` 是中文学术论文全文手稿，不是空泛草稿。
+`survey_draft.tex` 是中文学术论文全文手稿，由 `core/synthesis.py` 中的 `render_survey_tex_with_llm` 通过大模型驱动生成，不再使用简单的模板填充。
 
 格式要求：
 
@@ -399,3 +399,142 @@ Dockerfile 应满足：
 5. 导出可复制到 Overleaf 的中文 LaTeX 全文手稿和三线表。
 6. 使用 keyring 完成本地 API Key 的录入、读取、更新和清除。
 7. Docker 部署方案不泄露用户 Key，并说明公网部署时的用户级 Key 配置方式。
+
+---
+
+## 14. 进度上报协议 (Phase 3, Task 18)
+
+### 14.1 统一状态回调 (Unified State Callback)
+
+系统采用统一的回调函数在 `pipeline.py` 与调用方之间传递批量提取进度。
+
+### 14.2 回调签名
+
+```python
+progress_callback: Callable[[int, int, str, str], None]
+
+# 参数说明:
+#   current_idx: int   — 当前正在处理的论文索引（0-based）
+#   total_papers: int  — 批处理论文总数
+#   state: str         — 严格枚举值：'parsing' | 'extracting' | 'self_healing' | 'completed'
+#   detail: str        — 实时的可读细节字符串（如 "Retry 2/3: Generating XML feedback prompt..."）
+```
+
+### 14.3 状态机
+
+```
+parsing  →  extracting  →  self_healing (0..N 次)  →  completed
+```
+
+### 14.4 设计原则
+
+- **解耦**: `pipeline.py` 仅通过回调广播状态，不关心调用方如何渲染。
+- **控制台模式**: 调用方通过 `print(end="\r", flush=True)` 绘制 ASCII 进度条。
+- **Streamlit 模式**: 调用方同时驱动 `st.progress()` 和 `st.status()` 实现丰富 UI。
+- **向后兼容**: 回调参数为可选（默认 `None`），不传回调的已有调用不受影响。
+
+### 14.5 注入点
+
+- `extract_with_self_healing()` — 在 LLM 调用前后注入 `extracting` 和 `self_healing` 状态。
+- `scripts/run_extraction.py` — 在逐论文循环中注入 `parsing` 和 `completed` 状态。
+
+---
+
+## 15. LLM 驱动全文合成 (Phase 3, Task 19)
+
+### 15.1 新模块: `core/synthesis.py`
+
+系统引入独立的 `core/synthesis.py` 模块，负责将结构化矩阵通过 LLM 合成为完整的中文学术综述 LaTeX 手稿。
+
+选择 `core/synthesis.py` 而非修改 `core/templates.py` 或 `core/pipeline.py` 的原因：
+- `templates.py` 保持纯渲染职责，不引入 LLM 调用。
+- `pipeline.py` 保持编排职责，不因 LLM 合成逻辑膨胀。
+- `synthesis.py` 单一职责：LLM 驱动合成 + LaTeX 语法校验。
+
+### 15.2 函数接口
+
+```python
+def render_survey_tex_with_llm(
+    topic: str,
+    rows: list[AcademicMatrixRow],
+    extraction_fn: Callable[[str], str],
+    progress_callback: Callable[[int, int, str, str], None] | None = None,
+) -> str:
+    """
+    使用 LLM 生成完整中文 LaTeX 综述手稿。
+
+    参数:
+        topic: 综述主题。
+        rows: 已通过证据校验的学术矩阵行。
+        extraction_fn: LLM 调用适配器（prompt → raw response）。
+        progress_callback: 可选的进度回调。
+
+    返回:
+        survey_draft.tex 的完整字符串内容。
+    """
+```
+
+### 15.3 系统提示词设计
+
+`build_synthesis_prompt(topic, rows)` 在 `core/synthesis.py` 中构造，包含：
+
+- 综述主题和论文集合。
+- 所有已校验的学术矩阵行（含方法、创新点、局限性、证据页码等）。
+- 强制输出约束：
+  - 使用 `ctexart` 文档类。
+  - 必须包含六个 `\section{...}` 章节。
+  - 嵌入 `booktabs` 三线对比表。
+  - 禁止输出 Markdown 代码块或解释性文字，仅返回纯 LaTeX 源码。
+
+### 15.4 LaTeX 语法校验: 轻量栈扫描器
+
+**更新 §8 综述生成与导出规约**：`survey_draft.tex` 的生成方式从模板填充升级为 LLM 驱动合成，但保留对输出内容的 LaTeX 语法校验。
+
+#### 15.4.1 校验规则
+
+系统在 `core/synthesis.py` 中实现 `validate_latex_syntax(latex_source: str) -> list[str]`，返回空列表表示语法正确。
+
+#### 15.4.2 行内公式 `$...$` 奇偶校验
+
+逐字符扫描，忽略 `\$` 转义序列。统计 `$` 出现次数，奇数次表示未闭合。
+
+#### 15.4.3 展示公式 `$$...$$` 奇偶校验
+
+同上，但针对 `$$` 双美元符号块。
+
+#### 15.4.4 `\begin{...}` / `\end{...}` 配对校验
+
+基于栈的扫描器：遇到 `\begin{env}` 入栈，遇到 `\end{env}` 出栈并检查环境名是否匹配。不匹配或未闭合时返回错误。
+
+#### 15.4.5 花括号 `{...}` 平衡校验
+
+整数计数器：遇 `{` 加一，遇 `}` 减一，忽略 `\{` 和 `\}` 转义序列。计数器不应为负或最终非零。
+
+### 15.5 自愈环路
+
+```python
+MAX_SYNTHESIS_RETRIES = 1  # Token Budget 极小
+
+若 validate_latex_syntax 返回错误列表，系统通过 XML 标签将错误信息反馈给 LLM，
+触发最多 1 次快速重试。若重试后仍不通过，返回原始 LaTeX 源码（降级输出）。
+
+XML 反馈格式:
+<latex-validation-errors>
+  <error>未闭合的行内公式: $ 符号数量为奇数。</error>
+  <error>环境不匹配: \\begin{table} 被 \\end{figure} 闭合。</error>
+</latex-validation-errors>
+```
+
+### 15.6 测试策略
+
+- `validate_latex_syntax` 的单元测试：覆盖有效 LaTeX、未闭合 `$`、环境不匹配、花括号不平衡、转义符号无假阳性。
+- `build_synthesis_prompt` 的单元测试：提示词包含主题、所有矩阵行和输出格式约束。
+- `render_survey_tex_with_llm` 的集成测试：使用 `StatefulMockExtractor`（纯 Python，无真实 LLM），验证 LaTeX 错误触发自愈重试。
+
+---
+
+## 16. 后续阶段规划
+
+### 16.1 第四阶段 (Phase 4, 可选)
+
+- Task 20: Zotero 自动归档集成（RIS/CSV/Better BibTeX 导出），优先级低于 Task 18-19。
