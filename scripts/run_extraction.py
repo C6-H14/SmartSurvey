@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from core.agent import create_extraction_fn
 from core.credentials import CredentialStore
+from core.models import AcademicMatrixRow, ParsedPaper
 from core.pdf_parser import parse_pdf_bytes
 from core.pipeline import extract_with_self_healing, generate_artifacts, filter_rows_by_evidence
 from core.schema import domain_fields_for_topic
@@ -23,6 +24,60 @@ from core.schema import domain_fields_for_topic
 INPUT_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "input_pdfs")
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "output_docs")
 TOPIC = "industrial automation lab spatial anomaly detection"
+PROGRESS_BAR_LEN = 20
+
+
+def _print_progress(current: int, total: int, paper_name: str) -> None:
+    """Print a single-line ASCII progress bar."""
+    percent = int(current / total * 100)
+    filled = int(PROGRESS_BAR_LEN * current / total)
+    bar = "#" * filled + "-" * (PROGRESS_BAR_LEN - filled)
+    print(
+        f"\r[进度: {current}/{total}] [{bar}] {percent}% 正在深度解析并提取: {paper_name} ...",
+        end="",
+        flush=True,
+    )
+
+
+def _is_reference_page(page_text: str) -> bool:
+    """Heuristic: if the page contains many citation patterns, it's likely a reference page."""
+    lower = page_text.lower()
+    ref_markers = ["[1]", "[2]", "[3]", "[4]", "[5]"]
+    count = sum(1 for m in ref_markers if m in lower)
+    return count >= 3 or "references" in lower[:80]
+
+
+def _get_merged_core_pages(paper: ParsedPaper) -> tuple[str, dict[int, str]]:
+    """Merge first 3 pages and last 2 non-reference pages into one context.
+
+    Returns:
+        (merged_context, page_text_by_number)
+    """
+    page_text_by_number = paper.page_text_by_number()
+    sorted_nums = sorted(page_text_by_number.keys())
+
+    # First 3 pages — metadata, method, introduction
+    core_page_nums = set(sorted_nums[:3])
+
+    # Last 2 non-reference pages — conclusion, limitations
+    for p in reversed(sorted_nums):
+        if len(core_page_nums) >= 5:
+            break
+        if p in core_page_nums:
+            continue
+        if _is_reference_page(page_text_by_number[p]):
+            continue
+        core_page_nums.add(p)
+
+    # Build merged context in page order
+    core_pages_sorted = sorted(core_page_nums)
+    merged_parts = []
+    for p in core_pages_sorted:
+        merged_parts.append(
+            f"--- PAGE {p} ---\n{page_text_by_number[p]}"
+        )
+    merged_context = "\n\n".join(merged_parts)
+    return merged_context, page_text_by_number
 
 
 def main():
@@ -52,28 +107,67 @@ def main():
         status = "OK" if not paper.error else f"ERROR: {paper.error}"
         print(f"  [{status}] {paper.file_name} ({len(paper.pages)} pages)")
 
-    # Extract matrix rows with self-healing for each paper
+    # Extract one consolidated row per paper (not per page!)
     domain_fields = domain_fields_for_topic(TOPIC)
     all_rows: list = []
     all_warnings: list = []
-    for paper in papers:
+    total_papers = len(papers)
+
+    for idx, paper in enumerate(papers, start=1):
         if paper.error:
             continue
-        for page in paper.pages:
-            print(f"  Extracting from {paper.file_name} page {page.page_number}...")
-            rows, warnings = extract_with_self_healing(
-                page_text=page.text,
-                page_number=page.page_number,
-                topic=TOPIC,
-                domain_fields=domain_fields,
-                extraction_fn=extraction_fn,
-                max_retries=3,
-            )
-            all_rows.extend(rows)
-            all_warnings.extend(warnings)
-            time.sleep(0.2)  # Inter-page delay to reduce rate-limit risk
 
-    # Filter by evidence (second pass)
+        short_name = os.path.splitext(paper.file_name)[0][:40]
+        _print_progress(idx, total_papers, short_name)
+
+        merged_context, page_text_by_number = _get_merged_core_pages(paper)
+
+        rows, warnings = extract_with_self_healing(
+            merged_context=merged_context,
+            page_text_by_number=page_text_by_number,
+            topic=TOPIC,
+            domain_fields=domain_fields,
+            extraction_fn=extraction_fn,
+            max_retries=3,
+        )
+
+        # Defense 3: Ultimate filename fallback — if JSON extraction failed
+        # after all retries, create a degraded row from the filename so
+        # every paper appears in the final output.
+        if not rows:
+            fallback = AcademicMatrixRow(
+                title=os.path.splitext(paper.file_name)[0],
+                authors="unverified",
+                year="unverified",
+                venue="unverified",
+                research_problem="unverified",
+                method="unverified",
+                innovation="unverified",
+                limitation="JSON extraction failed after 3 retries",
+                evidence_page=0,
+                evidence_quote="unverified",
+                confidence=0.0,
+                trigger_reason="unverified",
+                domain_fields={k: "unverified" for k in domain_fields},
+            )
+            rows = [fallback]
+            print(f"  [降级兜底] 使用文件名作为 title: {fallback.title}")
+
+        all_rows.extend(rows)
+        all_warnings.extend(warnings)
+
+        # Print result count inline after the progress bar line
+        row_count = len(rows)
+        warn_count = len(warnings)
+        print(f"  [{row_count}行, {warn_count}次校正]")
+
+        # 1.5s inter-paper delay
+        time.sleep(1.5)
+
+    # Clear progress line
+    print()
+
+    # Filter by evidence (second pass) — degraded rows pass through automatically
     accepted, blocked = filter_rows_by_evidence(all_rows, papers)
 
     # Generate artifacts

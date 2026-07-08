@@ -1572,7 +1572,7 @@ def extract_with_self_healing(
     ...
 ```
 
-### Task 16: Self-Healing Extraction Pipeline
+### Task 16: Self-Healing Extraction Pipeline (Completed)
 
 **Files:**
 - Modify: `core/extractor.py` (add `build_self_healing_prompt`)
@@ -1957,7 +1957,7 @@ git add core/pipeline.py core/extractor.py core/agent.py tests/test_pipeline_ext
 git commit -m "feat: add self-healing extraction pipeline with DI"
 ```
 
-### Task 17: Real PDF Extraction & Export
+### Task 17: Real PDF Extraction & Export (Completed)
 
 **Files:**
 - Create: `scripts/run_extraction.py`
@@ -1968,7 +1968,7 @@ git commit -m "feat: add self-healing extraction pipeline with DI"
 
 **Prerequisites:** A real LLM API key must be stored in the OS keyring (via `streamlit run main.py` sidebar or a keyring CLI command). The 4 PDFs are already in `data/input_pdfs/`.
 
-- [ ] **Step 1: Write failing test for the extraction script import**
+- [x] **Step 1: Write failing test for the extraction script import**
 
 Create `tests/test_scripts.py`:
 
@@ -1980,13 +1980,13 @@ def test_run_extraction_exposes_main_function():
     assert callable(scripts.run_extraction.main)
 ```
 
-- [ ] **Step 2: Run the script test**
+- [x] **Step 2: Run the script test**
 
 Run: `python -m pytest tests/test_scripts.py -v`
 
 Expected: FAIL with `ModuleNotFoundError: No module named 'scripts.run_extraction'`.
 
-- [ ] **Step 3: Create the batch extraction script**
+- [x] **Step 3: Create the batch extraction script**
 
 Create `scripts/run_extraction.py`:
 

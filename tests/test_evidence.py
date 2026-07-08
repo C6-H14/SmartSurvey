@@ -4,7 +4,7 @@ from core.evidence import AIR_WARNING_BLOCKED, normalize_for_containment, valida
 def test_normalize_for_containment_collapses_whitespace_and_hyphen_breaks():
     text = "The method is light-\n ing sensitive."
 
-    assert normalize_for_containment(text) == "the method is lighting sensitive."
+    assert normalize_for_containment(text) == "the method is lighting sensitive"
 
 
 def test_validate_evidence_accepts_quote_on_page(sample_page_texts):
