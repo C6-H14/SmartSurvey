@@ -2319,7 +2319,7 @@ Add before the extraction button:
 ```python
 word_count_target = st.slider(
     "Target word count for manuscript",
-    min_value=500, max_value=8000, value=3000, step=500,
+    min_value=1000, max_value=10000, value=3000, step=500,
     help="Controls how many Chinese characters the LLM synthesis should target.",
 )
 ```
