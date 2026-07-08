@@ -39,6 +39,18 @@ def _print_progress(current: int, total: int, paper_name: str) -> None:
     )
 
 
+def _console_progress_callback(current_idx: int, total_papers: int, state: str, detail: str) -> None:
+    """Progress callback for console extraction."""
+    if state == "parsing":
+        _print_progress(current_idx + 1, total_papers, detail)
+    elif state == "extracting":
+        print(f"\r  [{state}] {detail}...", end="", flush=True)
+    elif state == "self_healing":
+        print(f"\r  [{state}] {detail}...", end="", flush=True)
+    elif state == "completed":
+        print(f"\r  [{state}] {detail}\n", end="", flush=True)
+
+
 def _is_reference_page(page_text: str) -> bool:
     """Heuristic: if the page contains many citation patterns, it's likely a reference page."""
     lower = page_text.lower()
@@ -118,7 +130,7 @@ def main():
             continue
 
         short_name = os.path.splitext(paper.file_name)[0][:40]
-        _print_progress(idx, total_papers, short_name)
+        _console_progress_callback(idx - 1, total_papers, "parsing", short_name)
 
         merged_context, page_text_by_number = _get_merged_core_pages(paper)
 
@@ -128,6 +140,7 @@ def main():
             topic=TOPIC,
             domain_fields=domain_fields,
             extraction_fn=extraction_fn,
+            progress_callback=_console_progress_callback,
             max_retries=3,
         )
 
@@ -171,7 +184,8 @@ def main():
     accepted, blocked = filter_rows_by_evidence(all_rows, papers)
 
     # Generate artifacts
-    artifacts = generate_artifacts(TOPIC, accepted, blocked)
+    artifacts = generate_artifacts(TOPIC, accepted, blocked,
+                                   progress_callback=_console_progress_callback)
 
     # Write outputs
     tex_path = os.path.join(OUTPUT_DIR, "survey_draft.tex")
