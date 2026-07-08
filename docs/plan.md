@@ -2187,7 +2187,7 @@ Known implementation risk:
 - Add `\usepackage{tabularx}` to the LaTeX preamble in `render_survey_tex` and `build_synthesis_prompt`
 - Update `validate_latex_syntax` to recognize `\begin{tabularx}` and `\end{tabularx}` as valid environments
 
-- [ ] **Step 1: Write failing test for tabularx preamble**
+- [x] **Step 1: Write failing test for tabularx preamble**
 
 Append to `tests/test_templates.py`:
 
@@ -2211,29 +2211,29 @@ def test_render_matrix_table_uses_tabularx():
     assert "\\begin{tabular}{llll}" not in output
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `python -m pytest tests/test_templates.py::test_render_matrix_table_uses_tabularx -v`
 
 Expected: FAIL — `tabularx` not found in output.
 
-- [ ] **Step 3: Update `render_matrix_table_tex` in `core/templates.py`**
+- [x] **Step 3: Update `render_matrix_table_tex` in `core/templates.py`**
 
 Replace `\begin{tabular}{llll}` with `\begin{tabularx}{\textwidth}{XXXX}` and close with `\end{tabularx}`.
 
-- [ ] **Step 4: Update `render_survey_tex` preamble**
+- [x] **Step 4: Update `render_survey_tex` preamble**
 
 Add `\usepackage{tabularx}` to the LaTeX preamble.
 
-- [ ] **Step 5: Update `build_synthesis_prompt` in `core/synthesis.py`**
+- [x] **Step 5: Update `build_synthesis_prompt` in `core/synthesis.py`**
 
 Add `\usepackage{tabularx}` to the required packages in the synthesis prompt.
 
-- [ ] **Step 6: Update `validate_latex_syntax` to accept `tabularx`**
+- [x] **Step 6: Update `validate_latex_syntax` to accept `tabularx`**
 
 Add `tabularx` to the recognized environment list in `validate_latex_syntax`. The current regex `r'\\(begin|end)\{(\w+)\}'` already matches any environment name, so `tabularx` should work. Add a test to confirm.
 
-- [ ] **Step 7: Write test for tabularx compatibility in validator**
+- [x] **Step 7: Write test for tabularx compatibility in validator**
 
 ```python
 def test_tabularx_is_valid_latex_environment():
@@ -2245,13 +2245,13 @@ def test_tabularx_is_valid_latex_environment():
     assert errors == []
 ```
 
-- [ ] **Step 8: Run both new tests**
+- [x] **Step 8: Run both new tests**
 
 Run: `python -m pytest tests/test_templates.py::test_render_matrix_table_uses_tabularx tests/test_synthesis.py::test_tabularx_is_valid_latex_environment -v`
 
 Expected: Both PASS.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add core/templates.py core/synthesis.py tests/test_templates.py tests/test_synthesis.py
@@ -2289,7 +2289,7 @@ def test_build_synthesis_prompt_accepts_word_count_target():
     assert "Chinese characters" in prompt.lower() or "字" in prompt
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `python -m pytest tests/test_synthesis.py::test_build_synthesis_prompt_accepts_word_count_target -v`
 
@@ -2332,7 +2332,7 @@ Run: `python -m pytest tests -v --ignore=tests/test_agent.py`
 
 Expected: All tests pass.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add core/synthesis.py core/pipeline.py main.py tests/test_synthesis.py

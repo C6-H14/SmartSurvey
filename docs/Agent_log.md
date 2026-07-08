@@ -594,3 +594,23 @@
 - Next steps (Phase 3):
   - Task 18: Streamlit dynamic progress bar (`st.progress`) with real-time extraction status
   - Task 19: Zotero auto-archive integration (RIS/CSV/Better BibTeX export)
+
+## Task 20.1 - tabularx
+
+- Timestamp: 2026-07-08 +08:00
+- Triggered Superpowers skills: `executing-plans`, `test-driven-development`
+- Key prompt and configuration:
+  - TDD cycle for Task 20: switch matrix table from `tabular` to `tabularx` for auto-wrapping columns.
+  - RED: `test_render_matrix_table_uses_tabularx` — failed with `AssertionError` (tabularx not in output).
+  - GREEN: Updated `render_matrix_table_tex` to use `\begin{tabularx}{\textwidth}{XXXX}` and `\end{tabularx}`.
+  - Added `\usepackage{tabularx}` to `render_survey_tex` preamble.
+  - Created `core/synthesis.py` with `build_synthesis_prompt` (includes `\usepackage{tabularx}` requirement) and `validate_latex_syntax` (works with `\w+` regex covering `tabularx`).
+  - Created `tests/test_synthesis.py` with `test_tabularx_is_valid_latex_environment`.
+  - Both new tests pass: `2 passed`.
+  - Full suite: 30/30 relevant tests pass (1 pre-existing `test_agent.py` failure due to fake API key — unchanged).
+  - Commit: `136077d` — "feat: switch to tabularx for auto-wrapping table columns (Task 20) [Subagent: Sonnet] [Manual: None] [Agent count: 2]"
+- Specification alignment:
+  - SPEC §14.3: `render_matrix_table_tex` outputs `\begin{tabularx}{\textwidth}{XXXX}` instead of `\begin{tabular}{llll}`.
+  - SPEC §14.3: `render_survey_tex` and `build_synthesis_prompt` include `\usepackage{tabularx}` in preamble.
+  - SPEC §14.3: `validate_latex_syntax` accepts `\begin{tabularx}` and `\end{tabularx}` as valid environments.
+  - SPEC §14.4: `matrix_table.tex` uses `tabularx` environment; preamble includes `\usepackage{tabularx}`; validator returns empty error list for `tabularx` environment.
