@@ -565,6 +565,44 @@
   - **ASCII progress bar is Windows-safe**: `░` (U+2591) causes GBK encoding errors in Windows terminal. Simple `#` and `-` characters avoid this.
   - **Evidence gate works as designed**: 1 blocked paper is not a failure — it means the system correctly rejected a hallucinated limitation.
 
+## Task 18.1 - Unified State Callback — Pipeline & Console Integration
+
+- Timestamp: 2026-07-08 +08:00
+- Triggered Superpowers skills: `test-driven-development`
+- Key prompt and configuration:
+  - Implement Task 18 from docs/PLAN.md — add optional `progress_callback` parameter to `extract_with_self_healing` and `generate_artifacts`.
+  - Callback signature: `(current_idx: int, total_papers: int, state: str, detail: str) -> None`
+  - State values: `{'parsing', 'extracting', 'self_healing', 'completed'}`
+  - Wire console callback in `scripts/run_extraction.py` and Streamlit callback in `main.py`.
+- Key decisions and actions:
+  - **TDD RED 1**: Wrote `test_extract_with_self_healing_invokes_progress_callback` in `tests/test_pipeline.py` — expects `'extracting'` in states and `'completed'` as last state. Confirmed `TypeError: unexpected keyword argument 'progress_callback'`.
+  - **TDD GREEN 1**: Added `progress_callback` parameter to `extract_with_self_healing`:
+    - Signature: `progress_callback: Callable[[int, int, str, str], None] | None = None`
+    - Invokes callback at function start (`state="extracting"`), before each self-healing retry (`state="self_healing"`), and before every return (`state="completed"`).
+    - Also added `progress_callback` to `_call_with_rate_limit_backoff` for rate-limit/timeout backoff events.
+  - **TDD RED 2**: Wrote `test_generate_artifacts_accepts_optional_callback` — verifies callback is accepted but no-op.
+  - **TDD GREEN 2**: Added `progress_callback` to `generate_artifacts` — invokes callback with `state="completed"` and `detail="Generating artifacts..."`.
+  - **Console integration**: Created `_console_progress_callback` in `scripts/run_extraction.py` with per-state output behavior:
+    - `parsing` → calls `_print_progress(current_idx + 1, total_papers, detail)`
+    - `extracting` / `self_healing` → prints `\r  [{state}] {detail}...`
+    - `completed` → prints `\r  [{state}] {detail}\n`
+  - **Streamlit integration**: Created `_streamlit_progress_callback` in `main.py` with `st.progress()` and `st.empty()` status text.
+  - Replaced static `generate_artifacts(topic, [], ...)` in `main.py` with a live extraction pipeline: parsing → `extract_with_self_healing` per paper → `filter_rows_by_evidence` → `generate_artifacts`.
+  - Added `_get_merged_core_pages` and `_is_reference_page` helpers to `main.py` (duplicated from `scripts/run_extraction.py` for Streamlit isolation).
+- **TDD Evidence**:
+  - RED: `python -m pytest tests/test_pipeline.py::test_extract_with_self_healing_invokes_progress_callback -v` → FAIL with `TypeError: extract_with_self_healing() got an unexpected keyword argument 'progress_callback'`
+  - GREEN: `python -m pytest tests/test_pipeline.py::test_extract_with_self_healing_invokes_progress_callback -v` → PASS
+- **Test results**: 30/31 tests pass (1 pre-existing failure: `test_create_extraction_fn_returns_callable` requires real API key).
+- **Files changed**:
+  - `core/pipeline.py` — `progress_callback` param in `extract_with_self_healing`, `generate_artifacts`, `_call_with_rate_limit_backoff`
+  - `scripts/run_extraction.py` — `_console_progress_callback`, wired into extraction loop and `generate_artifacts`
+  - `main.py` — `_streamlit_progress_callback`, live extraction pipeline with progress bar and status text
+  - `tests/test_pipeline.py` — 2 new callback tests
+- **Commit**: `4ef9134` — "feat: add unified state progress callback for extraction pipeline (Task 18)"
+- **Specification alignment**:
+  - SPEC §14.1-14.5 Progress Reporting Protocol: callback signature, state machine, injection points.
+  - Callback is optional (`None` by default) — all existing callers remain compatible without changes.
+
 ## Task 17.3 - Phase 2 Closure
 
 - Timestamp: 2026-07-08 +08:00

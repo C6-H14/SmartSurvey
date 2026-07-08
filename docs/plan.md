@@ -2189,7 +2189,7 @@ Known implementation risk:
 - Consumes: `extraction_fn: Callable[[str], str]`, existing `AcademicMatrixRow`, `ParsedPaper`
 - Produces: Updated `extract_with_self_healing` signature with optional `progress_callback`
 
-- [ ] **Step 1: Write failing test for callback invocation**
+- [x] **Step 1: Write failing test for callback invocation**
 
 Append to `tests/test_pipeline.py`:
 
@@ -2221,13 +2221,13 @@ def test_extract_with_self_healing_invokes_progress_callback():
     assert events[-1][2] == "completed"
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `python -m pytest tests/test_pipeline.py::test_extract_with_self_healing_invokes_progress_callback -v`
 
 Expected: FAIL with `TypeError: extract_with_self_healing() got an unexpected keyword argument 'progress_callback'`.
 
-- [ ] **Step 3: Add `progress_callback` parameter to `extract_with_self_healing`**
+- [x] **Step 3: Add `progress_callback` parameter to `extract_with_self_healing`**
 
 In `core/pipeline.py`:
 
@@ -2274,13 +2274,13 @@ In `core/pipeline.py`:
    ```
 6. Also wrap `_call_with_rate_limit_backoff` call inside the retry loop: if rate-limit or timeout triggers a backoff wait, invoke the callback with `state="self_healing"` and `detail` indicating the wait duration.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `python -m pytest tests/test_pipeline.py::test_extract_with_self_healing_invokes_progress_callback -v`
 
 Expected: PASS.
 
-- [ ] **Step 5: Write failing test for callback in `generate_artifacts`**
+- [x] **Step 5: Write failing test for callback in `generate_artifacts`**
 
 ```python
 def test_generate_artifacts_accepts_optional_callback():
@@ -2302,7 +2302,7 @@ def test_generate_artifacts_accepts_optional_callback():
     assert artifacts is not None
 ```
 
-- [ ] **Step 6: Add `progress_callback` to `generate_artifacts`**
+- [x] **Step 6: Add `progress_callback` to `generate_artifacts`**
 
 Modify `core/pipeline.py`:
 
@@ -2323,7 +2323,7 @@ def generate_artifacts(
     )
 ```
 
-- [ ] **Step 7: Update `scripts/run_extraction.py` — wire progress callback**
+- [x] **Step 7: Update `scripts/run_extraction.py` — wire progress callback**
 
 Modify `scripts/run_extraction.py`:
 
@@ -2354,7 +2354,7 @@ for idx, paper in enumerate(papers, start=1):
     ...
 ```
 
-- [ ] **Step 8: Update `main.py` — wire Streamlit progress callback**
+- [x] **Step 8: Update `main.py` — wire Streamlit progress callback**
 
 Modify `main.py`:
 
@@ -2375,13 +2375,13 @@ Modify `main.py`:
    - Call `generate_artifacts` with the callback.
    - Display the resulting Markdown preview and download buttons.
 
-- [ ] **Step 9: Run full test suite**
+- [x] **Step 9: Run full test suite**
 
 Run: `python -m pytest tests -v`
 
 Expected: All existing tests pass (incl. the new callback tests). The `test_agent.py::test_create_extraction_fn_returns_callable` may fail — this is pre-existing and unrelated.
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add core/pipeline.py scripts/run_extraction.py main.py tests/test_pipeline.py
