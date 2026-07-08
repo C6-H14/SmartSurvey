@@ -2401,7 +2401,7 @@ git commit -m "feat: add unified state progress callback for extraction pipeline
 - Consumes: `extraction_fn: Callable[[str], str]`, `AcademicMatrixRow`, `progress_callback`
 - Produces: `render_survey_tex_with_llm(topic, rows, extraction_fn, progress_callback) -> str`
 
-- [ ] **Step 1: Write failing tests for `validate_latex_syntax`**
+- [x] **Step 1: Write failing tests for `validate_latex_syntax`**
 
 Create `tests/test_synthesis.py`:
 
@@ -2466,13 +2466,13 @@ def test_escaped_brace_does_not_trigger_false_positive():
     assert errors == []
 ```
 
-- [ ] **Step 2: Run the LaTeX validation tests**
+- [x] **Step 2: Run the LaTeX validation tests**
 
 Run: `python -m pytest tests/test_synthesis.py -v`
 
 Expected: FAIL with `ModuleNotFoundError: No module named 'core.synthesis'`.
 
-- [ ] **Step 3: Implement `validate_latex_syntax`**
+- [x] **Step 3: Implement `validate_latex_syntax`**
 
 Create `core/synthesis.py` with the stack-based scanner:
 
@@ -2556,13 +2556,13 @@ def validate_latex_syntax(latex_source: str) -> list[str]:
     return errors
 ```
 
-- [ ] **Step 4: Run LaTeX validation tests to verify they pass**
+- [x] **Step 4: Run LaTeX validation tests to verify they pass**
 
 Run: `python -m pytest tests/test_synthesis.py -v`
 
 Expected: All 8 tests PASS.
 
-- [ ] **Step 5: Write failing tests for `build_synthesis_prompt`**
+- [x] **Step 5: Write failing tests for `build_synthesis_prompt`**
 
 Append to `tests/test_synthesis.py`:
 
@@ -2593,7 +2593,7 @@ def test_build_synthesis_prompt_contains_topic_and_rows():
     assert "Return ONLY valid LaTeX" in prompt or "Return only" in prompt.lower()
 ```
 
-- [ ] **Step 6: Implement `build_synthesis_prompt`**
+- [x] **Step 6: Implement `build_synthesis_prompt`**
 
 Append to `core/synthesis.py`:
 
@@ -2644,13 +2644,13 @@ def build_synthesis_prompt(topic: str, rows: list[AcademicMatrixRow]) -> str:
     )
 ```
 
-- [ ] **Step 7: Run synthesis prompt tests**
+- [x] **Step 7: Run synthesis prompt tests**
 
 Run: `python -m pytest tests/test_synthesis.py::test_build_synthesis_prompt_contains_topic_and_rows -v`
 
 Expected: PASS.
 
-- [ ] **Step 8: Write failing test for `render_survey_tex_with_llm` with `StatefulMockExtractor`**
+- [x] **Step 8: Write failing test for `render_survey_tex_with_llm` with `StatefulMockExtractor`**
 
 ```python
 from core.synthesis import render_survey_tex_with_llm
@@ -2726,7 +2726,7 @@ def test_render_survey_tex_with_llm_self_healing():
     assert r"$x + y$" in result
 ```
 
-- [ ] **Step 9: Implement `render_survey_tex_with_llm` and `_build_latex_healing_prompt`**
+- [x] **Step 9: Implement `render_survey_tex_with_llm` and `_build_latex_healing_prompt`**
 
 Append to `core/synthesis.py`:
 
@@ -2797,13 +2797,13 @@ def render_survey_tex_with_llm(
     return raw
 ```
 
-- [ ] **Step 10: Run all synthesis tests**
+- [x] **Step 10: Run all synthesis tests**
 
 Run: `python -m pytest tests/test_synthesis.py -v`
 
 Expected: All tests PASS (validation + prompt + self-healing).
 
-- [ ] **Step 11: Wire synthesis into `core/pipeline.py`**
+- [x] **Step 11: Wire synthesis into `core/pipeline.py`**
 
 Add a new function `generate_llm_artifacts` (or update `generate_artifacts` to optionally use LLM):
 
@@ -2837,7 +2837,7 @@ def generate_llm_artifacts(
     )
 ```
 
-- [ ] **Step 12: Wire synthesis into `scripts/run_extraction.py`**
+- [x] **Step 12: Wire synthesis into `scripts/run_extraction.py`**
 
 Modify `scripts/run_extraction.py`:
 
@@ -2859,7 +2859,7 @@ else:
     artifacts = generate_artifacts(TOPIC, accepted, blocked)
 ```
 
-- [ ] **Step 13: Wire synthesis into `main.py` (Streamlit UI)**
+- [x] **Step 13: Wire synthesis into `main.py` (Streamlit UI)**
 
 Modify `main.py`:
 
@@ -2875,13 +2875,13 @@ else:
     artifacts = generate_artifacts(topic, accepted, blocked)
 ```
 
-- [ ] **Step 14: Run full test suite**
+- [x] **Step 14: Run full test suite**
 
 Run: `python -m pytest tests -v`
 
 Expected: All tests pass (including synthesis tests, pipeline tests, callback tests).
 
-- [ ] **Step 15: Commit**
+- [x] **Step 15: Commit**
 
 ```bash
 git add core/synthesis.py tests/test_synthesis.py core/pipeline.py scripts/run_extraction.py main.py

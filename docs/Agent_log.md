@@ -632,3 +632,34 @@
 - Next steps (Phase 3):
   - Task 18: Streamlit dynamic progress bar (`st.progress`) with real-time extraction status
   - Task 19: Zotero auto-archive integration (RIS/CSV/Better BibTeX export)
+
+## Task 19.1 - LLM Full-Text Synthesis & LaTeX Stack Validator
+
+- Timestamp: 2026-07-08
+- Implementation details:
+  - Created `core/synthesis.py` with four functions:
+    - `validate_latex_syntax(latex_source) -> list[str]` — zero-dependency stack-based LaTeX validator checking inline math parity, display math parity, `\begin`/`\end` pairing, and curly brace balance
+    - `build_synthesis_prompt(topic, rows) -> str` — constrained system prompt forcing ctexart, 6 required sections, booktabs matrix, and strict LaTeX-only output
+    - `_build_latex_healing_prompt(original_prompt, errors, broken_latex) -> str` — XML error feedback for self-healing retry
+    - `render_survey_tex_with_llm(topic, rows, extraction_fn, progress_callback) -> str` — LLM-driven LaTeX generation with self-healing loop (MAX_SYNTHESIS_RETRIES=1)
+  - Created `tests/test_synthesis.py` with 11 tests:
+    - 8 LaTeX validation tests (valid, unclosed inline math, unclosed display math, mismatched begin/end, unclosed environment, unbalanced braces, escaped dollar, escaped brace)
+    - 1 build_synthesis_prompt content test
+    - 2 render_survey_tex_with_llm integration tests (ValidLaTeXExtractor, InvalidLaTeXExtractor with self-healing)
+  - Modified `core/pipeline.py`: added `generate_llm_artifacts` function with template fallback
+  - Modified `scripts/run_extraction.py`: uses `generate_llm_artifacts` when accepted rows exist
+  - Modified `main.py`: uses `generate_llm_artifacts` with st.spinner when accepted rows exist
+- Key design decisions:
+  - State-tracking approach for math parity (in_display_math, in_inline_math flags) instead of simple dollar counting, which correctly catches unclosed `$$...$$` display math
+  - Escaped characters (`\$`, `\{`, `\}`) are properly skipped by advancing past the backslash, avoiding false positives
+  - Self-healing retry limited to 1 attempt (MAX_SYNTHESIS_RETRIES=1) to avoid infinite loops
+  - Template-based fallback in `generate_llm_artifacts` for cases where LLM returns empty or undersized output
+- TDD evidence:
+  - Phase 1 RED: `ModuleNotFoundError: No module named 'core.synthesis'` when running 8 LaTeX validation tests
+  - Phase 1 GREEN: All 8 LaTeX validation tests pass after implementing `validate_latex_syntax`
+  - Phase 2 RED: `ImportError: cannot import name 'build_synthesis_prompt'` when running prompt test
+  - Phase 2 GREEN: `build_synthesis_prompt` test passes after implementation
+  - Phase 3 RED: `ImportError: cannot import name 'render_survey_tex_with_llm'` when running self-healing tests
+  - Phase 3 GREEN: All 11 synthesis tests pass after implementing `render_survey_tex_with_llm`
+- Test results: 41/42 tests passing (1 pre-existing failure in test_agent.py due to SSL/API key issue)
+- **Commit**: `2cd70e8` — "feat: add llm-driven latex synthesis with stack-based validator (Task 19)"
