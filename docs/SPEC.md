@@ -399,3 +399,70 @@ Dockerfile 应满足：
 5. 导出可复制到 Overleaf 的中文 LaTeX 全文手稿和三线表。
 6. 使用 keyring 完成本地 API Key 的录入、读取、更新和清除。
 7. Docker 部署方案不泄露用户 Key，并说明公网部署时的用户级 Key 配置方式。
+
+---
+
+## 14. LaTeX 表格自适应折行优化 (Phase 3, Task 20)
+
+### 14.1 问题描述
+
+当前 `matrix_table.tex` 使用 `\begin{tabular}{llll}` 固定宽度列格式。当论文标题、方法描述或局限性文本超过列宽时，Overleaf 编译会产生 `overfull \hbox` 警告，表格内容溢出页边距，严重影响可读性。
+
+### 14.2 解决方案
+
+将 `tabular` 替换为 `tabularx` 宏包提供的 `tabularx` 环境，使用 `X` 类型列实现自动折行。
+
+### 14.3 技术变更
+
+- `render_matrix_table_tex` 输出 `\begin{tabularx}{\textwidth}{XXXX}` 而非 `\begin{tabular}{llll}`。
+- `render_survey_tex` 和 `build_synthesis_prompt` 的 LaTeX 导言区添加 `\usepackage{tabularx}`。
+- `validate_latex_syntax` 确认 `\begin{tabularx}` 和 `\end{tabularx}` 为合法环境。
+
+### 14.4 验收标准
+
+- `matrix_table.tex` 必须使用 `tabularx` 环境。
+- 导言区必须包含 `\usepackage{tabularx}`。
+- `validate_latex_syntax` 对 `tabularx` 环境返回空错误列表。
+
+---
+
+## 15. Streamlit 字数档位调节器 (Phase 3, Task 21)
+
+### 15.1 功能描述
+
+在 Streamlit 界面中添加一个滑块控件，允许用户在启动 LLM 全文学术合成前，设定目标字数（500-8000 字，步长 500，默认 3000）。
+
+### 15.2 数据流
+
+```
+main.py (st.slider)
+  → core/pipeline.py (generate_llm_artifacts, word_count_target 参数)
+    → core/synthesis.py (render_survey_tex_with_llm, word_count_target 参数)
+      → core/synthesis.py (build_synthesis_prompt, word_count_target 参数)
+        → System Prompt 中动态替换 "3000-5000 Chinese characters" 为实际值
+```
+
+### 15.3 参数签名
+
+```python
+def build_synthesis_prompt(topic: str, rows: list[AcademicMatrixRow], word_count_target: int = 3000) -> str
+
+def render_survey_tex_with_llm(topic, rows, extraction_fn, word_count_target=3000, progress_callback=None) -> str
+
+def generate_llm_artifacts(topic, rows, extraction_fn, blocked_warnings, word_count_target=3000, progress_callback=None) -> GeneratedArtifacts
+```
+
+### 15.4 验收标准
+
+- Streamlit 界面显示 `st.slider` 控件，范围 500-8000，步长 500。
+- 选择的值通过三层调用链传递至 `build_synthesis_prompt`。
+- 生成的 System Prompt 中包含用户指定的字数目标。
+- 不传值时默认 3000，保持向后兼容。
+
+---
+
+## 16. 后续阶段规划
+
+### 16.1 第四阶段 (Phase 4: Backlog, 可选)
+
+- Task 22: Zotero Web API 自动文献归档集成（RIS/CSV/Better BibTeX 导出）。延后原因：属于便利性功能，不影响核心综述生成质量。
