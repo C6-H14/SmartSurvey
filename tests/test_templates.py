@@ -52,3 +52,22 @@ def test_render_bibtex_contains_page_metadata():
 
     assert "@article{paper_a_2024" in output
     assert "evidencepages = {2}" in output
+
+
+def test_render_matrix_table_uses_tabularx():
+    """Matrix table must use tabularx for auto-wrapping columns."""
+    from core.templates import render_matrix_table_tex
+    from core.models import AcademicMatrixRow
+
+    row = AcademicMatrixRow(
+        title="A", authors="B", year="2024", venue="C",
+        research_problem="P", method="M", innovation="I", limitation="L",
+        evidence_page=1, evidence_quote="Q", confidence=0.5, trigger_reason="R",
+    )
+    output = render_matrix_table_tex([row])
+
+    assert "\\begin{tabularx}" in output
+    assert "\\end{tabularx}" in output
+    assert "\\textwidth" in output
+    # Must NOT use old tabular format
+    assert "\\begin{tabular}{llll}" not in output

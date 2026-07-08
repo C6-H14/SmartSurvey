@@ -37,7 +37,7 @@ def render_matrix_table_tex(rows: list[AcademicMatrixRow]) -> str:
         r"\begin{table}[htbp]",
         r"\centering",
         r"\caption{Academic Comparison Matrix}",
-        r"\begin{tabular}{llll}",
+        r"\begin{tabularx}{\textwidth}{XXXX}",
         r"\toprule",
         r"Paper & Method & Key Metric & Limitation \\",
         r"\midrule",
@@ -48,7 +48,7 @@ def render_matrix_table_tex(rows: list[AcademicMatrixRow]) -> str:
             f"{latex_escape(row.title)} & {latex_escape(row.method)} & "
             f"{latex_escape(str(metric))} & {latex_escape(row.limitation)} \\\\"
         )
-    lines.extend([r"\bottomrule", r"\end{tabular}", r"\end{table}"])
+    lines.extend([r"\bottomrule", r"\end{tabularx}", r"\end{table}"])
     return "\n".join(lines)
 
 
@@ -64,7 +64,7 @@ def render_survey_tex(topic: str, rows: list[AcademicMatrixRow]) -> str:
         "Conclusion": "本文总结结构化矩阵、证据约束和后续研究价值。",
     }
     body = "\n\n".join(f"\\section{{{name}}}\n{content}" for name, content in sections.items())
-    return "\\documentclass{ctexart}\n\\usepackage{booktabs}\n\\begin{document}\n" + body + "\n\\end{document}\n"
+    return "\\documentclass{ctexart}\n\\usepackage{booktabs}\n\\usepackage{tabularx}\n\\begin{document}\n" + body + "\n\\end{document}\n"
 
 
 def render_markdown_preview(
