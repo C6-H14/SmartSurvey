@@ -52,3 +52,21 @@ def parse_matrix_json(raw_json: str, domain_fields: list[str]) -> list[AcademicM
             )
         )
     return rows
+
+
+def build_self_healing_prompt(
+    original_prompt: str,
+    failed_page: int,
+    failed_quote: str,
+    page_text: str,
+) -> str:
+    correction = (
+        "\n\n<self-healing-correction>\n"
+        f"  <failed-page>{failed_page}</failed-page>\n"
+        f"  <failed-quote>{failed_quote}</failed-quote>\n"
+        "  <error>The evidence_quote was NOT found in the specified page text. "
+        "Please re-extract with a quote that literally exists on this page.</error>\n"
+        f"  <page-text>{page_text}</page-text>\n"
+        "</self-healing-correction>"
+    )
+    return original_prompt + correction
