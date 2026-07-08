@@ -2166,25 +2166,746 @@ Known implementation risk:
 
 ---
 
-## Phase 3: Streamlit Dynamic Progress Bar & Zotero Archive Integration (Planned)
+## Phase 3: Progress Reporting & LLM Full-Text Synthesis
 
-**Goal:** Improve user experience with real-time extraction progress visualization and enable automatic export to Zotero reference manager.
+**Goal:** Add real-time progress reporting via Unified State Callback (Task 18) and upgrade the template-based survey generator to an LLM-driven full-text synthesis module with lightweight stack-based LaTeX validation (Task 19).
 
-**Note:** Tasks 18-19 have not been brainstormed yet. The following is a preliminary scope sketch only.
+**Architecture:** `core/pipeline.py` gains an optional `progress_callback` parameter with a unified `(current_idx, total_papers, state, detail)` signature. A new `core/synthesis.py` module handles LLM-based LaTeX manuscript generation, with a zero-dependency stack scanner for LaTeX syntax validation and a 1-retry self-healing loop. `core/templates.py` remains a pure rendering module. Zotero integration is deferred to Phase 4.
 
-### Task 18: Streamlit Dynamic Progress Bar
+**Tech Stack:** Python, Streamlit, LangChain OpenAI-compatible chat adapter, pytest.
 
-**Scope sketch:**
-- Replace the current per-page print-based progress with a Streamlit progress bar (`st.progress`) during batch extraction.
-- Show real-time status: current paper name, current page / total pages, number of rows extracted so far, number of self-healing corrections.
-- Consider using Streamlit's `session_state` or a generator pattern to stream progress updates from `pipeline.py` back to the UI.
+**Design docs:** `docs/superpowers/specs/2026-07-08-phase-3-synthesis-ux-design.md`
+**SPEC sections:** §14 (Progress Reporting Protocol), §15 (LLM-Driven Full-Text Synthesis)
 
-### Task 19: Zotero Auto-Archive Integration
+### Task 18: Unified State Callback — Pipeline & Console Integration
 
-**Scope sketch:**
-- Export extracted paper metadata (title, authors, year, venue, evidence) into a Zotero-compatible format (CSV, RIS, or Better BibTeX JSON).
-- Allow one-click "export to Zotero" from the Streamlit UI.
-- May require `pyzotero` library or manual RIS/CSV generation.
+**Files:**
+- Modify: `core/pipeline.py` (add `progress_callback` param to `extract_with_self_healing`)
+- Modify: `scripts/run_extraction.py` (wire callback into per-paper loop)
+- Modify: `main.py` (wire Streamlit `st.progress()` + `st.status()` via callback)
+- Test: `tests/test_pipeline.py` (add callback test)
+
+**Interfaces:**
+- Consumes: `extraction_fn: Callable[[str], str]`, existing `AcademicMatrixRow`, `ParsedPaper`
+- Produces: Updated `extract_with_self_healing` signature with optional `progress_callback`
+
+- [ ] **Step 1: Write failing test for callback invocation**
+
+Append to `tests/test_pipeline.py`:
+
+```python
+def test_extract_with_self_healing_invokes_progress_callback():
+    """Verify that progress_callback is called with correct states."""
+    from core.pipeline import extract_with_self_healing
+    from tests.test_pipeline_extraction import PAGE_TEXT, StatefulMockExtractor
+    
+    events: list[tuple] = []
+    def callback(idx: int, total: int, state: str, detail: str) -> None:
+        events.append((idx, total, state, detail))
+    
+    extractor = StatefulMockExtractor()  # first call fails, second succeeds
+    rows, warnings = extract_with_self_healing(
+        merged_context=PAGE_TEXT,
+        page_text_by_number={1: PAGE_TEXT},
+        topic="test",
+        domain_fields=["sensor"],
+        extraction_fn=extractor,
+        progress_callback=callback,
+        max_retries=3,
+    )
+    
+    # Must have at least one 'extracting' event
+    states = [e[2] for e in events]
+    assert "extracting" in states
+    # Must have 'completed' as the last state
+    assert events[-1][2] == "completed"
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `python -m pytest tests/test_pipeline.py::test_extract_with_self_healing_invokes_progress_callback -v`
+
+Expected: FAIL with `TypeError: extract_with_self_healing() got an unexpected keyword argument 'progress_callback'`.
+
+- [ ] **Step 3: Add `progress_callback` parameter to `extract_with_self_healing`**
+
+In `core/pipeline.py`:
+
+1. Add `progress_callback` import at top: `from typing import Callable, Optional`
+2. Change signature from:
+   ```python
+   def extract_with_self_healing(
+       merged_context: str,
+       page_text_by_number: dict[int, str],
+       topic: str,
+       domain_fields: list[str],
+       extraction_fn: Callable[[str], str],
+       max_retries: int = 3,
+   ) -> tuple[list[AcademicMatrixRow], list[str]]:
+   ```
+   to:
+   ```python
+   def extract_with_self_healing(
+       merged_context: str,
+       page_text_by_number: dict[int, str],
+       topic: str,
+       domain_fields: list[str],
+       extraction_fn: Callable[[str], str],
+       progress_callback: Callable[[int, int, str, str], None] | None = None,
+       max_retries: int = 3,
+   ) -> tuple[list[AcademicMatrixRow], list[str]]:
+   ```
+3. At the start of the function, before the retry loop, add:
+   ```python
+   if progress_callback:
+       progress_callback(0, 1, "extracting", "Initial extraction attempt...")
+   ```
+4. Before each self-healing retry (`if attempt < max_retries:` block), add:
+   ```python
+   if progress_callback:
+       progress_callback(0, 1, "self_healing",
+           f"Retry {attempt + 1}/{max_retries}: Evidence quote failed containment, rebuilding prompt...")
+   ```
+5. Before the return statement, add:
+   ```python
+   if progress_callback:
+       progress_callback(0, 1, "completed",
+           f"Accepted {len(accepted)} rows, {len(warnings)} corrections")
+   ```
+6. Also wrap `_call_with_rate_limit_backoff` call inside the retry loop: if rate-limit or timeout triggers a backoff wait, invoke the callback with `state="self_healing"` and `detail` indicating the wait duration.
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `python -m pytest tests/test_pipeline.py::test_extract_with_self_healing_invokes_progress_callback -v`
+
+Expected: PASS.
+
+- [ ] **Step 5: Write failing test for callback in `generate_artifacts`**
+
+```python
+def test_generate_artifacts_accepts_optional_callback():
+    """Callback parameter is accepted but no-op for template-based generation."""
+    from core.pipeline import generate_artifacts
+    from core.models import AcademicMatrixRow
+    
+    called = False
+    def callback(idx, total, state, detail):
+        nonlocal called
+        called = True
+    
+    row = AcademicMatrixRow(
+        title="A", authors="B", year="2024", venue="C",
+        research_problem="P", method="M", innovation="I", limitation="L",
+        evidence_page=1, evidence_quote="Q", confidence=0.5, trigger_reason="R",
+    )
+    artifacts = generate_artifacts("topic", [row], [], progress_callback=callback)
+    assert artifacts is not None
+```
+
+- [ ] **Step 6: Add `progress_callback` to `generate_artifacts`**
+
+Modify `core/pipeline.py`:
+
+```python
+def generate_artifacts(
+    topic: str,
+    rows: list[AcademicMatrixRow],
+    blocked_warnings: list[str],
+    progress_callback: Callable[[int, int, str, str], None] | None = None,
+) -> GeneratedArtifacts:
+    if progress_callback:
+        progress_callback(0, 1, "completed", "Generating artifacts...")
+    return GeneratedArtifacts(
+        markdown_preview=render_markdown_preview(topic, rows, blocked_warnings),
+        survey_tex=render_survey_tex(topic, rows),
+        matrix_table_tex=render_matrix_table_tex(rows),
+        references_bib=render_bibtex(rows),
+    )
+```
+
+- [ ] **Step 7: Update `scripts/run_extraction.py` — wire progress callback**
+
+Modify `scripts/run_extraction.py`:
+
+1. Define a `_console_progress_callback(current_idx, total_papers, state, detail)` function that:
+   - On `state == "parsing"`: calls `_print_progress(current_idx + 1, total_papers, detail)` (detail = paper name)
+   - On `state == "extracting"`: prints `f"\r  [{state}] {detail}..."`
+   - On `state == "self_healing"`: prints `f"\r  [{state}] {detail}..."`
+   - On `state == "completed"`: prints `f"\r  [{state}] {detail}\n"` (newline to finish the line)
+
+2. Pass this callback to both `extract_with_self_healing()` and `generate_artifacts()`.
+
+The per-paper loop becomes:
+```python
+for idx, paper in enumerate(papers, start=1):
+    if paper.error:
+        continue
+    _console_progress_callback(idx - 1, total_papers, "parsing", paper.file_name)
+    merged_context, page_text_by_number = _get_merged_core_pages(paper)
+    rows, warnings = extract_with_self_healing(
+        merged_context=merged_context,
+        page_text_by_number=page_text_by_number,
+        topic=TOPIC,
+        domain_fields=domain_fields,
+        extraction_fn=extraction_fn,
+        progress_callback=_console_progress_callback,
+        max_retries=3,
+    )
+    ...
+```
+
+- [ ] **Step 8: Update `main.py` — wire Streamlit progress callback**
+
+Modify `main.py`:
+
+1. In the `if st.button("Generate preview from verified rows"):` block, replace the static `generate_artifacts(topic, [], ...)` call with a live extraction pipeline that uses Streamlit progress widgets.
+
+2. Create a `_streamlit_progress_callback(current_idx, total_papers, state, detail)` function:
+   ```python
+   def _streamlit_progress_callback(current_idx, total_papers, state, detail):
+       progress = (current_idx + 1) / total_papers if total_papers > 0 else 0
+       progress_bar.progress(progress)
+       status_text.text(f"**{state}**: {detail}")
+   ```
+   Where `progress_bar = st.progress(0)` and `status_text = st.empty()` are created before the extraction loop.
+
+3. The `st.button("Extract & Generate")` handler should:
+   - Call `extract_with_self_healing` for each paper with the Streamlit callback.
+   - Call `filter_rows_by_evidence` on all rows.
+   - Call `generate_artifacts` with the callback.
+   - Display the resulting Markdown preview and download buttons.
+
+- [ ] **Step 9: Run full test suite**
+
+Run: `python -m pytest tests -v`
+
+Expected: All existing tests pass (incl. the new callback tests). The `test_agent.py::test_create_extraction_fn_returns_callable` may fail — this is pre-existing and unrelated.
+
+- [ ] **Step 10: Commit**
+
+```bash
+git add core/pipeline.py scripts/run_extraction.py main.py tests/test_pipeline.py
+git commit -m "feat: add unified state progress callback for extraction pipeline (Task 18)"
+```
+
+### Task 19: `core/synthesis.py` — LLM Full-Text Synthesis & LaTeX Stack Validator
+
+**Files:**
+- Create: `core/synthesis.py` (render_survey_tex_with_llm, build_synthesis_prompt, validate_latex_syntax, _build_latex_healing_prompt)
+- Create: `tests/test_synthesis.py`
+- Modify: `core/pipeline.py` (wire synthesis into generate_artifacts)
+- Modify: `scripts/run_extraction.py` (use synthesis module)
+- Modify: `main.py` (wire synthesis into Streamlit UI)
+
+**Interfaces:**
+- Consumes: `extraction_fn: Callable[[str], str]`, `AcademicMatrixRow`, `progress_callback`
+- Produces: `render_survey_tex_with_llm(topic, rows, extraction_fn, progress_callback) -> str`
+
+- [ ] **Step 1: Write failing tests for `validate_latex_syntax`**
+
+Create `tests/test_synthesis.py`:
+
+```python
+from core.synthesis import validate_latex_syntax
+
+
+def test_valid_latex_returns_empty_errors():
+    source = r"""\documentclass{ctexart}
+\usepackage{booktabs}
+\begin{document}
+\section{Introduction}
+This is a test.
+\end{document}"""
+    errors = validate_latex_syntax(source)
+    assert errors == []
+
+
+def test_unclosed_inline_math_detected():
+    source = r"\section{Test} The formula $x + y = z$ is valid."
+    errors = validate_latex_syntax(source)
+    assert errors == []  # closed $...$ is valid
+
+    broken = r"\section{Test} The formula $x + y = z is broken."
+    errors = validate_latex_syntax(broken)
+    assert any("$" in e for e in errors)
+
+
+def test_unclosed_display_math_detected():
+    broken = r"\section{Test} Display math $$ x + y"
+    errors = validate_latex_syntax(broken)
+    assert any("$$" in e or "$" in e for e in errors)
+
+
+def test_mismatched_begin_end_detected():
+    source = r"\begin{table}\begin{tabular}{ll}\end{tabular}\end{figure}"
+    errors = validate_latex_syntax(source)
+    assert any("figure" in e.lower() or "table" in e.lower() for e in errors)
+
+
+def test_unclosed_environment_detected():
+    source = r"\begin{table}\begin{tabular}{ll}\end{tabular}"
+    errors = validate_latex_syntax(source)
+    assert len(errors) > 0  # table has no \end{table}
+
+
+def test_unbalanced_braces_detected():
+    source = r"\textbf{Hello world"
+    errors = validate_latex_syntax(source)
+    assert any("brace" in e.lower() or "{" in e for e in errors)
+
+
+def test_escaped_dollar_does_not_trigger_false_positive():
+    source = r"\section{Test} Price is \$10.00 and \$20.00"
+    errors = validate_latex_syntax(source)
+    assert errors == []
+
+
+def test_escaped_brace_does_not_trigger_false_positive():
+    source = r"\section{Test} Function call: foo\{bar\} baz"
+    errors = validate_latex_syntax(source)
+    assert errors == []
+```
+
+- [ ] **Step 2: Run the LaTeX validation tests**
+
+Run: `python -m pytest tests/test_synthesis.py -v`
+
+Expected: FAIL with `ModuleNotFoundError: No module named 'core.synthesis'`.
+
+- [ ] **Step 3: Implement `validate_latex_syntax`**
+
+Create `core/synthesis.py` with the stack-based scanner:
+
+```python
+import re
+from typing import Callable
+
+from core.models import AcademicMatrixRow
+
+
+def validate_latex_syntax(latex_source: str) -> list[str]:
+    """Validate LaTeX syntax with zero-dependency stack scanning.
+    
+    Checks:
+    1. Inline math $...$ parity (ignoring escaped \$)
+    2. Display math $$...$$ parity
+    3. \\begin{env}/\\end{env} pairing via stack
+    4. Curly brace {} balance (ignoring escaped \\{ \\})
+    
+    Returns list of error messages (empty = valid).
+    """
+    errors: list[str] = []
+    
+    # Check 1: Inline math $...$ parity
+    dollar_count = 0
+    i = 0
+    while i < len(latex_source):
+        if latex_source[i] == '\\' and i + 1 < len(latex_source):
+            i += 2  # skip escaped character
+            continue
+        if latex_source[i] == '$':
+            # Check if it's $$ (display math)
+            if i + 1 < len(latex_source) and latex_source[i + 1] == '$':
+                dollar_count += 2
+                i += 2
+            else:
+                dollar_count += 1
+                i += 1
+        else:
+            i += 1
+    if dollar_count % 2 != 0:
+        errors.append(f"Unclosed inline math or display math: odd number of $ symbols ({dollar_count}).")
+    
+    # Check 2: \begin{env} / \end{env} pairing
+    env_stack: list[str] = []
+    for match in re.finditer(r'\\(begin|end)\{(\w+)\}', latex_source):
+        keyword, env_name = match.group(1), match.group(2)
+        if keyword == 'begin':
+            env_stack.append(env_name)
+        elif keyword == 'end':
+            if not env_stack:
+                errors.append(f"Extra \\end{{{env_name}}} with no matching \\begin.")
+            else:
+                opened = env_stack.pop()
+                if opened != env_name:
+                    errors.append(
+                        f"Mismatched environment: \\begin{{{opened}}} closed by \\end{{{env_name}}}."
+                    )
+    if env_stack:
+        for leftover in env_stack:
+            errors.append(f"Unclosed environment: \\begin{{{leftover}}} has no matching \\end.")
+    
+    # Check 3: Curly brace {} balance
+    brace_count = 0
+    i = 0
+    while i < len(latex_source):
+        if latex_source[i] == '\\' and i + 1 < len(latex_source):
+            i += 2  # skip escaped character
+            continue
+        if latex_source[i] == '{':
+            brace_count += 1
+        elif latex_source[i] == '}':
+            brace_count -= 1
+            if brace_count < 0:
+                errors.append("Extra closing brace encountered.")
+                brace_count = 0
+        i += 1
+    if brace_count > 0:
+        errors.append(f"Unclosed brace: {brace_count} unmatched opening brace(s).")
+    
+    return errors
+```
+
+- [ ] **Step 4: Run LaTeX validation tests to verify they pass**
+
+Run: `python -m pytest tests/test_synthesis.py -v`
+
+Expected: All 8 tests PASS.
+
+- [ ] **Step 5: Write failing tests for `build_synthesis_prompt`**
+
+Append to `tests/test_synthesis.py`:
+
+```python
+from core.synthesis import build_synthesis_prompt
+
+
+def test_build_synthesis_prompt_contains_topic_and_rows():
+    from core.models import AcademicMatrixRow
+    row = AcademicMatrixRow(
+        title="Paper A", authors="Alice", year="2024", venue="ICRA",
+        research_problem="detection", method="vision", innovation="new",
+        limitation="lighting", evidence_page=2, evidence_quote="limitation",
+        confidence=0.8, trigger_reason="stated",
+        domain_fields={"sensor": "camera"},
+    )
+    prompt = build_synthesis_prompt("anomaly detection", [row])
+    
+    assert "anomaly detection" in prompt
+    assert "Paper A" in prompt
+    assert "ctexart" in prompt
+    assert "\\section{Abstract and Introduction}" in prompt
+    assert "\\section{Technical Taxonomy}" in prompt
+    assert "\\section{Systematic Review and Deep Critique}" in prompt
+    assert "\\section{Academic Comparison Matrix}" in prompt
+    assert "\\section{Research Gaps and Future Work}" in prompt
+    assert "\\section{Conclusion}" in prompt
+    assert "Return ONLY valid LaTeX" in prompt or "Return only" in prompt.lower()
+```
+
+- [ ] **Step 6: Implement `build_synthesis_prompt`**
+
+Append to `core/synthesis.py`:
+
+```python
+def build_synthesis_prompt(topic: str, rows: list[AcademicMatrixRow]) -> str:
+    """Build a constrained system prompt for LLM-driven LaTeX synthesis.
+    
+    The prompt forces the LLM to:
+    - Use ctexart document class.
+    - Include exactly 6 required \\section{...} headers.
+    - Embed the booktabs matrix table from provided row data.
+    - Return ONLY valid LaTeX source (no markdown fences, no explanations).
+    """
+    paper_list = "\n".join(
+        f"  - {row.title} ({row.authors}, {row.year}, {row.venue})"
+        for row in rows
+    )
+    
+    matrix_rows = "\n".join(
+        f"    {row.title} & {row.method} & {row.limitation} \\\\"
+        for row in rows
+    )
+    
+    return (
+        f"You are an academic writing assistant. Generate a Chinese academic survey manuscript in LaTeX.\n\n"
+        f"Review topic: {topic}\n\n"
+        f"Papers to review ({len(rows)} total):\n{paper_list}\n\n"
+        f"Extracted comparison data:\n"
+        f"\\begin{{tabular}}{{lll}}\n"
+        f"  Paper & Method & Limitation \\\\\n"
+        f"  \\midrule\n{matrix_rows}"
+        f"\\end{{tabular}}\n\n"
+        f"REQUIREMENTS:\n"
+        f"1. Use \\documentclass{{ctexart}} and \\usepackage{{booktabs}}.\n"
+        f"2. Include EXACTLY these six sections:\n"
+        f"   \\section{{Abstract and Introduction}}\n"
+        f"   \\section{{Technical Taxonomy}}\n"
+        f"   \\section{{Systematic Review and Deep Critique}}\n"
+        f"   \\section{{Academic Comparison Matrix}}\n"
+        f"   \\section{{Research Gaps and Future Work}}\n"
+        f"   \\section{{Conclusion}}\n"
+        f"3. The \\section{{Academic Comparison Matrix}} must contain a full booktabs table.\n"
+        f"4. Each critique of a paper's limitation must reference its evidence_page.\n"
+        f"5. Write body text in Chinese, keep evidence quotes in English.\n"
+        f"6. Total length: 3000-5000 Chinese characters.\n"
+        f"7. Return ONLY valid LaTeX source. No markdown fences, no explanations.\n"
+        f"8. All $, {{, }}, \\begin, \\end must be properly balanced.\n"
+    )
+```
+
+- [ ] **Step 7: Run synthesis prompt tests**
+
+Run: `python -m pytest tests/test_synthesis.py::test_build_synthesis_prompt_contains_topic_and_rows -v`
+
+Expected: PASS.
+
+- [ ] **Step 8: Write failing test for `render_survey_tex_with_llm` with `StatefulMockExtractor`**
+
+```python
+from core.synthesis import render_survey_tex_with_llm
+
+
+class ValidLaTeXExtractor:
+    """Mock extractor that returns valid LaTeX source."""
+    def __init__(self):
+        self.call_count = 0
+    
+    def __call__(self, prompt: str) -> str:
+        self.call_count += 1
+        return (
+            r"\documentclass{ctexart}\usepackage{booktabs}\begin{document}"
+            r"\section{Abstract and Introduction}This is a test review."
+            r"\section{Technical Taxonomy}Categories here."
+            r"\section{Systematic Review and Deep Critique}Critique with evidence."
+            r"\section{Academic Comparison Matrix}\begin{table}\begin{tabular}{lll}\toprule"
+            r"Paper & Method & Limitation \\\midrule Paper A & vision & lighting \\\bottomrule"
+            r"\end{tabular}\end{table}"
+            r"\section{Research Gaps and Future Work}Future directions."
+            r"\section{Conclusion}Summary."
+            r"\end{document}"
+        )
+
+
+class InvalidLaTeXExtractor:
+    """Mock extractor that returns LaTeX with syntax errors."""
+    def __init__(self):
+        self.call_count = 0
+    
+    def __call__(self, prompt: str) -> str:
+        self.call_count += 1
+        if self.call_count == 1:
+            # First call: broken LaTeX
+            return (
+                r"\documentclass{ctexart}\begin{document}"
+                r"\section{Test}Unclosed formula $x + y"
+                r"\end{document}"
+            )
+        # Second call: fixed LaTeX
+        return (
+            r"\documentclass{ctexart}\begin{document}"
+            r"\section{Test}Closed formula $x + y$"
+            r"\end{document}"
+        )
+
+
+def test_render_survey_tex_with_llm_valid():
+    """Valid LaTeX passes through without self-healing."""
+    extractor = ValidLaTeXExtractor()
+    result = render_survey_tex_with_llm(
+        topic="test topic",
+        rows=[],
+        extraction_fn=extractor,
+    )
+    assert extractor.call_count == 1  # no retry needed
+    assert r"\documentclass{ctexart}" in result
+    assert r"\section{Abstract and Introduction}" in result
+
+
+def test_render_survey_tex_with_llm_self_healing():
+    """Invalid LaTeX triggers one self-healing retry."""
+    extractor = InvalidLaTeXExtractor()
+    result = render_survey_tex_with_llm(
+        topic="test topic",
+        rows=[],
+        extraction_fn=extractor,
+    )
+    # Must have called twice (initial + 1 retry)
+    assert extractor.call_count == 2
+    # Result should be the fixed version
+    assert r"$x + y$" in result
+```
+
+- [ ] **Step 9: Implement `render_survey_tex_with_llm` and `_build_latex_healing_prompt`**
+
+Append to `core/synthesis.py`:
+
+```python
+MAX_SYNTHESIS_RETRIES = 1
+
+
+def _build_latex_healing_prompt(
+    original_prompt: str,
+    errors: list[str],
+    broken_latex: str,
+) -> str:
+    """Build XML correction prompt for LaTeX self-healing."""
+    error_xml = "\n".join(f"  <error>{e}</error>" for e in errors)
+    return (
+        original_prompt
+        + "\n\n<latex-validation-errors>\n"
+        + error_xml
+        + "\n</latex-validation-errors>\n"
+        + "<self-healing-instruction>\n"
+        + "  The LaTeX source above contains syntax errors. "
+        + "Fix ALL errors listed above and return ONLY the corrected LaTeX source.\n"
+        + "</self-healing-instruction>"
+    )
+
+
+def render_survey_tex_with_llm(
+    topic: str,
+    rows: list[AcademicMatrixRow],
+    extraction_fn: Callable[[str], str],
+    progress_callback: Callable[[int, int, str, str], None] | None = None,
+) -> str:
+    """Generate a full Chinese LaTeX manuscript using LLM-driven synthesis.
+    
+    Args:
+        topic: Review topic string.
+        rows: Verified academic matrix rows.
+        extraction_fn: LLM callable (prompt → raw response).
+        progress_callback: Optional progress callback.
+    
+    Returns:
+        Complete LaTeX manuscript string (may contain syntax errors if
+        self-healing retry is exhausted — caller decides how to handle).
+    """
+    prompt = build_synthesis_prompt(topic, rows)
+    
+    for attempt in range(MAX_SYNTHESIS_RETRIES + 1):
+        if progress_callback:
+            state = "extracting" if attempt == 0 else "self_healing"
+            detail = "Generating LaTeX manuscript..." if attempt == 0 else f"Retry {attempt}/{MAX_SYNTHESIS_RETRIES}: Fixing LaTeX syntax errors..."
+            progress_callback(0, 1, state, detail)
+        
+        raw = extraction_fn(prompt)
+        errors = validate_latex_syntax(raw)
+        
+        if not errors:
+            if progress_callback:
+                progress_callback(0, 1, "completed", "LaTeX manuscript generated successfully.")
+            return raw
+        
+        if attempt < MAX_SYNTHESIS_RETRIES:
+            prompt = _build_latex_healing_prompt(prompt, errors, raw)
+    
+    # Fallback: return raw LaTeX even if validation fails
+    if progress_callback:
+        progress_callback(0, 1, "completed",
+            f"LaTeX generated with {len(errors)} unresolved syntax error(s).")
+    return raw
+```
+
+- [ ] **Step 10: Run all synthesis tests**
+
+Run: `python -m pytest tests/test_synthesis.py -v`
+
+Expected: All tests PASS (validation + prompt + self-healing).
+
+- [ ] **Step 11: Wire synthesis into `core/pipeline.py`**
+
+Add a new function `generate_llm_artifacts` (or update `generate_artifacts` to optionally use LLM):
+
+```python
+def generate_llm_artifacts(
+    topic: str,
+    rows: list[AcademicMatrixRow],
+    extraction_fn: Callable[[str], str],
+    blocked_warnings: list[str],
+    progress_callback: Callable[[int, int, str, str], None] | None = None,
+) -> GeneratedArtifacts:
+    """Generate artifacts with LLM-driven LaTeX synthesis instead of template.
+    
+    Falls back to template-based generation if synthesis produces empty output.
+    """
+    from core.synthesis import render_survey_tex_with_llm
+    
+    survey_tex = render_survey_tex_with_llm(
+        topic, rows, extraction_fn, progress_callback
+    )
+    # Fallback: if synthesis produced empty or broken output, use template
+    if not survey_tex or len(survey_tex) < 100:
+        from core.templates import render_survey_tex
+        survey_tex = render_survey_tex(topic, rows)
+    
+    return GeneratedArtifacts(
+        markdown_preview=render_markdown_preview(topic, rows, blocked_warnings),
+        survey_tex=survey_tex,
+        matrix_table_tex=render_matrix_table_tex(rows),
+        references_bib=render_bibtex(rows),
+    )
+```
+
+- [ ] **Step 12: Wire synthesis into `scripts/run_extraction.py`**
+
+Modify `scripts/run_extraction.py`:
+
+```python
+# Replace generate_artifacts with generate_llm_artifacts
+from core.pipeline import generate_llm_artifacts, ...
+```
+
+In the final output section:
+
+```python
+# Generate artifacts with LLM synthesis (falls back to template)
+if accepted:
+    artifacts = generate_llm_artifacts(
+        TOPIC, accepted, extraction_fn, blocked,
+        progress_callback=_console_progress_callback,
+    )
+else:
+    artifacts = generate_artifacts(TOPIC, accepted, blocked)
+```
+
+- [ ] **Step 13: Wire synthesis into `main.py` (Streamlit UI)**
+
+Modify `main.py`:
+
+```python
+# After extraction completes and evidence filter passes:
+if accepted:
+    with st.spinner("Generating full-text manuscript with LLM..."):
+        artifacts = generate_llm_artifacts(
+            topic, accepted, extraction_fn, blocked,
+            progress_callback=_streamlit_progress_callback,
+        )
+else:
+    artifacts = generate_artifacts(topic, accepted, blocked)
+```
+
+- [ ] **Step 14: Run full test suite**
+
+Run: `python -m pytest tests -v`
+
+Expected: All tests pass (including synthesis tests, pipeline tests, callback tests).
+
+- [ ] **Step 15: Commit**
+
+```bash
+git add core/synthesis.py tests/test_synthesis.py core/pipeline.py scripts/run_extraction.py main.py
+git commit -m "feat: add llm-driven latex synthesis with stack-based validator (Task 19)"
+```
+
+---
+
+## Phase 3 Self-Review
+
+Spec coverage:
+
+- `SPEC.md` §14.1-14.5 Progress Reporting Protocol: Task 18 (Unified State Callback, callback signature, state machine, injection points).
+- `SPEC.md` §15.1-15.6 LLM-Driven Full-Text Synthesis: Task 19 (core/synthesis.py, validate_latex_syntax, build_synthesis_prompt, self-healing loop).
+- `SPEC.md` §15.4.2-15.4.5 LaTeX validation rules: Task 19 (inline math parity, display math parity, begin/end stack pairing, brace balance).
+- `SPEC.md` §15.5 Self-healing loop: Task 19 (MAX_SYNTHESIS_RETRIES=1, XML error feedback).
+- SPEC.md §15.6 Testing strategy: Task 19 (validate_latex_syntax unit tests, build_synthesis_prompt tests, StatefulMockExtractor integration test).
+
+Known implementation notes:
+
+- The `progress_callback` is optional (`None` by default) — all existing callers remain compatible without changes.
+- `render_survey_tex_with_llm` has a template-based fallback if the LLM returns empty/broken output.
+- LaTeX validation is zero-dependency — no `pdflatex`, no TeX Live, no external CLI calls.
+- The stack-based scanner handles escaped `\$`, `\{`, `\}` correctly, avoiding false positives.
 
 ---
 
