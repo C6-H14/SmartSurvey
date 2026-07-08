@@ -5,6 +5,7 @@ from typing import Callable
 from core.evidence import validate_evidence
 from core.extractor import build_extraction_prompt, build_json_healing_prompt, build_self_healing_prompt, parse_matrix_json
 from core.models import AcademicMatrixRow, GeneratedArtifacts, ParsedPaper
+from core.synthesis import render_survey_tex_with_llm
 from core.templates import render_bibtex, render_markdown_preview, render_matrix_table_tex, render_survey_tex
 
 
@@ -140,16 +141,17 @@ def generate_llm_artifacts(
     rows: list[AcademicMatrixRow],
     extraction_fn: Callable[[str], str],
     blocked_warnings: list[str],
+    word_count_target: int = 3000,
     progress_callback: Callable[[int, int, str, str], None] | None = None,
 ) -> GeneratedArtifacts:
     """Generate artifacts with LLM-driven LaTeX synthesis instead of template.
 
     Falls back to template-based generation if synthesis produces empty output.
     """
-    from core.synthesis import render_survey_tex_with_llm
-
     survey_tex = render_survey_tex_with_llm(
-        topic, rows, extraction_fn, progress_callback
+        topic, rows, extraction_fn,
+        word_count_target=word_count_target,
+        progress_callback=progress_callback,
     )
     # Fallback: if synthesis produced empty or broken output, use template
     if not survey_tex or len(survey_tex) < 100:

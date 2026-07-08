@@ -80,7 +80,11 @@ def validate_latex_syntax(latex_source: str) -> list[str]:
     return errors
 
 
-def build_synthesis_prompt(topic: str, rows: list[AcademicMatrixRow]) -> str:
+def build_synthesis_prompt(
+    topic: str,
+    rows: list[AcademicMatrixRow],
+    word_count_target: int = 3000,
+) -> str:
     """Build a constrained system prompt for LLM-driven LaTeX synthesis.
 
     The prompt forces the LLM to:
@@ -104,12 +108,12 @@ def build_synthesis_prompt(topic: str, rows: list[AcademicMatrixRow]) -> str:
         f"Review topic: {topic}\n\n"
         f"Papers to review ({len(rows)} total):\n{paper_list}\n\n"
         f"Extracted comparison data:\n"
-        f"\\begin{{tabular}}{{lll}}\n"
+        f"\\begin{{tabularx}}{{\\textwidth}}{{XXXX}}\n"
         f"  Paper & Method & Limitation \\\\\n"
         f"  \\midrule\n{matrix_rows}"
-        f"\\end{{tabular}}\n\n"
+        f"\\end{{tabularx}}\n\n"
         f"REQUIREMENTS:\n"
-        f"1. Use \\documentclass{{ctexart}} and \\usepackage{{booktabs}}.\n"
+        f"1. Use \\documentclass{{ctexart}}, \\usepackage{{booktabs}}, and \\usepackage{{tabularx}}.\n"
         f"2. Include EXACTLY these six sections:\n"
         f"   \\section{{Abstract and Introduction}}\n"
         f"   \\section{{Technical Taxonomy}}\n"
@@ -117,10 +121,10 @@ def build_synthesis_prompt(topic: str, rows: list[AcademicMatrixRow]) -> str:
         f"   \\section{{Academic Comparison Matrix}}\n"
         f"   \\section{{Research Gaps and Future Work}}\n"
         f"   \\section{{Conclusion}}\n"
-        f"3. The \\section{{Academic Comparison Matrix}} must contain a full booktabs table.\n"
+        f"3. The \\section{{Academic Comparison Matrix}} must contain a full booktabs table using tabularx.\n"
         f"4. Each critique of a paper's limitation must reference its evidence_page.\n"
         f"5. Write body text in Chinese, keep evidence quotes in English.\n"
-        f"6. Total length: 3000-5000 Chinese characters.\n"
+        f"6. Total length: {word_count_target} Chinese characters.\n"
         f"7. Return ONLY valid LaTeX source. No markdown fences, no explanations.\n"
         f"8. All $, {{, }}, \\begin, \\end must be properly balanced.\n"
     )
@@ -157,21 +161,28 @@ def render_survey_tex_with_llm(
     topic: str,
     rows: list[AcademicMatrixRow],
     extraction_fn: Callable[[str], str],
+    word_count_target: int = 3000,
     progress_callback: Callable[[int, int, str, str], None] | None = None,
 ) -> str:
     """Generate a full Chinese LaTeX manuscript using LLM-driven synthesis.
+
+    Validates the output with LaTeX syntax checking and triggers a self-healing
+    retry if validation fails. Falls back to returning the raw LaTeX source
+    (even with errors) after exhausting retries -- the caller decides how to
+    handle imperfect output.
 
     Args:
         topic: Review topic string.
         rows: Verified academic matrix rows.
         extraction_fn: LLM callable (prompt -> raw response).
+        word_count_target: Target word count for the manuscript.
         progress_callback: Optional progress callback.
 
     Returns:
         Complete LaTeX manuscript string (may contain syntax errors if
         self-healing retry is exhausted -- caller decides how to handle).
     """
-    prompt = build_synthesis_prompt(topic, rows)
+    prompt = build_synthesis_prompt(topic, rows, word_count_target=word_count_target)
 
     for attempt in range(MAX_SYNTHESIS_RETRIES + 1):
         if progress_callback:

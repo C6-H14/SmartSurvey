@@ -260,7 +260,7 @@ git commit -m "feat: add core data models"
 - Modify: `core/pdf_parser.py`
 - Create: `tests/test_pdf_parser.py`
 
-- [ ] **Step 1: Write failing parser unit tests**
+- [x] **Step 1: Write failing parser unit tests**
 
 Create `tests/test_pdf_parser.py`:
 
@@ -301,13 +301,13 @@ def test_parse_invalid_pdf_returns_error_without_raising():
     assert paper.pages == []
 ```
 
-- [ ] **Step 2: Run tests to verify failure**
+- [x] **Step 2: Run tests to verify failure**
 
 Run: `python -m pytest tests/test_pdf_parser.py -v`
 
 Expected: FAIL because parser functions are missing.
 
-- [ ] **Step 3: Implement parser**
+- [x] **Step 3: Implement parser**
 
 Replace `core/pdf_parser.py` with:
 
@@ -372,13 +372,13 @@ def parse_pdf_bytes(pdf_bytes: bytes, file_name: str) -> ParsedPaper:
         )
 ```
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 Run: `python -m pytest tests/test_pdf_parser.py -v`
 
 Expected: `3 passed`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add core/pdf_parser.py tests/test_pdf_parser.py
@@ -391,7 +391,7 @@ git commit -m "feat: parse pdf pages and core sections"
 - Create: `core/evidence.py`
 - Create: `tests/test_evidence.py`
 
-- [ ] **Step 1: Write failing containment tests**
+- [x] **Step 1: Write failing containment tests**
 
 Create `tests/test_evidence.py`:
 
@@ -426,13 +426,13 @@ def test_validate_evidence_rejects_missing_quote(sample_page_texts):
     assert result.message == AIR_WARNING_BLOCKED
 ```
 
-- [ ] **Step 2: Run tests to verify failure**
+- [x] **Step 2: Run tests to verify failure**
 
 Run: `python -m pytest tests/test_evidence.py -v`
 
 Expected: FAIL with `ModuleNotFoundError`.
 
-- [ ] **Step 3: Implement evidence validation**
+- [x] **Step 3: Implement evidence validation**
 
 Create `core/evidence.py`:
 
@@ -466,13 +466,13 @@ def validate_evidence(
     )
 ```
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 Run: `python -m pytest tests/test_evidence.py -v`
 
 Expected: `3 passed`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add core/evidence.py tests/test_evidence.py
@@ -485,7 +485,7 @@ git commit -m "feat: validate evidence containment"
 - Create: `core/schema.py`
 - Create: `tests/test_schema.py`
 
-- [ ] **Step 1: Write failing schema tests**
+- [x] **Step 1: Write failing schema tests**
 
 Create `tests/test_schema.py`:
 
@@ -531,13 +531,13 @@ def test_domain_fields_for_matrix_multiplication():
     assert "tensor_rank_or_border_rank" in fields
 ```
 
-- [ ] **Step 2: Run tests to verify failure**
+- [x] **Step 2: Run tests to verify failure**
 
 Run: `python -m pytest tests/test_schema.py -v`
 
 Expected: FAIL with `ModuleNotFoundError`.
 
-- [ ] **Step 3: Implement schema helper**
+- [x] **Step 3: Implement schema helper**
 
 Create `core/schema.py`:
 
@@ -573,13 +573,13 @@ def domain_fields_for_topic(topic: str) -> list[str]:
     return ["domain_object", "key_metric", "method_family", "evaluation_context"]
 ```
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 Run: `python -m pytest tests/test_schema.py -v`
 
 Expected: `4 passed`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add core/schema.py tests/test_schema.py
@@ -593,7 +593,7 @@ git commit -m "feat: add two-layer academic schema"
 - Create: `tests/test_credentials.py`
 - Modify: `core/agent.py`
 
-- [ ] **Step 1: Write failing credential tests**
+- [x] **Step 1: Write failing credential tests**
 
 Create `tests/test_credentials.py`:
 
@@ -637,13 +637,13 @@ def test_missing_key_raises_clear_error():
         store.get_api_key()
 ```
 
-- [ ] **Step 2: Run tests to verify failure**
+- [x] **Step 2: Run tests to verify failure**
 
 Run: `python -m pytest tests/test_credentials.py -v`
 
 Expected: FAIL with `ModuleNotFoundError`.
 
-- [ ] **Step 3: Implement credential store**
+- [x] **Step 3: Implement credential store**
 
 Create `core/credentials.py`:
 
@@ -681,7 +681,7 @@ class CredentialStore:
         return bool(self.keyring.get_password(SERVICE_NAME, API_KEY_USER))
 ```
 
-- [ ] **Step 4: Refactor agent to use keyring**
+- [x] **Step 4: Refactor agent to use keyring**
 
 Replace `core/agent.py` with:
 
@@ -709,13 +709,13 @@ def get_llm_agent(temperature: float = 0.2, credential_store: CredentialStore | 
     )
 ```
 
-- [ ] **Step 5: Verify**
+- [x] **Step 5: Verify**
 
 Run: `python -m pytest tests/test_credentials.py -v`
 
 Expected: `2 passed`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add core/credentials.py core/agent.py tests/test_credentials.py
@@ -728,7 +728,7 @@ git commit -m "feat: store api key with keyring"
 - Create: `core/extractor.py`
 - Create: `tests/test_extractor.py`
 
-- [ ] **Step 1: Write failing extractor tests**
+- [x] **Step 1: Write failing extractor tests**
 
 Create `tests/test_extractor.py`:
 
@@ -760,13 +760,13 @@ def test_parse_matrix_json_converts_missing_fields_to_missing():
     assert rows[0].domain_fields["sensor"] == "missing"
 ```
 
-- [ ] **Step 2: Run tests to verify failure**
+- [x] **Step 2: Run tests to verify failure**
 
 Run: `python -m pytest tests/test_extractor.py -v`
 
 Expected: FAIL with `ModuleNotFoundError`.
 
-- [ ] **Step 3: Implement extractor boundary**
+- [x] **Step 3: Implement extractor boundary**
 
 Create `core/extractor.py`:
 
@@ -827,13 +827,13 @@ def parse_matrix_json(raw_json: str, domain_fields: list[str]) -> list[AcademicM
     return rows
 ```
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 Run: `python -m pytest tests/test_extractor.py -v`
 
 Expected: `2 passed`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add core/extractor.py tests/test_extractor.py
@@ -846,7 +846,7 @@ git commit -m "feat: add academic extraction boundary"
 - Modify: `core/templates.py`
 - Create: `tests/test_templates.py`
 
-- [ ] **Step 1: Write failing rendering tests**
+- [x] **Step 1: Write failing rendering tests**
 
 Create `tests/test_templates.py`:
 
@@ -907,13 +907,13 @@ def test_render_bibtex_contains_page_metadata():
     assert "evidencepages = {2}" in output
 ```
 
-- [ ] **Step 2: Run tests to verify failure**
+- [x] **Step 2: Run tests to verify failure**
 
 Run: `python -m pytest tests/test_templates.py -v`
 
 Expected: FAIL because render functions are missing.
 
-- [ ] **Step 3: Implement rendering**
+- [x] **Step 3: Implement rendering**
 
 Replace `core/templates.py` with:
 
@@ -1021,13 +1021,13 @@ def render_bibtex(rows: list[AcademicMatrixRow]) -> str:
     return "\n\n".join(entries)
 ```
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 Run: `python -m pytest tests/test_templates.py -v`
 
 Expected: `4 passed`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add core/templates.py tests/test_templates.py
@@ -1040,7 +1040,7 @@ git commit -m "feat: render smart survey artifacts"
 - Create: `core/pipeline.py`
 - Create: `tests/test_pipeline.py`
 
-- [ ] **Step 1: Write failing pipeline tests**
+- [x] **Step 1: Write failing pipeline tests**
 
 Create `tests/test_pipeline.py`:
 
@@ -1101,13 +1101,13 @@ def test_generate_artifacts_returns_all_downloads():
     assert "@article" in artifacts.references_bib
 ```
 
-- [ ] **Step 2: Run tests to verify failure**
+- [x] **Step 2: Run tests to verify failure**
 
 Run: `python -m pytest tests/test_pipeline.py -v`
 
 Expected: FAIL with `ModuleNotFoundError`.
 
-- [ ] **Step 3: Implement pipeline**
+- [x] **Step 3: Implement pipeline**
 
 Create `core/pipeline.py`:
 
@@ -1149,13 +1149,13 @@ def generate_artifacts(
     )
 ```
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 Run: `python -m pytest tests/test_pipeline.py -v`
 
 Expected: `2 passed`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add core/pipeline.py tests/test_pipeline.py
@@ -1168,7 +1168,7 @@ git commit -m "feat: gate pipeline output by evidence"
 - Modify: `main.py`
 - Create: `tests/test_main_import.py`
 
-- [ ] **Step 1: Write failing import test**
+- [x] **Step 1: Write failing import test**
 
 Create `tests/test_main_import.py`:
 
@@ -1180,13 +1180,13 @@ def test_main_exposes_app_entrypoint():
     assert callable(main.run_app)
 ```
 
-- [ ] **Step 2: Run tests to verify failure**
+- [x] **Step 2: Run tests to verify failure**
 
 Run: `python -m pytest tests/test_main_import.py -v`
 
 Expected: FAIL because `run_app` is missing.
 
-- [ ] **Step 3: Implement UI entrypoint**
+- [x] **Step 3: Implement UI entrypoint**
 
 Replace `main.py` with:
 
@@ -1244,19 +1244,19 @@ if __name__ == "__main__":
     run_app()
 ```
 
-- [ ] **Step 4: Verify import test**
+- [x] **Step 4: Verify import test**
 
 Run: `python -m pytest tests/test_main_import.py -v`
 
 Expected: `1 passed`.
 
-- [ ] **Step 5: Manual UI smoke test**
+- [x] **Step 5: Manual UI smoke test**
 
 Run: `streamlit run main.py`
 
 Expected: browser UI shows topic input, PDF uploader, credential status, and download buttons after upload.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add main.py tests/test_main_import.py
@@ -1269,7 +1269,7 @@ git commit -m "feat: add streamlit smart survey ui"
 - Create: `Dockerfile`
 - Create: `.dockerignore`
 
-- [ ] **Step 1: Write Docker ignore file**
+- [x] **Step 1: Write Docker ignore file**
 
 Create `.dockerignore`:
 
@@ -1285,7 +1285,7 @@ __pycache__
 *.log
 ```
 
-- [ ] **Step 2: Write Dockerfile**
+- [x] **Step 2: Write Dockerfile**
 
 Create `Dockerfile`:
 
@@ -1305,19 +1305,19 @@ EXPOSE 8501
 CMD ["streamlit", "run", "main.py", "--server.address=0.0.0.0", "--server.port=8501"]
 ```
 
-- [ ] **Step 3: Build image**
+- [x] **Step 3: Build image**
 
 Run: `docker build -t smartsurvey:local .`
 
 Expected: image builds successfully and does not copy `.env`, `.venv`, or `data/input_pdfs`.
 
-- [ ] **Step 4: Run container**
+- [x] **Step 4: Run container**
 
 Run: `docker run --rm -p 8501:8501 smartsurvey:local`
 
 Expected: Streamlit starts and exposes the app on `http://localhost:8501`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add Dockerfile .dockerignore
@@ -1329,7 +1329,7 @@ git commit -m "build: add docker distribution"
 **Files:**
 - Create: `.gitlab-ci.yml`
 
-- [ ] **Step 1: Add required CI job**
+- [x] **Step 1: Add required CI job**
 
 Create `.gitlab-ci.yml`:
 
@@ -1347,13 +1347,13 @@ unit-test:
     - python -m pytest tests -v
 ```
 
-- [ ] **Step 2: Validate locally**
+- [x] **Step 2: Validate locally**
 
 Run: `python -m pytest tests -v`
 
 Expected: all tests pass.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add .gitlab-ci.yml
@@ -1367,7 +1367,7 @@ git commit -m "ci: add unit test job"
 - Modify: `docs/Agent_log.md`
 - Modify: `docs/切换API说明.md`
 
-- [ ] **Step 1: Create README**
+- [x] **Step 1: Create README**
 
 Create `README.md` with these sections:
 
@@ -1421,11 +1421,11 @@ The first version does not automatically download papers, reconstruct perfect PD
 ```
 ```
 
-- [ ] **Step 2: Update API switching document**
+- [x] **Step 2: Update API switching document**
 
 Edit `docs/切换API说明.md` so it states that `.env` is a development compatibility mechanism for base URL and model name only, while API Key storage should use OS keyring. Remove any instruction that says users should put real API keys into `.env` as the preferred path.
 
-- [ ] **Step 3: Append implementation checkpoint to Agent log**
+- [x] **Step 3: Append implementation checkpoint to Agent log**
 
 Append to `docs/Agent_log.md`:
 
@@ -1438,13 +1438,13 @@ Append to `docs/Agent_log.md`:
 - Next step: execute the plan task-by-task with TDD and subagent-driven development.
 ```
 
-- [ ] **Step 4: Verify docs do not contain real key-like values**
+- [x] **Step 4: Verify docs do not contain real key-like values**
 
 Run: `rg "sk-[A-Za-z0-9]" README.md docs`
 
 Expected: no real API key values. Placeholder strings are acceptable only if clearly fake, such as `sk-your-provider-key`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add README.md docs/切换API说明.md docs/Agent_log.md
@@ -1456,7 +1456,7 @@ git commit -m "docs: align readme and credential guidance"
 **Files:**
 - Modify: `docs/SPEC_PROCESS.md`
 
-- [ ] **Step 1: Add cold-start verification section placeholder with concrete protocol**
+- [x] **Step 1: Add cold-start verification section placeholder with concrete protocol**
 
 Append to `docs/SPEC_PROCESS.md`:
 
@@ -1473,13 +1473,13 @@ Append to `docs/SPEC_PROCESS.md`:
 4. 根据结果修订 `docs/SPEC.md` 或 `docs/PLAN.md`。
 ```
 
-- [ ] **Step 2: Verify plan and spec are present**
+- [x] **Step 2: Verify plan and spec are present**
 
 Run: `Test-Path .\docs\SPEC.md; Test-Path .\docs\PLAN.md; Test-Path .\docs\SPEC_PROCESS.md`
 
 Expected: three `True` lines.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add docs/SPEC_PROCESS.md docs/PLAN.md
@@ -1491,13 +1491,13 @@ git commit -m "docs: prepare cold start verification"
 **Files:**
 - No new files unless previous tasks reveal a defect.
 
-- [ ] **Step 1: Run all tests**
+- [x] **Step 1: Run all tests**
 
 Run: `python -m pytest tests -v`
 
 Expected: all tests pass.
 
-- [ ] **Step 2: Check secret hygiene**
+- [x] **Step 2: Check secret hygiene**
 
 Run: `git status --short`
 
@@ -1507,19 +1507,19 @@ Run: `rg "OPENAI_API_KEY=.*sk-|sk-[A-Za-z0-9]{20,}" . --glob '!/.git/**' --glob 
 
 Expected: no real keys.
 
-- [ ] **Step 3: Check documentation placement**
+- [x] **Step 3: Check documentation placement**
 
 Run: `Get-ChildItem -Path . -File -Filter *.md | Select-Object -ExpandProperty Name`
 
 Expected: `README.md` only, or no root Markdown except `README.md`.
 
-- [ ] **Step 4: Manual app check**
+- [x] **Step 4: Manual app check**
 
 Run: `streamlit run main.py`
 
 Expected: app starts, shows credential status, accepts PDF uploads, and exposes artifact downloads without showing a full API key.
 
-- [ ] **Step 5: Final commit if needed**
+- [x] **Step 5: Final commit if needed**
 
 ```bash
 git add .
@@ -2166,18 +2166,182 @@ Known implementation risk:
 
 ---
 
-## Phase 3: Progress Reporting & LLM Full-Text Synthesis
+## Phase 3: Academic Table Refinement & UX Word-Control (Current)
 
-**Goal:** Add real-time progress reporting via Unified State Callback (Task 18) and upgrade the template-based survey generator to an LLM-driven full-text synthesis module with lightweight stack-based LaTeX validation (Task 19).
+**Goal:** Optimize LaTeX table output for Overleaf compatibility (Task 20) and add interactive word-count control to the Streamlit synthesis pipeline (Task 21).
 
-**Architecture:** `core/pipeline.py` gains an optional `progress_callback` parameter with a unified `(current_idx, total_papers, state, detail)` signature. A new `core/synthesis.py` module handles LLM-based LaTeX manuscript generation, with a zero-dependency stack scanner for LaTeX syntax validation and a 1-retry self-healing loop. `core/templates.py` remains a pure rendering module. Zotero integration is deferred to Phase 4.
+**Note:** Tasks 18-19 (progress callback + LLM synthesis) were completed on the `feat/task18&19` branch and are awaiting PR merge. Tasks 20-21 are the current focus.
 
-**Tech Stack:** Python, Streamlit, LangChain OpenAI-compatible chat adapter, pytest.
+### Task 20: LaTeX Table Adaptive Column Wrapping
 
-**Design docs:** `docs/superpowers/specs/2026-07-08-phase-3-synthesis-ux-design.md`
-**SPEC sections:** §14 (Progress Reporting Protocol), §15 (LLM-Driven Full-Text Synthesis)
+**Files:**
+- Modify: `core/templates.py` (add `\usepackage{tabularx}` to preamble, switch `render_matrix_table_tex` to `tabularx`)
+- Modify: `core/synthesis.py` (update `build_synthesis_prompt` to use `tabularx`, update `validate_latex_syntax` to accept `\begin{tabularx}`)
+- Test: `tests/test_templates.py` (add tabularx test)
+- Test: `tests/test_synthesis.py` (add tabularx compatibility test)
 
-### Task 18: Unified State Callback — Pipeline & Console Integration
+**Problem:** The current `matrix_table.tex` uses `\begin{tabular}{llll}` with fixed-width columns. When paper titles or method descriptions exceed the column width, the table overflows the page margin in Overleaf, producing an unreadable overfull `\hbox` warning.
+
+**Solution:** Replace `tabular` with `tabularx` and `X`-type columns that auto-wrap:
+- Use `\begin{tabularx}{\textwidth}{XXXX}` for proportional auto-wrapping
+- Add `\usepackage{tabularx}` to the LaTeX preamble in `render_survey_tex` and `build_synthesis_prompt`
+- Update `validate_latex_syntax` to recognize `\begin{tabularx}` and `\end{tabularx}` as valid environments
+
+- [x] **Step 1: Write failing test for tabularx preamble**
+
+Append to `tests/test_templates.py`:
+
+```python
+def test_render_matrix_table_uses_tabularx():
+    """Matrix table must use tabularx for auto-wrapping columns."""
+    from core.templates import render_matrix_table_tex
+    from core.models import AcademicMatrixRow
+
+    row = AcademicMatrixRow(
+        title="A", authors="B", year="2024", venue="C",
+        research_problem="P", method="M", innovation="I", limitation="L",
+        evidence_page=1, evidence_quote="Q", confidence=0.5, trigger_reason="R",
+    )
+    output = render_matrix_table_tex([row])
+
+    assert "\\begin{tabularx}" in output
+    assert "\\end{tabularx}" in output
+    assert "\\textwidth" in output
+    # Must NOT use old tabular format
+    assert "\\begin{tabular}{llll}" not in output
+```
+
+- [x] **Step 2: Run test to verify it fails**
+
+Run: `python -m pytest tests/test_templates.py::test_render_matrix_table_uses_tabularx -v`
+
+Expected: FAIL — `tabularx` not found in output.
+
+- [x] **Step 3: Update `render_matrix_table_tex` in `core/templates.py`**
+
+Replace `\begin{tabular}{llll}` with `\begin{tabularx}{\textwidth}{XXXX}` and close with `\end{tabularx}`.
+
+- [x] **Step 4: Update `render_survey_tex` preamble**
+
+Add `\usepackage{tabularx}` to the LaTeX preamble.
+
+- [x] **Step 5: Update `build_synthesis_prompt` in `core/synthesis.py`**
+
+Add `\usepackage{tabularx}` to the required packages in the synthesis prompt.
+
+- [x] **Step 6: Update `validate_latex_syntax` to accept `tabularx`**
+
+Add `tabularx` to the recognized environment list in `validate_latex_syntax`. The current regex `r'\\(begin|end)\{(\w+)\}'` already matches any environment name, so `tabularx` should work. Add a test to confirm.
+
+- [x] **Step 7: Write test for tabularx compatibility in validator**
+
+```python
+def test_tabularx_is_valid_latex_environment():
+    """tabularx environment must not trigger false positive."""
+    from core.synthesis import validate_latex_syntax
+
+    source = r"\begin{tabularx}{\textwidth}{XXXX} a & b \\ \end{tabularx}"
+    errors = validate_latex_syntax(source)
+    assert errors == []
+```
+
+- [x] **Step 8: Run both new tests**
+
+Run: `python -m pytest tests/test_templates.py::test_render_matrix_table_uses_tabularx tests/test_synthesis.py::test_tabularx_is_valid_latex_environment -v`
+
+Expected: Both PASS.
+
+- [x] **Step 9: Commit**
+
+```bash
+git add core/templates.py core/synthesis.py tests/test_templates.py tests/test_synthesis.py
+git commit -m "feat: switch to tabularx for auto-wrapping table columns (Task 20) [Subagent: Sonnet] [Manual: None]"
+```
+
+### Task 21: Streamlit Word-Count Slider for Synthesis
+
+**Files:**
+- Modify: `main.py` (add `st.slider` for word count target)
+- Modify: `core/pipeline.py` (pass `word_count_target` through `generate_llm_artifacts`)
+- Modify: `core/synthesis.py` (accept `word_count_target` in `render_survey_tex_with_llm` and `build_synthesis_prompt`)
+- Test: `tests/test_synthesis.py` (add word count prompt test)
+
+**Data flow:**
+```
+main.py (st.slider) → pipeline.py (generate_llm_artifacts) → synthesis.py (render_survey_tex_with_llm → build_synthesis_prompt)
+```
+
+- [x] **Step 1: Write failing test for word count in prompt**
+
+```python
+def test_build_synthesis_prompt_accepts_word_count_target():
+    """Word count target must appear in the generated prompt."""
+    from core.synthesis import build_synthesis_prompt
+    from core.models import AcademicMatrixRow
+
+    row = AcademicMatrixRow(
+        title="A", authors="B", year="2024", venue="C",
+        research_problem="P", method="M", innovation="I", limitation="L",
+        evidence_page=1, evidence_quote="Q", confidence=0.5, trigger_reason="R",
+    )
+    prompt = build_synthesis_prompt("topic", [row], word_count_target=2000)
+    assert "2000" in prompt
+    assert "Chinese characters" in prompt.lower() or "字" in prompt
+```
+
+- [x] **Step 2: Run test to verify it fails**
+
+Run: `python -m pytest tests/test_synthesis.py::test_build_synthesis_prompt_accepts_word_count_target -v`
+
+Expected: FAIL with `TypeError` — unexpected keyword argument `word_count_target`.
+
+- [x] **Step 3: Update `build_synthesis_prompt` signature**
+
+Add `word_count_target: int = 3000` parameter. Replace the hardcoded `"3000-5000 Chinese characters"` in the prompt with the dynamic value.
+
+- [x] **Step 4: Update `render_survey_tex_with_llm` signature**
+
+Add `word_count_target: int = 3000` parameter. Pass it to `build_synthesis_prompt`.
+
+- [x] **Step 5: Update `generate_llm_artifacts` signature**
+
+Add `word_count_target: int = 3000` parameter. Pass it to `render_survey_tex_with_llm`.
+
+- [x] **Step 6: Run word count test to verify it passes**
+
+Run: `python -m pytest tests/test_synthesis.py::test_build_synthesis_prompt_accepts_word_count_target -v`
+
+Expected: PASS.
+
+- [x] **Step 7: Add Streamlit slider to `main.py`**
+
+Add before the extraction button:
+```python
+word_count_target = st.slider(
+    "Target word count for manuscript",
+    min_value=1000, max_value=10000, value=3000, step=500,
+    help="Controls how many Chinese characters the LLM synthesis should target.",
+)
+```
+
+Pass `word_count_target` to `generate_llm_artifacts`.
+
+- [x] **Step 8: Run full test suite**
+
+Run: `python -m pytest tests -v --ignore=tests/test_agent.py`
+
+Expected: All tests pass.
+
+- [x] **Step 9: Commit**
+
+```bash
+git add core/synthesis.py core/pipeline.py main.py tests/test_synthesis.py
+git commit -m "feat: add word count slider for llm synthesis (Task 21) [Subagent: Sonnet] [Manual: None]"
+```
+
+---
+
+## Phase 4: Future Work (Backlog)
 
 **Files:**
 - Modify: `core/pipeline.py` (add `progress_callback` param to `extract_with_self_healing`)
@@ -2907,6 +3071,8 @@ Known implementation notes:
 - LaTeX validation is zero-dependency — no `pdflatex`, no TeX Live, no external CLI calls.
 - The stack-based scanner handles escaped `\$`, `\{`, `\}` correctly, avoiding false positives.
 
+**Deferral reason:** Lower priority than table formatting (Task 20) and interactive word control (Task 21). Zotero integration is a convenience feature that does not affect the core survey-generation quality.
+
 ---
 
-> **Branching convention:** Each future task should be implemented on its own branch (`feat/task-xx`), pushed to remote, and submitted as a PR for merging.
+> **Branching convention:** Each active task should be implemented on its own branch (`feat/task-xx`), pushed to remote, and submitted as a PR for merging.

@@ -402,13 +402,72 @@ Dockerfile 应满足：
 
 ---
 
-## 14. 进度上报协议 (Phase 3, Task 18)
+## 14. LaTeX 表格自适应折行优化 (Phase 3, Task 20)
 
-### 14.1 统一状态回调 (Unified State Callback)
+### 14.1 问题描述
+
+当前 `matrix_table.tex` 使用 `\begin{tabular}{llll}` 固定宽度列格式。当论文标题、方法描述或局限性文本超过列宽时，Overleaf 编译会产生 `overfull \hbox` 警告，表格内容溢出页边距，严重影响可读性。
+
+### 14.2 解决方案
+
+将 `tabular` 替换为 `tabularx` 宏包提供的 `tabularx` 环境，使用 `X` 类型列实现自动折行。
+
+### 14.3 技术变更
+
+- `render_matrix_table_tex` 输出 `\begin{tabularx}{\textwidth}{XXXX}` 而非 `\begin{tabular}{llll}`。
+- `render_survey_tex` 和 `build_synthesis_prompt` 的 LaTeX 导言区添加 `\usepackage{tabularx}`。
+- `validate_latex_syntax` 确认 `\begin{tabularx}` 和 `\end{tabularx}` 为合法环境。
+
+### 14.4 验收标准
+
+- `matrix_table.tex` 必须使用 `tabularx` 环境。
+- 导言区必须包含 `\usepackage{tabularx}`。
+- `validate_latex_syntax` 对 `tabularx` 环境返回空错误列表。
+
+---
+
+## 15. Streamlit 字数档位调节器 (Phase 3, Task 21)
+
+### 15.1 功能描述
+
+在 Streamlit 界面中添加一个滑块控件，允许用户在启动 LLM 全文学术合成前，设定目标字数（1000-10000 字，步长 500，默认 3000）。
+
+### 15.2 数据流
+
+```
+main.py (st.slider)
+  → core/pipeline.py (generate_llm_artifacts, word_count_target 参数)
+    → core/synthesis.py (render_survey_tex_with_llm, word_count_target 参数)
+      → core/synthesis.py (build_synthesis_prompt, word_count_target 参数)
+        → System Prompt 中动态替换 "3000-5000 Chinese characters" 为实际值
+```
+
+### 15.3 参数签名
+
+```python
+def build_synthesis_prompt(topic: str, rows: list[AcademicMatrixRow], word_count_target: int = 3000) -> str
+
+def render_survey_tex_with_llm(topic, rows, extraction_fn, word_count_target=3000, progress_callback=None) -> str
+
+def generate_llm_artifacts(topic, rows, extraction_fn, blocked_warnings, word_count_target=3000, progress_callback=None) -> GeneratedArtifacts
+```
+
+### 15.4 验收标准
+
+- Streamlit 界面显示 `st.slider` 控件，范围 500-8000，步长 500。
+- 选择的值通过三层调用链传递至 `build_synthesis_prompt`。
+- 生成的 System Prompt 中包含用户指定的字数目标。
+- 不传值时默认 3000，保持向后兼容。
+
+---
+
+## 16. 进度上报协议 (Phase 3, Task 18)
+
+### 16.1 统一状态回调 (Unified State Callback)
 
 系统采用统一的回调函数在 `pipeline.py` 与调用方之间传递批量提取进度。
 
-### 14.2 回调签名
+### 16.2 回调签名
 
 ```python
 progress_callback: Callable[[int, int, str, str], None]
@@ -420,29 +479,29 @@ progress_callback: Callable[[int, int, str, str], None]
 #   detail: str        — 实时的可读细节字符串（如 "Retry 2/3: Generating XML feedback prompt..."）
 ```
 
-### 14.3 状态机
+### 16.3 状态机
 
 ```
 parsing  →  extracting  →  self_healing (0..N 次)  →  completed
 ```
 
-### 14.4 设计原则
+### 16.4 设计原则
 
 - **解耦**: `pipeline.py` 仅通过回调广播状态，不关心调用方如何渲染。
 - **控制台模式**: 调用方通过 `print(end="\r", flush=True)` 绘制 ASCII 进度条。
 - **Streamlit 模式**: 调用方同时驱动 `st.progress()` 和 `st.status()` 实现丰富 UI。
 - **向后兼容**: 回调参数为可选（默认 `None`），不传回调的已有调用不受影响。
 
-### 14.5 注入点
+### 16.5 注入点
 
 - `extract_with_self_healing()` — 在 LLM 调用前后注入 `extracting` 和 `self_healing` 状态。
 - `scripts/run_extraction.py` — 在逐论文循环中注入 `parsing` 和 `completed` 状态。
 
 ---
 
-## 15. LLM 驱动全文合成 (Phase 3, Task 19)
+## 17. LLM 驱动全文合成 (Phase 3, Task 19)
 
-### 15.1 新模块: `core/synthesis.py`
+### 17.1 新模块: `core/synthesis.py`
 
 系统引入独立的 `core/synthesis.py` 模块，负责将结构化矩阵通过 LLM 合成为完整的中文学术综述 LaTeX 手稿。
 
@@ -451,7 +510,7 @@ parsing  →  extracting  →  self_healing (0..N 次)  →  completed
 - `pipeline.py` 保持编排职责，不因 LLM 合成逻辑膨胀。
 - `synthesis.py` 单一职责：LLM 驱动合成 + LaTeX 语法校验。
 
-### 15.2 函数接口
+### 17.2 函数接口
 
 ```python
 def render_survey_tex_with_llm(
@@ -474,7 +533,7 @@ def render_survey_tex_with_llm(
     """
 ```
 
-### 15.3 系统提示词设计
+### 17.3 系统提示词设计
 
 `build_synthesis_prompt(topic, rows)` 在 `core/synthesis.py` 中构造，包含：
 
@@ -486,31 +545,31 @@ def render_survey_tex_with_llm(
   - 嵌入 `booktabs` 三线对比表。
   - 禁止输出 Markdown 代码块或解释性文字，仅返回纯 LaTeX 源码。
 
-### 15.4 LaTeX 语法校验: 轻量栈扫描器
+### 17.4 LaTeX 语法校验: 轻量栈扫描器
 
 **更新 §8 综述生成与导出规约**：`survey_draft.tex` 的生成方式从模板填充升级为 LLM 驱动合成，但保留对输出内容的 LaTeX 语法校验。
 
-#### 15.4.1 校验规则
+#### 17.4.1 校验规则
 
 系统在 `core/synthesis.py` 中实现 `validate_latex_syntax(latex_source: str) -> list[str]`，返回空列表表示语法正确。
 
-#### 15.4.2 行内公式 `$...$` 奇偶校验
+#### 17.4.2 行内公式 `$...$` 奇偶校验
 
 逐字符扫描，忽略 `\$` 转义序列。统计 `$` 出现次数，奇数次表示未闭合。
 
-#### 15.4.3 展示公式 `$$...$$` 奇偶校验
+#### 17.4.3 展示公式 `$$...$$` 奇偶校验
 
 同上，但针对 `$$` 双美元符号块。
 
-#### 15.4.4 `\begin{...}` / `\end{...}` 配对校验
+#### 17.4.4 `\begin{...}` / `\end{...}` 配对校验
 
 基于栈的扫描器：遇到 `\begin{env}` 入栈，遇到 `\end{env}` 出栈并检查环境名是否匹配。不匹配或未闭合时返回错误。
 
-#### 15.4.5 花括号 `{...}` 平衡校验
+#### 17.4.5 花括号 `{...}` 平衡校验
 
 整数计数器：遇 `{` 加一，遇 `}` 减一，忽略 `\{` 和 `\}` 转义序列。计数器不应为负或最终非零。
 
-### 15.5 自愈环路
+### 17.5 自愈环路
 
 ```python
 MAX_SYNTHESIS_RETRIES = 1  # Token Budget 极小
@@ -525,7 +584,7 @@ XML 反馈格式:
 </latex-validation-errors>
 ```
 
-### 15.6 测试策略
+### 17.6 测试策略
 
 - `validate_latex_syntax` 的单元测试：覆盖有效 LaTeX、未闭合 `$`、环境不匹配、花括号不平衡、转义符号无假阳性。
 - `build_synthesis_prompt` 的单元测试：提示词包含主题、所有矩阵行和输出格式约束。
@@ -533,8 +592,7 @@ XML 反馈格式:
 
 ---
 
-## 16. 后续阶段规划
+## 18. 后续阶段规划
+### 18.1 第四阶段 (Phase 4, 可选)
 
-### 16.1 第四阶段 (Phase 4, 可选)
-
-- Task 20: Zotero 自动归档集成（RIS/CSV/Better BibTeX 导出），优先级低于 Task 18-19。
+- Task 22: Zotero Web API 自动文献归档集成（RIS/CSV/Better BibTeX 导出）。延后原因：属于便利性功能，不影响核心综述生成质量。

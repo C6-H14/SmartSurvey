@@ -29,6 +29,12 @@ def run_app() -> None:
     topic = st.text_input("Review topic", value="industrial automation lab spatial anomaly detection")
     uploaded_files = st.file_uploader("Upload academic PDFs", type=["pdf"], accept_multiple_files=True)
 
+    word_count_target = st.slider(
+        "Target word count for manuscript",
+        min_value=1000, max_value=10000, value=3000, step=500,
+        help="Controls how many Chinese characters the LLM synthesis should target.",
+    )
+
     if uploaded_files:
         parsed = [parse_pdf_bytes(file.getvalue(), file.name) for file in uploaded_files]
         st.subheader("Parsed PDFs")
@@ -82,6 +88,7 @@ def run_app() -> None:
                     with st.spinner("Generating full-text manuscript with LLM..."):
                         artifacts = generate_llm_artifacts(
                             topic, accepted, extraction_fn, blocked,
+                            word_count_target=word_count_target,
                             progress_callback=_streamlit_progress_callback,
                         )
                 else:
