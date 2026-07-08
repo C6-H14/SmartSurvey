@@ -484,3 +484,113 @@
   - **NJU proxy requires `/v1` suffix** for the OpenAI-compatible endpoint.
   - **API timeout must be generous** for proxy gateways: 180s was needed vs the default 60s.
   - Output files (`data/output_docs/`) remain gitignored by user preference.
+
+## Task 17.2 - Major Refactoring: Per-Paper Extraction, Namespace Isolation, Triple JSON Defense
+
+- Timestamp: 2026-07-07 – 2026-07-08 +08:00
+- Triggered Superpowers skills: `executing-plans`, `test-driven-development`
+- Key prompt and configuration:
+  - Post-Task-17.1 review identified two critical performance/design issues:
+    1. **Per-page extraction was too expensive**: 66 LLM calls for 4 papers (each page needed a separate call), causing ~62 correction events and 0 accepted rows.
+    2. **Page-number collision across papers**: `filter_rows_by_evidence` merged all papers' pages into one dict with `page_texts.update()`, so page 1 of paper A overwrote page 1 of paper B.
+  - Environment: NJU proxy (`OPENAI_API_BASE=https://njusehub.info/v1`, `LLM_MODEL_NAME=deepseek-v4-flash`), 180s timeout, OS keyring credential store.
+  - Sandbox TDD approach: generate a clean PDF with known text, verify extraction against it before running real PDFs.
+- Key decisions and actions:
+
+  **Refactor 1: Per-paper extraction with merged core pages**
+  - Added `_get_merged_core_pages(paper)` to `scripts/run_extraction.py`: merges first 3 pages (title, abstract, method) + last 2 non-reference pages (conclusion, limitations) into one context block with `--- PAGE N ---` separators.
+  - Changed `extract_with_self_healing` signature from `(page_text, page_number, ...)` to `(merged_context, page_text_by_number, ...)` — one LLM call per paper instead of per page.
+  - Reduced API calls from 66 to 4 for 4 papers.
+  - Added `_is_reference_page(page_text)` heuristic: 3+ citation markers `[1]`–`[5]` or "references" in first 80 chars → skip.
+  - Added `_print_progress(current, total, paper_name)` — ASCII progress bar using `#` and `-` characters (GBK-safe, avoids `░` U+2591 encoding error on Windows).
+
+  **Refactor 2: Triple JSON defense mechanism**
+  - **Defense 1 (`_extract_json_bracket`)**: Regex extracts outermost `[...]` or `{...}` from LLM response, strips markdown code fences, wraps single `{...}` object as `[{...}]` list. Added to `core/extractor.py`.
+  - **Defense 2 (`build_json_healing_prompt`)**: If `json.loads()` fails, feed the original prompt back with XML correction instructions for JSON format. Added to `core/extractor.py` and wired into `extract_with_self_healing`.
+  - **Defense 3 (filename fallback)**: If all retries exhausted, create a degraded row from the filename so every paper appears in output. Added to `scripts/run_extraction.py`.
+  - Also added `_int_value` and `_float_value` helpers to safely parse "missing" strings as `0`/`0.0` instead of crashing.
+
+  **Refactor 3: Per-paper filter isolation**
+  - Added `_find_matching_paper(row, papers)` to `core/pipeline.py` — progressive title matching:
+    1. Normalized title containment (strip `[\W_]+` punctuation)
+    2. File name containment
+    3. Keyword overlap (2+ significant words >4 chars)
+    4. File name prefix fallback (first 20 chars)
+  - Changed `filter_rows_by_evidence` to use per-paper `page_text_by_number()` instead of the merged dict, eliminating page-number collision.
+  - Fixed underscore matching bug: `[\W_]` regex strips underscores so `"multimodalindustrial"` matches `"costanzino_multimodal..."`.
+
+  **Refactor 4: Adaptive degradation update**
+  - Changed `_apply_degradation` from `"retry_failed"` to `"missing (unverified)"` for clarity.
+  - Changed `evidence_quote` to `"unverified"` (not `"missing (unverified)"`) to distinguish missing-from-LLM from failed-verification.
+  - Updated `filter_rows_by_evidence` to pass through rows with `evidence_quote in ("missing", "retry_failed", "unverified")` without validation.
+
+  **Sandbox test results** (100% passing):
+  - Generated `data/test_sandbox.pdf` with PyMuPDF containing known clean text about 3D YOLO anomaly detection.
+  - Ran full extraction pipeline: sandbox PDF → extracted row → verified evidence match → generated artifacts.
+  - All assertions passed: `evidence_quote` found in page text, `@article` in BibTeX, `\toprule` in LaTeX table.
+
+  **Final batch extraction results** (4 real PDFs, 66 pages, 4 LLM calls):
+  ```
+  Parsing 4 PDFs...
+    [OK] 2503.07901v2.pdf (15 pages)
+    [OK] Costanzino_Multimodal_Industrial_Anomaly_Detection_by_Crossmodal_Feature_Mapping_CVPR_2024_paper.pdf (10 pages)
+    [OK] fmech-12-1806266.pdf (18 pages)
+    [OK] s11263-022-01578-9.pdf (23 pages)
+  [进度: 4/4] [####################] 100%  正在深度解析并提取: s11263-022-01578-9 ...  [1行, 0次校正]
+  Written: D:\SmartSurvey\data\output_docs\survey_draft.tex
+  Written: D:\SmartSurvey\data\output_docs\matrix_table.tex
+  Written: D:\SmartSurvey\data\output_docs\references.bib
+  Done. 3 rows accepted, 1 blocked warnings.
+  Self-healing details: 5 correction events recorded.
+  ```
+
+  **Output quality:**
+  - 3/4 papers passed evidence gate (Costanzino multimodal, Bergmann logical constraints, Iodice human-robot collaboration)
+  - 1/4 blocked (fmech-12 — LLM hallucinated quote not in page text) — this is a design feature, not a bug
+  - BibTeX output contains proper `@article{...}` entries with `evidencepages` metadata
+  - LaTeX table uses `booktabs` with `\toprule`, `\midrule`, `\bottomrule`
+  - Chinese survey draft with six required sections
+
+- Specification alignment:
+  - SPEC §7.4 Self-healing retry: 3 retries → adaptive degradation → filename fallback
+  - SPEC §7.3 Evidence containment: per-paper isolation prevents cross-paper page collision
+  - SPEC §8.3–8.5: `survey_draft.tex`, `matrix_table.tex`, `references.bib` produced
+  - SPEC §12.3 No mock library: `StatefulMockExtractor` is pure Python callable
+
+- Lessons learned:
+  - **Per-page extraction is wasteful**: 66 LLM calls → 62 corrections → 0 accepted rows. Per-paper with merged core pages: 4 calls → 5 corrections → 3 accepted rows.
+  - **Page-number collision is a real bug**: Merging `page_text_by_number()` across papers with `dict.update()` silently overwrites same-numbered pages. Per-paper isolation via `_find_matching_paper()` is the correct fix.
+  - **Underscore handling matters**: `[\W_]` regex for normalization, not `[^\w]` — underscores survive `\W` but cause false negatives in cross-paper matching.
+  - **Sandbox TDD is effective**: Generating a clean PDF with known text isolates the pipeline behavior from PDF quality issues, enabling fast iteration on the extraction logic.
+  - **ASCII progress bar is Windows-safe**: `░` (U+2591) causes GBK encoding errors in Windows terminal. Simple `#` and `-` characters avoid this.
+  - **Evidence gate works as designed**: 1 blocked paper is not a failure — it means the system correctly rejected a hallucinated limitation.
+
+## Task 17.3 - Phase 2 Closure
+
+- Timestamp: 2026-07-08 +08:00
+- Triggered Superpowers skills: `finishing-a-development-branch`
+- Key prompt and configuration:
+  - Phase 2 final closure: update PLAN.md, update Agent_log.md, git commit, push to remote.
+  - Branch: `feat/task-17`
+  - Base branch: `main`
+  - Commit format: `feat: complete batch self-healing extraction and conclude Phase 2 [Subagent: Sonnet] [Manual: None]`
+- Key decisions and actions:
+  - **PLAN.md**: Marked all Task 16 and Task 17 sub-steps as `[x]` with `(Completed)` annotations.
+  - **Agent_log.md**: Appended detailed Phase 2 log covering rate-limit backoff (`_call_with_rate_limit_backoff`), per-paper namespace isolation (`_find_matching_paper`), triple JSON defense, and adaptive degradation.
+  - **Test suite**: 28/28 relevant tests pass (1 pre-existing failure in `test_agent.py` due to fake API key — not modified in this branch).
+  - **Git commit**: `git commit -m "feat: complete batch self-healing extraction and conclude Phase 2 [Subagent: Sonnet] [Manual: None]"`
+  - **Git push**: `git push -u origin feat/task-17`
+- Files modified in Phase 2:
+  - `core/pipeline.py` — self-healing extraction, rate-limit backoff, per-paper filter isolation, adaptive degradation
+  - `core/extractor.py` — triple JSON defense, self-healing prompt, int/float safe parsing
+  - `core/agent.py` — `create_extraction_fn` factory, 180s timeout
+  - `core/evidence.py` — punctuation-stripping normalization (`[^\w\s]`)
+  - `scripts/run_extraction.py` — batch script, merged core pages, progress bar, filename fallback
+  - `tests/test_pipeline_extraction.py` — StatefulMockExtractor tests
+  - `tests/test_evidence.py` — updated normalization test
+  - `docs/PLAN.md` — progress tracking
+  - `docs/Agent_log.md` — this log
+- Outcome: Phase 2 complete. Branch ready for PR merge on GitHub web.
+- Next steps (Phase 3):
+  - Task 18: Streamlit dynamic progress bar (`st.progress`) with real-time extraction status
+  - Task 19: Zotero auto-archive integration (RIS/CSV/Better BibTeX export)

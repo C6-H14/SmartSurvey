@@ -39,7 +39,7 @@ class StatefulMockExtractor:
 
 
 PAGE_TEXT = "This page supports a real limitation. Other content here."
-PAGE_NUMBER = 1
+PAGE_TEXT_BY_NUMBER = {1: PAGE_TEXT}
 
 
 def test_self_healing_retry_succeeds_on_second_attempt():
@@ -47,8 +47,8 @@ def test_self_healing_retry_succeeds_on_second_attempt():
     extractor = StatefulMockExtractor()
     domain = ["sensor"]
     rows, warnings = extract_with_self_healing(
-        page_text=PAGE_TEXT,
-        page_number=PAGE_NUMBER,
+        merged_context=PAGE_TEXT,
+        page_text_by_number=PAGE_TEXT_BY_NUMBER,
         topic="anomaly detection",
         domain_fields=domain,
         extraction_fn=extractor,
@@ -68,7 +68,7 @@ def test_self_healing_retry_succeeds_on_second_attempt():
 
 
 def test_self_healing_stops_after_max_retries_with_adaptive_degradation():
-    """All 3 retries fail → adaptive degradation: retain general fields, mark evidence-bound as retry_failed.
+    """All 3 retries fail → adaptive degradation: retain general fields, mark evidence-bound as unverified.
 
     max_retries=3 means 3 retries after the initial attempt = 4 total LLM calls.
     """
@@ -87,8 +87,8 @@ def test_self_healing_stops_after_max_retries_with_adaptive_degradation():
 
     extractor = AlwaysFailingExtractor()
     rows, warnings = extract_with_self_healing(
-        page_text=PAGE_TEXT,
-        page_number=PAGE_NUMBER,
+        merged_context=PAGE_TEXT,
+        page_text_by_number=PAGE_TEXT_BY_NUMBER,
         topic="anomaly detection",
         domain_fields=["sensor"],
         extraction_fn=extractor,
@@ -101,11 +101,11 @@ def test_self_healing_stops_after_max_retries_with_adaptive_degradation():
     assert len(rows) == 1
     assert rows[0].title == "Paper B"
     assert rows[0].authors == "Bob"
-    # Evidence-bound fields marked as retry_failed
-    assert rows[0].limitation == "retry_failed"
-    assert rows[0].evidence_quote == "retry_failed"
-    # Domain fields also marked as retry_failed
-    assert rows[0].domain_fields["sensor"] == "retry_failed"
+    # Evidence-bound fields marked as missing (unverified)
+    assert rows[0].limitation == "missing (unverified)"
+    assert rows[0].evidence_quote == "unverified"
+    # Domain fields also marked as missing (unverified)
+    assert rows[0].domain_fields["sensor"] == "missing (unverified)"
     # Must contain air-warning in the warnings list
     assert len(warnings) == 1
     assert AIR_WARNING_BLOCKED in warnings[0]

@@ -15,3 +15,10 @@ __pycache__/
 data/input_pdfs/
 data/output_docs/
 data/
+
+# IDE and tooling
+.cursor/
+claude-code-proxy/
+
+# Independent utilities
+gateway_proxy.py
