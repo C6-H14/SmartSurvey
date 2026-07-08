@@ -2271,7 +2271,7 @@ git commit -m "feat: switch to tabularx for auto-wrapping table columns (Task 20
 main.py (st.slider) → pipeline.py (generate_llm_artifacts) → synthesis.py (render_survey_tex_with_llm → build_synthesis_prompt)
 ```
 
-- [ ] **Step 1: Write failing test for word count in prompt**
+- [x] **Step 1: Write failing test for word count in prompt**
 
 ```python
 def test_build_synthesis_prompt_accepts_word_count_target():
@@ -2295,25 +2295,25 @@ Run: `python -m pytest tests/test_synthesis.py::test_build_synthesis_prompt_acce
 
 Expected: FAIL with `TypeError` — unexpected keyword argument `word_count_target`.
 
-- [ ] **Step 3: Update `build_synthesis_prompt` signature**
+- [x] **Step 3: Update `build_synthesis_prompt` signature**
 
 Add `word_count_target: int = 3000` parameter. Replace the hardcoded `"3000-5000 Chinese characters"` in the prompt with the dynamic value.
 
-- [ ] **Step 4: Update `render_survey_tex_with_llm` signature**
+- [x] **Step 4: Update `render_survey_tex_with_llm` signature**
 
 Add `word_count_target: int = 3000` parameter. Pass it to `build_synthesis_prompt`.
 
-- [ ] **Step 5: Update `generate_llm_artifacts` signature**
+- [x] **Step 5: Update `generate_llm_artifacts` signature**
 
 Add `word_count_target: int = 3000` parameter. Pass it to `render_survey_tex_with_llm`.
 
-- [ ] **Step 6: Run word count test to verify it passes**
+- [x] **Step 6: Run word count test to verify it passes**
 
 Run: `python -m pytest tests/test_synthesis.py::test_build_synthesis_prompt_accepts_word_count_target -v`
 
 Expected: PASS.
 
-- [ ] **Step 7: Add Streamlit slider to `main.py`**
+- [x] **Step 7: Add Streamlit slider to `main.py`**
 
 Add before the extraction button:
 ```python
@@ -2326,7 +2326,7 @@ word_count_target = st.slider(
 
 Pass `word_count_target` to `generate_llm_artifacts`.
 
-- [ ] **Step 8: Run full test suite**
+- [x] **Step 8: Run full test suite**
 
 Run: `python -m pytest tests -v --ignore=tests/test_agent.py`
 

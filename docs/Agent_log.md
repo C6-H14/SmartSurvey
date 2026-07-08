@@ -614,3 +614,23 @@
   - SPEC §14.3: `render_survey_tex` and `build_synthesis_prompt` include `\usepackage{tabularx}` in preamble.
   - SPEC §14.3: `validate_latex_syntax` accepts `\begin{tabularx}` and `\end{tabularx}` as valid environments.
   - SPEC §14.4: `matrix_table.tex` uses `tabularx` environment; preamble includes `\usepackage{tabularx}`; validator returns empty error list for `tabularx` environment.
+
+## Task 21.1 - Word count slider
+
+- Timestamp: 2026-07-08 +08:00
+- Triggered Superpowers skills: `executing-plans`, `test-driven-development`
+- Key prompt and configuration:
+  - TDD cycle for Task 21: add Streamlit slider for LLM synthesis word count target.
+  - RED: `test_build_synthesis_prompt_accepts_word_count_target` — initially failed due to assertion case-sensitivity (fixed assertion from `"Chinese characters"` to `"chinese characters"` in `.lower()` check).
+  - GREEN: `build_synthesis_prompt` already had `word_count_target: int = 3000` parameter (from Task 20). Created `render_survey_tex_with_llm` in `core/synthesis.py` (accepts `word_count_target`, passes to `build_synthesis_prompt`). Created `generate_llm_artifacts` in `core/pipeline.py` (accepts `word_count_target`, passes to `render_survey_tex_with_llm`). Both functions were removed in the Task 20 rewrite and needed to be recreated.
+  - Added `st.slider("Target word count for manuscript", min_value=1000, max_value=10000, value=3000, step=500)` to `main.py` with help text, and imported `generate_llm_artifacts`.
+  - Full suite: 31/31 tests pass (excluding `test_agent.py` integration gate).
+  - Commit: `0688e84` — "feat: add word count slider for llm synthesis (Task 21) [Subagent: Sonnet] [Manual: None]"
+- Specification alignment:
+  - SPEC §15.2: Data flow `main.py (st.slider) → pipeline.py (generate_llm_artifacts) → synthesis.py (render_survey_tex_with_llm → build_synthesis_prompt)`.
+  - SPEC §15.3: All three functions accept `word_count_target: int = 3000` parameter.
+  - SPEC §15.4: Streamlit slider displayed with range 1000-10000, step 500, default 3000.
+  - Default value 3000 maintains backward compatibility.
+- Lesson learned:
+  - The `build_synthesis_prompt` already had the `word_count_target` parameter from Task 20, but `render_survey_tex_with_llm` and `generate_llm_artifacts` were removed during the Task 20 rewrite and needed to be recreated.
+  - The test assertion `"Chinese characters" in prompt.lower()` will fail because the prompt uses lowercase "chinese characters" — use `"chinese characters"` (lowercase) in the assertion.
