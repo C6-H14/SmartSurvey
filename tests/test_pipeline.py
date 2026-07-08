@@ -98,3 +98,25 @@ def test_generate_artifacts_accepts_optional_callback():
     )
     artifacts = generate_artifacts("topic", [row], [], progress_callback=callback)
     assert artifacts is not None
+    assert called  # Verify callback was actually invoked
+
+
+def test_generate_llm_artifacts_falls_back_to_template_on_empty_synthesis():
+    """When LLM synthesis returns empty, fall back to template-based generation."""
+    from core.pipeline import generate_llm_artifacts
+
+    class EmptyExtractor:
+        def __call__(self, prompt: str) -> str:
+            return ""
+
+    row = AcademicMatrixRow(
+        title="A", authors="B", year="2024", venue="C",
+        research_problem="P", method="M", innovation="I", limitation="L",
+        evidence_page=1, evidence_quote="Q", confidence=0.5, trigger_reason="R",
+    )
+    artifacts = generate_llm_artifacts(
+        "topic", [row], extraction_fn=EmptyExtractor(), blocked_warnings=[]
+    )
+    # Must fall back to template-based rendering
+    assert r"\documentclass{ctexart}" in artifacts.survey_tex
+    assert "Paper A" not in artifacts.survey_tex  # template uses row.title
