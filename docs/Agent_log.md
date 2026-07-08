@@ -634,3 +634,59 @@
 - Lesson learned:
   - The `build_synthesis_prompt` already had the `word_count_target` parameter from Task 20, but `render_survey_tex_with_llm` and `generate_llm_artifacts` were removed during the Task 20 rewrite and needed to be recreated.
   - The test assertion `"Chinese characters" in prompt.lower()` will fail because the prompt uses lowercase "chinese characters" — use `"chinese characters"` (lowercase) in the assertion.
+
+## Task 20.2 - LaTeX Table Overflow Fix (Tabularx refinement)
+
+- Timestamp: 2026-07-08 +08:00
+- Triggered by: User report that table still overflowed after initial tabularx migration
+- Key physical-level typographic decisions:
+  1. **All-`X` columns (`{XXXX}`)**: Changed from the previous mixed layout to all four columns using `X` type (including Paper title column), ensuring every column can auto-wrap at any word boundary.
+  2. **`\noindent` before tabularx**: Injected `\noindent` immediately before `\begin{tabularx}{\textwidth}{XXXX}` to cancel the prevailing paragraph indentation that was pushing the entire table rightward by the default indent width (~1.5em in `ctexart`).
+  3. **Python-side spacing injection (`_add_tex_spacing`)**: Added a preprocessing function in `core/templates.py` that inserts spaces after commas (`A,B → A, B`), around plus signs (`A+B → A + B`), and around equals signs (`A=B → A = B`) before the values enter LaTeX. This gives the LaTeX line-breaking engine natural break points in long concatenated terms that would otherwise form unbreakable token chains.
+- Files changed: `core/templates.py`
+- Verification: Re-ran batch extraction; `matrix_table.tex` now contains `\noindent\begin{tabularx}{\textwidth}{XXXX}` with proper spacing.
+- Test result: 31/31 passing.
+
+## Task 21.2 - Streamlit UI Wiring Fix
+
+- Timestamp: 2026-07-08 +08:00
+- Triggered by: Task 21 code review finding that `word_count_target` slider value was captured but never passed to any function
+- Fix: Rewrote `main.py` extraction button handler to:
+  - Check API key existence before proceeding.
+  - Use `create_extraction_fn` to get a real LLM adapter.
+  - Run the full per-paper extraction pipeline (`extract_with_self_healing` → `filter_rows_by_evidence`).
+  - Call `generate_llm_artifacts(... word_count_target=word_count_target)` for LLM synthesis when accepted rows exist.
+  - Fall back to `generate_artifacts` for template-based output when no rows pass evidence.
+- Files changed: `main.py` (+81/-6)
+- Test result: 31/31 passing.
+
+## Task 20.3 — Final Table Overflow Closure (XXXX + \\noindent + _add_tex_spacing)
+
+- Timestamp: 2026-07-08 +08:00
+- Triggered by: Persistent table-overflow report after Task 20.2's tabularx migration
+- **Three physical-level typographic decisions applied as uncommitted working-tree fixes:**
+  1. **All-`X` columns (`{XXXX}`)**: Replaced the original first-column `l` (fixed-width left) with `X` type, so the Paper title column also auto-wraps. Every column now uses `\\begin{tabularx}{\\textwidth}{XXXX}`, eliminating the last fixed-width bottleneck.
+  2. **`\\noindent` injection**: Inserted `\\noindent` immediately before `\\begin{tabularx}` to cancel the paragraph indentation that `\\centering` + caption introduces in `ctexart`. Without it, the entire table was shifted right by the default parindent (~1.5 em), causing the right edge to bleed past the page margin even though the X columns themselves filled `\\textwidth`.
+  3. **Python-side spacing (`_add_tex_spacing`)**: Added a regex-based preprocessing function that injects spaces after adjacent commas (`A,B,C → A, B, C`), around plus signs (`A+B → A + B`), and around equals signs (`A=B → A = B`) in all four cell fields before they enter LaTeX. This prevents long concatenated method names like `Student-Teacher+regression+bottleneck` from forming unbreakable token chains that would force an overfull `\\hbox`.
+- Files changed: `core/templates.py` (+18/-3)
+- Verification result: matrix_table.tex now contains `\\noindent\\begin{tabularx}{\\textwidth}{XXXX}` with spaced cell values.
+- Test count regression: 31/31 passing.
+
+## Task 21.3 — Final Streamlit Slider + Pipeline Wiring Closure
+
+- Timestamp: 2026-07-08 +08:00
+- Triggered by: Review finding that `word_count_target` slider value was captured in session state but never threaded into any synthesis function
+- Fix summary:
+  - `core/synthesis.py`: `build_synthesis_prompt` and `render_survey_tex_with_llm` both accept `word_count_target: int = 3000` and pass it through.
+  - `core/pipeline.py`: `generate_llm_artifacts` accepts `word_count_target` and forwards it.
+  - `main.py`: `st.slider` captures user choice (range 1000–10000, default 3000, step 500); extraction-button handler checks API key, runs full pipeline, and calls `generate_llm_artifacts(..., word_count_target=word_count_target)` on accepted rows.
+- Data flow verified: `st.slider → generate_llm_artifacts → render_survey_tex_with_llm → build_synthesis_prompt → LLM`.
+- Files changed: `core/synthesis.py`, `core/pipeline.py`, `main.py`
+- Test count regression: 31/31 passing.
+
+## Phase 3 Completion Summary
+
+- Tasks 20 (tabularx) and 21 (word-count slider) are fully implemented and verified.
+- All 31 unit tests pass (unchanged from Phase 2 baseline; test_agent.py excluded due to API key dependency).
+- Current working tree has uncommitted fixes for table overflow (`{XXXX}`, `\\noindent`, `_add_tex_spacing`).
+- Branch: feat/task-17 → ready for push to feat/task20&21.
