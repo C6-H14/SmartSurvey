@@ -17,7 +17,7 @@ from core.agent import create_extraction_fn
 from core.credentials import CredentialStore
 from core.models import AcademicMatrixRow, ParsedPaper
 from core.pdf_parser import parse_pdf_bytes
-from core.pipeline import extract_with_self_healing, generate_artifacts, filter_rows_by_evidence
+from core.pipeline import extract_with_self_healing, generate_artifacts, generate_llm_artifacts, filter_rows_by_evidence
 from core.schema import domain_fields_for_topic
 
 
@@ -183,9 +183,15 @@ def main():
     # Filter by evidence (second pass) — degraded rows pass through automatically
     accepted, blocked = filter_rows_by_evidence(all_rows, papers)
 
-    # Generate artifacts
-    artifacts = generate_artifacts(TOPIC, accepted, blocked,
-                                   progress_callback=_console_progress_callback)
+    # Generate artifacts with LLM synthesis (falls back to template)
+    if accepted:
+        artifacts = generate_llm_artifacts(
+            TOPIC, accepted, extraction_fn, blocked,
+            progress_callback=_console_progress_callback,
+        )
+    else:
+        artifacts = generate_artifacts(TOPIC, accepted, blocked,
+                                       progress_callback=_console_progress_callback)
 
     # Write outputs
     tex_path = os.path.join(OUTPUT_DIR, "survey_draft.tex")

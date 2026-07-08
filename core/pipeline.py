@@ -135,6 +135,35 @@ def generate_artifacts(
     )
 
 
+def generate_llm_artifacts(
+    topic: str,
+    rows: list[AcademicMatrixRow],
+    extraction_fn: Callable[[str], str],
+    blocked_warnings: list[str],
+    progress_callback: Callable[[int, int, str, str], None] | None = None,
+) -> GeneratedArtifacts:
+    """Generate artifacts with LLM-driven LaTeX synthesis instead of template.
+
+    Falls back to template-based generation if synthesis produces empty output.
+    """
+    from core.synthesis import render_survey_tex_with_llm
+
+    survey_tex = render_survey_tex_with_llm(
+        topic, rows, extraction_fn, progress_callback
+    )
+    # Fallback: if synthesis produced empty or broken output, use template
+    if not survey_tex or len(survey_tex) < 100:
+        from core.templates import render_survey_tex
+        survey_tex = render_survey_tex(topic, rows)
+
+    return GeneratedArtifacts(
+        markdown_preview=render_markdown_preview(topic, rows, blocked_warnings),
+        survey_tex=survey_tex,
+        matrix_table_tex=render_matrix_table_tex(rows),
+        references_bib=render_bibtex(rows),
+    )
+
+
 def extract_with_self_healing(
     merged_context: str,
     page_text_by_number: dict[int, str],

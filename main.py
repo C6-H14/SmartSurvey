@@ -4,7 +4,7 @@ from core.agent import create_extraction_fn
 from core.credentials import CredentialStore
 from core.models import ParsedPaper
 from core.pdf_parser import parse_pdf_bytes
-from core.pipeline import extract_with_self_healing, generate_artifacts, filter_rows_by_evidence
+from core.pipeline import extract_with_self_healing, generate_artifacts, generate_llm_artifacts, filter_rows_by_evidence
 from core.schema import domain_fields_for_topic
 
 
@@ -77,10 +77,18 @@ def run_app() -> None:
                     all_warnings.extend(warnings)
 
                 accepted, blocked = filter_rows_by_evidence(all_rows, parsed)
-                artifacts = generate_artifacts(
-                    topic, accepted, blocked,
-                    progress_callback=_streamlit_progress_callback,
-                )
+                # Use LLM synthesis if we have accepted rows and extraction_fn
+                if accepted:
+                    with st.spinner("Generating full-text manuscript with LLM..."):
+                        artifacts = generate_llm_artifacts(
+                            topic, accepted, extraction_fn, blocked,
+                            progress_callback=_streamlit_progress_callback,
+                        )
+                else:
+                    artifacts = generate_artifacts(
+                        topic, accepted, blocked,
+                        progress_callback=_streamlit_progress_callback,
+                    )
                 st.markdown(artifacts.markdown_preview)
                 st.download_button("Download survey_draft.tex", artifacts.survey_tex, "survey_draft.tex")
                 st.download_button("Download matrix_table.tex", artifacts.matrix_table_tex, "matrix_table.tex")
