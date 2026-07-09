@@ -59,8 +59,9 @@ def validate_latex_syntax(latex_source: str) -> list[str]:
         for leftover in env_stack:
             errors.append(f"Unclosed environment: \\begin{{{leftover}}} has no matching \\end.")
 
-    # Check 3: Curly brace {} balance
+    # Check 3: Curly brace {} balance with CJK bracket detection
     brace_count = 0
+    cjk_brackets = {"》", "】", "」"}
     i = 0
     while i < len(latex_source):
         if latex_source[i] == '\\' and i + 1 < len(latex_source):
@@ -73,6 +74,16 @@ def validate_latex_syntax(latex_source: str) -> list[str]:
             if brace_count < 0:
                 errors.append("Extra closing brace encountered.")
                 brace_count = 0
+        elif latex_source[i] in cjk_brackets and brace_count > 0:
+            # CJK bracket detected while braces are still open -- likely a hallucination
+            context_start = max(0, i - 20)
+            context_end = min(len(latex_source), i + 10)
+            context = latex_source[context_start:context_end].replace("\n", " ")
+            errors.append(
+                f"CJK character '{latex_source[i]}' detected near position {i} "
+                f"(context: ...{context}...) -- possibly replacing '}}'. "
+                f"Fix all CJK brackets in LaTeX source."
+            )
         i += 1
     if brace_count > 0:
         errors.append(f"Unclosed brace: {brace_count} unmatched opening brace(s).")

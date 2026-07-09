@@ -869,3 +869,118 @@ Section 6 仅输出学术结论内容，Python 代码在最终拼接文件末尾
 
 - `matrix_table.tex` 中的 `\caption{...}` 位于 `\begin{tabularx}` 之前。
 - 生成的 `survey_draft.tex` 中 `Abstract and Introduction` 章节包含 `\noindent\textbf{摘要：}` 和 `\noindent\textbf{引言：}` 分隔标记。
+
+---
+
+## 21. 第七阶段 (Phase 7): LaTeX 编译加固与学术排版优化
+
+### 21.1 概述
+
+Phase 7 完成五个目标：
+1. **Bug 1: CJK 括号检测** — 增强 `validate_latex_syntax` 检测中文字符替代 `}` 的编译崩溃 Bug。
+2. **表格居中修复** — 将 `\noindent\begin{tabularx}` 拆分为两行，恢复 `\centering` 效果。
+3. **统一导言区架构 (SSOT)** — 单次合成与多阶段合成统一使用 `_build_preamble()` 硬编码导言区，剥离 LLM 生成导言区的权限；升级导言区包含 `geometry 1.8cm` 和 `amsmath`。
+4. **列表化分类约束** — Prompt 强制 LLM 在列举分类时使用 `\begin{itemize}` 环境。
+5. **加粗领头词冒号约束** — Prompt 强制 `\textbf{...}` 后紧跟中文冒号 `：`。
+
+### 21.2 Bug 1: CJK 括号检测
+
+#### 21.2.1 问题描述
+
+大模型在生成 LaTeX 源码时产生微小但致命的格式幻觉，将右花括号 `}` 误写为中文右书名号 `》`（例如 `\subsection{核心贡献与技术谱系》`），直接导致 LaTeX 编译器崩溃。
+
+#### 21.2.2 解决方案
+
+在 `validate_latex_syntax()` 的花括号平衡扫描器中，当检测到未能闭合的 `{` 时，扫描附近是否存在 `》` `】` `」` 等 CJK 右符号，若有则报出具体错误。
+
+#### 21.2.3 涉及文件
+
+- `core/synthesis.py` — 增强 `validate_latex_syntax()` 的括号检查
+- `tests/test_synthesis.py` — 新增 `test_cjk_bracket_detected()` 测试
+
+### 21.3 表格居中修复
+
+#### 21.3.1 问题描述
+
+`render_matrix_table_tex()` 中 `\noindent` 与 `\begin{tabularx}` 直接粘连在同一行，导致 `\noindent` 被解析为 `tabularx` 前导的一部分，破坏 `\centering` 效果。
+
+#### 21.3.2 解决方案
+
+将 `\noindent` 单独放在一行，`\begin{tabularx}` 另起一行。
+
+#### 21.3.3 涉及文件
+
+- `core/templates.py` — 拆分 `\noindent\begin{tabularx}` 为两行
+
+### 21.4 统一导言区架构 (SSOT)
+
+#### 21.4.1 问题描述
+
+单次合成路径让 LLM 生成导言区，多阶段合成路径使用硬编码导言区，造成两套排版标准不一致的风险。
+
+#### 21.4.2 解决方案
+
+**剥离大模型导言区生成权限：** 无论是 ≤8000 字的单次合成还是 >8000 字的多阶段合成，Prompt 一律规定「直接从 `\section{Abstract and Introduction}` 开始输出正文」。所有导言区由 `_build_preamble()` 硬编码注入。
+
+**`_build_preamble()` 升级内容：**
+
+```latex
+% !TEX program = xelatex
+% !TEX root = survey_draft.tex
+\documentclass{ctexart}
+\usepackage[paper=a4paper, margin=1.8cm]{geometry}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{amsmath}
+\usepackage[backend=biber,style=gb7714-2015]{biblatex}
+\addbibresource{references.bib}
+\begin{document}
+```
+
+**`render_survey_tex_with_llm()` 升级：** 将 LLM 输出包裹在 `_build_preamble()` + `\end{document}` 之间，并剥离 LLM 可能输出的导言区残留。
+
+#### 21.4.3 涉及文件
+
+- `core/synthesis.py` — 升级 `_build_preamble()`；更新 `build_synthesis_prompt()`；重构 `render_survey_tex_with_llm()`
+- `tests/test_synthesis.py` — 更新 mock extractor，新增导言区包裹测试
+
+### 21.5 列表化分类约束
+
+#### 21.5.1 问题描述
+
+大模型生成的技术分类和共识挑战常以长段落堆叠，不易阅读。
+
+#### 21.5.2 解决方案
+
+在 `build_synthesis_prompt()` 和 `_build_section_prompt()` 的 Prompt 中追加约束：
+
+```
+CRITICAL: When listing technical categories, consensus challenges, or research gaps,
+you MUST use the \begin{itemize} LaTeX environment. Each category must be a separate \item.
+Do NOT stack multiple categories in one long sentence paragraph.
+```
+
+### 21.6 加粗领头词冒号约束
+
+#### 21.6.1 问题描述
+
+加粗领头词 `\textbf{...}` 后缺少标点，导致文字粘连。
+
+#### 21.6.2 解决方案
+
+在 `build_synthesis_prompt()` 和 `_build_section_prompt()` 的 Prompt 中追加约束：
+
+```
+CRITICAL: When using \textbf{...} for a bold leading term, you MUST immediately follow
+the closing brace with a Chinese colon ：.
+Example: \textbf{第一类：}[explanation] — NOT \textbf{第一类}[explanation]
+```
+
+### 21.7 涉及文件汇总
+
+| 文件 | 变更 |
+|------|------|
+| `core/synthesis.py` | CJK 括号检测、preamble 升级、Prompt 统一、itemize 约束、冒号约束 |
+| `core/templates.py` | `\noindent` 分行 |
+| `tests/test_synthesis.py` | 新增 CJK 括号测试、preamble 包裹测试、itemize 约束测试、冒号约束测试 |
+| `tests/test_templates.py` | 更新表格居中测试 |

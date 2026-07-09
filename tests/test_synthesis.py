@@ -251,3 +251,23 @@ def test_render_survey_tex_multi_stage_returns_valid_latex():
     # Must pass LaTeX validation
     errors = validate_latex_syntax(result)
     assert errors == []
+
+
+def test_cjk_bracket_detected():
+    """CJK right-angle bracket replacing } must be detected."""
+    from core.synthesis import validate_latex_syntax
+
+    # 》 replacing } — a real LLM hallucination found in production
+    broken = r"\subsection{核心贡献与技术谱系》"
+    errors = validate_latex_syntax(broken)
+    assert any("》" in e or "CJK" in e for e in errors)
+
+    # Valid LaTeX with CJK content should NOT trigger false positive
+    valid = r"\subsection{核心贡献与技术谱系}"
+    errors2 = validate_latex_syntax(valid)
+    assert errors2 == []
+
+    # Closing brace with CJK after it is fine
+    valid2 = r"\subsection{摘要：}本文围绕"
+    errors3 = validate_latex_syntax(valid2)
+    assert errors3 == []
