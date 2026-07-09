@@ -4,14 +4,21 @@ from typing import Callable
 from langchain_core.messages import HumanMessage
 from langchain_openai import ChatOpenAI
 
-from core.credentials import CredentialStore
+from core.credentials import CredentialStore, DEFAULT_API_BASE, DEFAULT_MODEL_NAME
 
 
 def get_llm_agent(temperature: float = 0.2, credential_store: CredentialStore | None = None) -> ChatOpenAI:
     store = credential_store or CredentialStore()
-    api_key = store.get_api_key()
-    api_base = os.getenv("OPENAI_API_BASE")
-    model_name = os.getenv("LLM_MODEL_NAME", "gpt-4o")
+    creds = store.get_all()
+
+    if store.has_credentials():
+        api_key = creds["llm_api_key"]
+        api_base = creds["llm_api_base"]
+        model_name = creds["llm_model_name"]
+    else:
+        api_key = os.getenv("OPENAI_API_KEY") or ""
+        api_base = os.getenv("OPENAI_API_BASE") or DEFAULT_API_BASE
+        model_name = os.getenv("LLM_MODEL_NAME") or DEFAULT_MODEL_NAME
 
     return ChatOpenAI(
         model=model_name,
