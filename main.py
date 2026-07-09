@@ -4,7 +4,7 @@ from core.agent import create_extraction_fn
 from core.credentials import CredentialStore, DEFAULT_API_BASE, DEFAULT_MODEL_NAME
 from core.models import ParsedPaper
 from core.pdf_parser import parse_pdf_bytes
-from core.pipeline import extract_with_self_healing, generate_artifacts, generate_llm_artifacts, filter_rows_by_evidence
+from core.pipeline import extract_with_self_healing, generate_artifacts, generate_llm_artifacts
 from core.schema import domain_fields_for_topic
 
 
@@ -34,9 +34,12 @@ def run_app() -> None:
 
     word_count_target = st.slider(
         "Target word count for manuscript",
-        min_value=1000, max_value=10000, value=3000, step=500,
-        help="Controls how many Chinese characters the LLM synthesis should target.",
+        min_value=1000, max_value=50000, value=3000, step=500,
+        help="Controls how many Chinese characters the LLM synthesis should target. "
+             "Values above 8000 will trigger multi-stage chained synthesis.",
     )
+    if word_count_target > 8000:
+        st.info("📝 字数超过 8000，系统将自动切换为分章节多轮合成模式，以突破大模型单次输出上限。")
 
     if uploaded_files:
         parsed = [parse_pdf_bytes(file.getvalue(), file.name) for file in uploaded_files]
@@ -85,7 +88,9 @@ def run_app() -> None:
                     all_rows.extend(rows)
                     all_warnings.extend(warnings)
 
-                accepted, blocked = filter_rows_by_evidence(all_rows, parsed)
+                # Zero-Drop: all rows pass through
+                accepted = all_rows
+                blocked = all_warnings
                 # Use LLM synthesis if we have accepted rows and extraction_fn
                 if accepted:
                     with st.spinner("Generating full-text manuscript with LLM..."):

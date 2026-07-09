@@ -76,7 +76,10 @@ def render_survey_tex(topic: str, rows: list[AcademicMatrixRow]) -> str:
     matrix = render_matrix_table_tex(rows)
     paper_list = "、".join(row.title for row in rows) if rows else "missing"
     sections = {
-        "Abstract and Introduction": f"本文围绕“{topic}”展开综述，论文集合包括：{paper_list}。",
+        "Abstract and Introduction": (
+            r"\noindent\textbf{摘要：}" + f"本文围绕“{topic}”展开综述，论文集合包括：{paper_list}。"
+            + r"\par\bigskip\noindent\textbf{引言：}" + f"本文围绕“{topic}”领域，对上述论文进行系统性梳理与对比分析。"
+        ),
         "Technical Taxonomy": "本节依据论文方法、研究问题和领域字段建立技术分类。",
         "Systematic Review and Deep Critique": "本节只纳入已经通过页码与原文摘录校验的批判性结论。",
         "Academic Comparison Matrix": matrix,

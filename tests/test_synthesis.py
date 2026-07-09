@@ -1,6 +1,25 @@
 from core.synthesis import build_synthesis_prompt, render_survey_tex_with_llm, validate_latex_syntax
 
 
+def test_build_preamble_contains_magic_comments():
+    """Preamble must include xelatex magic comments."""
+    from core.synthesis import _build_preamble
+    preamble = _build_preamble()
+
+    assert "% !TEX program = xelatex" in preamble
+    assert "% !TEX root = survey_draft.tex" in preamble
+    assert r"\documentclass{ctexart}" in preamble
+    assert r"\begin{document}" in preamble
+
+
+def test_build_preamble_does_not_include_end_document():
+    """Preamble should NOT include \end{document}."""
+    from core.synthesis import _build_preamble
+    preamble = _build_preamble()
+
+    assert r"\end{document}" not in preamble
+
+
 def test_build_synthesis_prompt_accepts_word_count_target():
     """Word count target must appear in the generated prompt."""
     from core.models import AcademicMatrixRow
@@ -169,4 +188,66 @@ def test_escaped_dollar_does_not_trigger_false_positive():
 def test_escaped_brace_does_not_trigger_false_positive():
     source = r"\section{Test} Function call: foo\{bar\} baz"
     errors = validate_latex_syntax(source)
+    assert errors == []
+
+
+def test_build_synthesis_prompt_has_separator_constraint():
+    """Prompt must instruct LLM to use \noindent\textbf{摘要：} and \noindent\textbf{引言：}."""
+    from core.models import AcademicMatrixRow
+
+    row = AcademicMatrixRow(
+        title="A", authors="B", year="2024", venue="C",
+        research_problem="P", method="M", innovation="I", limitation="L",
+        evidence_page=1, evidence_quote="Q", confidence=0.5, trigger_reason="R",
+    )
+    prompt = build_synthesis_prompt("topic", [row])
+
+    assert r"\noindent\textbf{摘要：}" in prompt or "摘要：" in prompt
+    assert r"\noindent\textbf{引言：}" in prompt or "引言：" in prompt
+    assert "MUST" in prompt
+
+
+def test_render_survey_tex_multi_stage_returns_valid_latex():
+    """Multi-stage synthesis must produce valid LaTeX with all 6 sections."""
+    from core.synthesis import render_survey_tex_multi_stage, validate_latex_syntax
+    from core.models import AcademicMatrixRow
+
+    class SequentialExtractor:
+        def __init__(self):
+            self.call_count = 0
+            self.sections = [
+                r"\section{Abstract and Introduction}Test abstract content.",
+                r"\section{Technical Taxonomy}Test taxonomy.",
+                r"\section{Systematic Review and Deep Critique}Test critique.",
+                r"\section{Academic Comparison Matrix}Test matrix.",
+                r"\section{Research Gaps and Future Work}Test gaps.",
+                r"\section{Conclusion}Test conclusion.",
+            ]
+        def __call__(self, prompt: str) -> str:
+            result = self.sections[self.call_count]
+            self.call_count += 1
+            return result
+
+    row = AcademicMatrixRow(
+        title="A", authors="B", year="2024", venue="C",
+        research_problem="P", method="M", innovation="I", limitation="L",
+        evidence_page=1, evidence_quote="Q", confidence=0.5, trigger_reason="R",
+    )
+    extractor = SequentialExtractor()
+    result = render_survey_tex_multi_stage(
+        topic="test topic",
+        rows=[row],
+        extraction_fn=extractor,
+        word_count_target=10000,
+    )
+
+    # Must have preamble + 6 sections + \end{document}
+    assert r"\documentclass{ctexart}" in result
+    assert r"\section{Abstract and Introduction}" in result
+    assert r"\section{Conclusion}" in result
+    assert r"\end{document}" in result
+    # Must have called LLM exactly 6 times
+    assert extractor.call_count == 6
+    # Must pass LaTeX validation
+    errors = validate_latex_syntax(result)
     assert errors == []

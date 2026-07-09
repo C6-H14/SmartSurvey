@@ -662,3 +662,210 @@ data/logs/
 
 - Phase 5 新增测试：11 个（7 凭证 + 4 agent）
 - 全量测试：54/54 通过（Phase 4 基线为 50）
+
+---
+
+## 20. 第六阶段 (Phase 6): 追加升级与深度 Bug 调试
+
+### 20.1 概述
+
+Phase 6 完成三个目标：
+1. **Task 26: 零丢失保障机制 (Zero-Drop Guarantee)** — 根治批量提取时论文被静默丢弃的致命 Bug。
+2. **Task 24: 大容量字数上限与输出截断防御** — 支持最高 50,000 字目标，防御 LLM 物理输出 Token 截断导致的 LaTeX 不完整。
+3. **Task 25: LaTeX 排版细节精细化微调** — 表格 Caption 置顶、摘要引言冒号分隔。
+
+---
+
+### 20.2 Task 26: 零丢失保障机制 (Zero-Drop Guarantee)
+
+#### 20.2.1 问题描述
+
+用户喂入 N 篇论文时，最终产物（`survey_draft.tex`、`matrix_table.tex`、`references.bib`）中部分论文被静默丢弃，数量少于 N。
+
+根因分析：`core/pipeline.py` 中的 `filter_rows_by_evidence()` 采用**后置标题模糊匹配**（`_find_matching_paper`）将 LLM 提取的行与源 PDF 关联。当 `pdf_parser.py` 解析非标准 PDF 导致 `paper.title == "missing"` 时，该算法无法将 LLM 提取的真实 Title 与其关联，导致该论文的所有行在证据校验阶段被拦截并移入 `blocked` 列表，**不进入最终产物**。
+
+#### 20.2.2 解决方案: Inline Scope Binding (进程级物理绑定)
+
+废除后置标题模糊匹配，改为在逐论文主循环内部直接完成"提取-自愈-校验-降级"闭环。
+
+#### 20.2.3 数据流变更
+
+```
+旧管道（有缺陷）:
+  for paper in papers:
+      rows ← extract_with_self_healing(paper)   # 提取阶段
+  all_rows += rows
+  accepted, blocked ← filter_rows_by_evidence(all_rows, papers)  # ❌ 后置标题匹配
+  generate_artifacts(accepted)                   # ❌ blocked 的行被丢弃
+
+新管道（Zero-Drop）:
+  for paper in papers:
+      rows ← extract_with_self_healing(paper)    # 提取
+      for row in rows:
+          result ← validate_evidence(row, paper.page_text_by_number())  # ✅ 直接用当前 paper
+          if result.accepted or 已自愈3次:
+              all_rows.append(row)                # ✅ 自愈失败也强制加入
+          else:
+              自愈重试 (max 3)
+  generate_artifacts(all_rows)                    # ✅ 100% 出现
+```
+
+#### 20.2.4 详细规则
+
+1. **废除 `filter_rows_by_evidence()` 中的 `_find_matching_paper()` 后置匹配逻辑。**
+2. **Inline Scope Binding:** 在 `for paper in papers` 主循环内部，提取出 `row` 后，**立即**使用当前循环中的 `paper.page_text_by_number()` 进行证据包含校验，彻底消灭标题匹配失败带来的失联隐患。
+3. **校验通过的行:** 保持原样加入最终列表。
+4. **自愈 3 次失败的行:** 立即就地执行自适应降级，将 `limitation` 改为 `"missing (unverified)"`，并**强制加入最终列表**。
+5. **最终保障:** 无论提取质量如何，最终列表的行数必须等于输入 PDF 数量（论文有错误的除外），确保 `survey_draft.tex`、`matrix_table.tex`、`references.bib` 中**一个不落**地出现所有论文。
+
+#### 20.2.5 涉及文件
+
+- `core/pipeline.py` — 重构：删除 `filter_rows_by_evidence()`、`_find_matching_paper()`；修改 `extract_with_self_healing()` 为 Inline Scope Binding 模式
+- `core/templates.py` — 验证最终产物是否包含所有论文
+- `tests/test_pipeline.py` — 新增 Zero-Drop 测试用例
+
+#### 20.2.6 验收标准
+
+- 输入 N 篇 PDF，最终产物中必须恰好有 N 行（解析失败且有 `paper.error` 的除外）。
+- 证据校验失败的行，以 `"missing (unverified)"` 降级状态强制进入最终列表。
+- 不再出现论文被静默丢弃的情况。
+
+---
+
+### 20.3 Task 24: 大容量字数上限支持与最大输出 Token 截断防御
+
+#### 20.3.1 问题描述
+
+字数控制滑块上限从 10,000 字提高到 50,000 字后，几乎所有大语言模型的单次 API 输出都有物理硬件限制（通常 4096 或 8192 Token，折合中文约 3000~6000 字）。如果使用单次 API 调用（Single-pass），输出必然被模型强行截断，生成的 LaTeX 文件会缺少 `\end{document}` 等尾部内容，导致 Overleaf 无法编译。
+
+#### 20.3.2 设计策略: 混合方案
+
+采用**方案 A（限制上限）+ 方案 B（分章节多阶段合成）**的混合策略：
+
+**方案 A — UI 阈值提示：**
+- 在 Streamlit 滑块上方显示物理天花板提示：`推荐上限: 8000 字（超过将触发分章节多轮合成）`。
+- 当用户设定超过 8000 字时，自动切换为多阶段合成模式。
+
+**方案 B — 分章节多阶段合成（Multi-stage Synthesis）：**
+- 将 6 个 `\section{...}` 章节拆分为 6 次独立的 LLM 调用，每次生成一个章节。
+- 每次调用的 System Prompt 限定当前章节的内容范围，字数目标按需分配。
+- 最后将所有章节片段拼接为一个完整的 `.tex` 文件。
+
+#### 20.3.3 数据流
+
+```
+word_count_target > 8000 ?
+  ├── No  → Single-pass synthesis (当前逻辑，字数上限放宽到 8000)
+  └── Yes → Multi-stage synthesis (链式历史续写流):
+              ├── 代码硬编码生成导言区（含 % !TEX program = xelatex 等魔术注释）
+              ├── Stage 1: 调用 LLM 生成 \section{Abstract and Introduction}
+              ├── Stage 2: 传入 rows 全量数据 + Section 1 真实文本 → 续写 Section 2
+              ├── Stage 3: 传入 rows 全量数据 + Sections 1-2 真实文本 → 续写 Section 3
+              ├── Stage 4: 传入 rows 全量数据 + Sections 1-3 真实文本 → 续写 Section 4
+              ├── Stage 5: 传入 rows 全量数据 + Sections 1-4 真实文本 → 续写 Section 5
+              ├── Stage 6: 传入 rows 全量数据 + Sections 1-5 真实文本 → 续写 Section 6
+              └── 代码自动追加 \end{document}
+```
+
+#### 20.3.4 链式历史续写流 (Chained Contextual Generation)
+
+**原理：** 每次调用 LLM 生成第 N 章节时，除了传入全量 rows 矩阵 JSON 数据外，还将此前已生成的第 1 到 N-1 章节的真实 LaTeX 文本一并作为 Context 喂给大模型，确保全文风格一致、逻辑连贯。
+
+**Prompt 约束：**
+```
+请仔细阅读前序已生成章节的写作风格、专业术语和上下文逻辑，
+顺着上文结尾，优雅自然地续写本章节，确保全文术语一致、逻辑浑然一体，
+禁止出现重复介绍。
+```
+
+**Token 成本分析：** 4 篇文献的结构化 rows JSON 体积极小（不超过 2000 Tokens），重复投喂 6 次累计成本低于 0.01 元人民币，经济可行性极高。
+
+#### 20.3.5 导言区与结束符策略
+
+**导言区（方法 B — 代码侧硬编码）：**
+废除由大模型生成 preamble。Python 代码在拼接前硬编码生成标准导言区：
+
+```latex
+% !TEX program = xelatex
+% !TEX root = survey_draft.tex
+\documentclass{ctexart}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage[backend=biber,style=gb7714-2015]{biblatex}
+\addbibresource{ref.bib}
+\begin{document}
+```
+
+Section 1 的 Prompt 仅要求其产出 `\section{Abstract and Introduction}` 及之后的内容。
+
+**结束符（方法 D — 代码侧自动追加）：**
+Section 6 仅输出学术结论内容，Python 代码在最终拼接文件末尾自动追加 `\end{document}`。
+
+**决策理由：** 彻底杜绝 LLM 因幻觉、语法破损或生成截断导致的 LaTeX 编译崩溃。
+
+#### 20.3.6 涉及文件
+
+- `main.py` — 滑块上限改为 50000，添加阈值警告提示
+- `core/synthesis.py` — 新增 `render_survey_tex_multi_stage()` 分章节合成函数；
+  `_build_section_prompt()` 构建带链式上下文的章节 Prompt；
+  `_build_preamble()` 硬编码生成导言区
+- `core/pipeline.py` — 根据 `word_count_target` 自动选择合成模式
+
+#### 20.3.7 验收标准
+
+- 滑块范围为 1000–50000，步长 500。
+- 字数 ≤ 8000 时使用单次合成（保持向后兼容）。
+- 字数 > 8000 时自动切换为分章节多阶段合成。
+- 导言区由代码硬编码，包含 `% !TEX program = xelatex` 魔术注释。
+- 文件末尾自动追加 `\end{document}`。
+- 多阶段合成的最终 LaTeX 能通过 `validate_latex_syntax` 校验。
+
+---
+
+### 20.4 Task 25: LaTeX 排版细节精细化微调
+
+#### 20.4.1 Caption 置顶
+
+**现状：** `core/templates.py` 中 `render_matrix_table_tex` 的 `\caption{...}` 位于 `\begin{tabularx}` 之前（已置顶）。
+
+**变更：** 确认 `\caption` 在 `\begin{tabularx}` 之前，如正确则不变，如出现问题则调整顺序为：
+
+```latex
+\begin{table}[htbp]
+\centering
+\caption{Academic Comparison Matrix}  % ← Caption 置顶
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\textwidth}{XXXX}
+...
+\end{tabularx}
+\end{table}
+```
+
+#### 20.4.2 第一部分摘要引言冒号分隔
+
+**现状：** 第一个章节 `\section{Abstract and Introduction}` 中，摘要和引言内容混合在一起，未做视觉分隔。
+
+**变更：** 在 Prompt（`build_synthesis_prompt`）和模板（`render_survey_tex`）中增加分隔指令，使用规范 LaTeX 语法：
+
+```latex
+\section{Abstract and Introduction}
+
+\noindent\textbf{摘要：}...（摘要正文）...
+
+\par\bigskip
+
+\noindent\textbf{引言：}...（引言正文）...
+```
+
+#### 20.4.3 涉及文件
+
+- `core/synthesis.py` — 在 `build_synthesis_prompt` 中添加摘要引言分隔排版指令
+- `core/templates.py` — 在 `render_survey_tex` 的模板内容中添加 `\noindent\textbf{摘要：}` 和 `\noindent\textbf{引言：}` 格式
+- `tests/test_synthesis.py` — 新增分隔符检测测试
+- `tests/test_templates.py` — 新增冒号分隔检测测试
+
+#### 20.4.4 验收标准
+
+- `matrix_table.tex` 中的 `\caption{...}` 位于 `\begin{tabularx}` 之前。
+- 生成的 `survey_draft.tex` 中 `Abstract and Introduction` 章节包含 `\noindent\textbf{摘要：}` 和 `\noindent\textbf{引言：}` 分隔标记。

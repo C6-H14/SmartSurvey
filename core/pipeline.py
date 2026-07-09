@@ -4,7 +4,7 @@ from typing import Callable
 
 from core.evidence import validate_evidence
 from core.extractor import build_extraction_prompt, build_json_healing_prompt, build_self_healing_prompt, parse_matrix_json
-from core.models import AcademicMatrixRow, GeneratedArtifacts, ParsedPaper
+from core.models import AcademicMatrixRow, GeneratedArtifacts
 from core.synthesis import render_survey_tex_with_llm
 from core.templates import render_bibtex, render_markdown_preview, render_matrix_table_tex, render_survey_tex
 
@@ -45,81 +45,6 @@ def _call_with_rate_limit_backoff(
     return extraction_fn(prompt)
 
 
-def _find_matching_paper(row: AcademicMatrixRow, papers: list[ParsedPaper]) -> ParsedPaper | None:
-    """Match a row to its source paper using normalized title comparison.
-
-    Uses progressive matching: exact title → file_name prefix → keyword overlap.
-    All comparisons strip underscores so 'foo_bar' and 'foobar' are equivalent.
-    """
-    import re as _re
-
-    def _norm(text: str) -> str:
-        """Strip punctuation, underscores, and whitespace; lowercase."""
-        return _re.sub(r"[\W_]+", "", text).lower()
-
-    row_title = _norm(row.title) if row.title else ""
-
-    for paper in papers:
-        paper_title = _norm(paper.title) if paper.title else ""
-        paper_fname = _norm(paper.file_name) if paper.file_name else ""
-
-        # 1. Normalized title containment
-        if row_title and paper_title:
-            if row_title in paper_title or paper_title in row_title:
-                return paper
-
-        # 2. File name containment
-        if row_title and paper_fname:
-            if row_title in paper_fname or paper_fname in row_title:
-                return paper
-
-        # 3. Keyword overlap: share 2+ significant words (>4 chars)
-        row_words = {w for w in row_title.split("_") if len(w) > 4}
-        fname_words = {w for w in paper_fname.split("_") if len(w) > 4}
-        if len(row_words & fname_words) >= 2:
-            return paper
-
-        # 4. Fallback: file_name prefix (first 20 chars)
-        if paper.title in ("missing", "") and paper_fname:
-            prefix = paper_fname[:20]
-            if prefix in row_title or row_title[:20] in prefix:
-                return paper
-
-    return None
-
-
-def filter_rows_by_evidence(
-    rows: list[AcademicMatrixRow],
-    papers: list[ParsedPaper],
-) -> tuple[list[AcademicMatrixRow], list[str]]:
-    accepted: list[AcademicMatrixRow] = []
-    blocked: list[str] = []
-
-    for row in rows:
-        # Degraded rows pass through without containment validation
-        if row.evidence_quote in ("missing", "retry_failed", "unverified"):
-            accepted.append(row)
-            continue
-
-        # Per-paper isolation: find the specific paper this row belongs to
-        matched_paper = _find_matching_paper(row, papers)
-
-        if matched_paper is not None:
-            page_texts = matched_paper.page_text_by_number()
-        else:
-            # Fallback: merge all pages (legacy behavior)
-            page_texts: dict[int, str] = {}
-            for p in papers:
-                page_texts.update(p.page_text_by_number())
-
-        result = validate_evidence(row.evidence_page, row.evidence_quote, page_texts)
-        if result.accepted:
-            accepted.append(row)
-        else:
-            blocked.append(result.message)
-    return accepted, blocked
-
-
 def generate_artifacts(
     topic: str,
     rows: list[AcademicMatrixRow],
@@ -144,15 +69,26 @@ def generate_llm_artifacts(
     word_count_target: int = 3000,
     progress_callback: Callable[[int, int, str, str], None] | None = None,
 ) -> GeneratedArtifacts:
-    """Generate artifacts with LLM-driven LaTeX synthesis instead of template.
+    """Generate artifacts with LLM-driven LaTeX synthesis.
 
+    Dispatches to single-pass or multi-stage synthesis based on word_count_target.
     Falls back to template-based generation if synthesis produces empty output.
     """
-    survey_tex = render_survey_tex_with_llm(
-        topic, rows, extraction_fn,
-        word_count_target=word_count_target,
-        progress_callback=progress_callback,
-    )
+    # Dispatch: multi-stage for large word counts
+    if word_count_target > 8000:
+        from core.synthesis import render_survey_tex_multi_stage
+        survey_tex = render_survey_tex_multi_stage(
+            topic, rows, extraction_fn,
+            word_count_target=word_count_target,
+            progress_callback=progress_callback,
+        )
+    else:
+        survey_tex = render_survey_tex_with_llm(
+            topic, rows, extraction_fn,
+            word_count_target=word_count_target,
+            progress_callback=progress_callback,
+        )
+
     # Fallback: if synthesis produced empty or broken output, use template
     if not survey_tex or len(survey_tex) < 100:
         print("⚠️ LLM synthesis returned empty or invalid, falling back to template.")
@@ -213,7 +149,6 @@ def extract_with_self_healing(
             continue
 
         accepted: list[AcademicMatrixRow] = []
-        blocked_any = False
         blocked_any = False
         for row in rows:
             # Validate against ALL pages of the paper, not just one page
