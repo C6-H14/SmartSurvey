@@ -1,33 +1,65 @@
-from core.models import AcademicMatrixRow, PageSlice, ParsedPaper
-from core.pipeline import filter_rows_by_evidence, generate_artifacts
+from core.models import AcademicMatrixRow
+from core.pipeline import extract_with_self_healing, generate_artifacts
 
 
-def test_filter_rows_by_evidence_blocks_uncontained_quote():
-    paper = ParsedPaper(
-        file_name="paper.pdf",
-        pages=[PageSlice(page_number=1, text="This page supports a real limitation.")],
+def test_zero_drop_retains_degraded_row():
+    """Even after 3 failed validation attempts, the row must appear in output."""
+    class AlwaysFailingExtractor:
+        def __init__(self):
+            self.call_count = 0
+        def __call__(self, prompt: str) -> str:
+            self.call_count += 1
+            return (
+                '[{"title":"Paper A","authors":"Alice","year":"2024",'
+                '"venue":"ICRA","research_problem":"detection",'
+                '"method":"vision","innovation":"new","limitation":"lighting",'
+                '"evidence_page":1,"evidence_quote":"This is pure hallucination.",'
+                '"confidence":0.6,"trigger_reason":"stated"}]'
+            )
+
+    page_text = "This page supports a real limitation."
+    rows, warnings = extract_with_self_healing(
+        merged_context=page_text,
+        page_text_by_number={1: page_text},
+        topic="test",
+        domain_fields=["sensor"],
+        extraction_fn=AlwaysFailingExtractor(),
+        max_retries=3,
     )
-    rows = [
-        AcademicMatrixRow(
-            title="Paper A",
-            authors="missing",
-            year="2024",
-            venue="missing",
-            research_problem="missing",
-            method="missing",
-            innovation="missing",
-            limitation="fake",
-            evidence_page=1,
-            evidence_quote="Not present.",
-            confidence=0.5,
-            trigger_reason="missing",
-        )
-    ]
 
-    accepted, blocked = filter_rows_by_evidence(rows, [paper])
+    # Zero-Drop: must return exactly 1 row (degraded)
+    assert len(rows) == 1
+    assert rows[0].title == "Paper A"
+    # Evidence-bound fields must be marked as unverified
+    assert rows[0].evidence_quote == "unverified"
+    assert rows[0].limitation == "missing (unverified)"
 
-    assert accepted == []
-    assert blocked == ["发现无事实根据的空气警告，已自动拦截"]
+
+def test_zero_drop_accepts_valid_row():
+    """Row with valid evidence passes through unchanged."""
+    class ValidExtractor:
+        def __call__(self, prompt: str) -> str:
+            return (
+                '[{"title":"Paper A","authors":"Alice","year":"2024",'
+                '"venue":"ICRA","research_problem":"detection",'
+                '"method":"vision","innovation":"new","limitation":"lighting",'
+                '"evidence_page":1,"evidence_quote":"This page supports a real limitation.",'
+                '"confidence":0.9,"trigger_reason":"stated"}]'
+            )
+
+    page_text = "This page supports a real limitation."
+    rows, warnings = extract_with_self_healing(
+        merged_context=page_text,
+        page_text_by_number={1: page_text},
+        topic="test",
+        domain_fields=["sensor"],
+        extraction_fn=ValidExtractor(),
+        max_retries=3,
+    )
+
+    assert len(rows) == 1
+    assert rows[0].evidence_quote == "This page supports a real limitation."
+    assert warnings == []
 
 
 def test_generate_artifacts_returns_all_downloads():
