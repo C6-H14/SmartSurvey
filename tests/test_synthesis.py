@@ -265,6 +265,38 @@ def test_cjk_bracket_detected():
     assert errors3 == []
 
 
+def test_build_synthesis_prompt_has_itemize_constraint():
+    """Prompt must require itemize for lists."""
+    from core.synthesis import build_synthesis_prompt
+    from core.models import AcademicMatrixRow
+
+    row = AcademicMatrixRow(
+        title="A", authors="B", year="2024", venue="C",
+        research_problem="P", method="M", innovation="I", limitation="L",
+        evidence_page=1, evidence_quote="Q", confidence=0.5, trigger_reason="R",
+    )
+    prompt = build_synthesis_prompt("topic", [row])
+
+    assert "begin{itemize}" in prompt
+    assert "item" in prompt
+
+
+def test_build_synthesis_prompt_has_colon_constraint():
+    """Prompt must require Chinese colon after \\textbf{...}."""
+    from core.synthesis import build_synthesis_prompt
+    from core.models import AcademicMatrixRow
+
+    row = AcademicMatrixRow(
+        title="A", authors="B", year="2024", venue="C",
+        research_problem="P", method="M", innovation="I", limitation="L",
+        evidence_page=1, evidence_quote="Q", confidence=0.5, trigger_reason="R",
+    )
+    prompt = build_synthesis_prompt("topic", [row])
+
+    assert "：\"" in prompt or "：" in prompt
+    assert "textbf" in prompt
+
+
 def test_render_survey_tex_with_llm_has_preamble_wrap():
     """Single-pass synthesis must wrap output with hardcoded preamble."""
     from core.synthesis import render_survey_tex_with_llm

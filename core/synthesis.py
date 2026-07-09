@@ -147,6 +147,12 @@ def build_synthesis_prompt(
         f"11. CRITICAL: Start your output DIRECTLY from \\section{{Abstract and Introduction}}.\n"
         f"    Do NOT output \\documentclass, any preamble commands, \\begin{{document}}, or \\end{{document}}.\n"
         f"    These are injected by the system automatically.\n"
+        f"12. CRITICAL: When listing technical categories, consensus challenges, or research gaps,\n"
+        f"    you MUST use the \\begin{{itemize}} LaTeX environment. Each category must be a separate\n"
+        f"    \\item. Do NOT stack multiple categories in one long sentence paragraph.\n"
+        f"13. CRITICAL: When using \\textbf{{...}} for a bold leading term, you MUST immediately follow\n"
+        f"    the closing brace with a Chinese colon ：. Example: \\textbf{{第一类：}}[explanation]\n"
+        f"    — NOT \\textbf{{第一类}}[explanation] (missing colon).\n"
     )
 
 
@@ -317,6 +323,14 @@ def _build_section_prompt(
             f"\\par\\bigskip\\noindent\\textbf{{引言：}}[introduction text]\n"
             f"  Do NOT output long paragraphs without this format separation.\n"
         )
+
+    full_prompt += (
+        f"\nCRITICAL FORMATTING RULES:\n"
+        f"  - When listing technical categories, consensus challenges, or research gaps,\n"
+        f"    use \\begin{{itemize}} with each category as a separate \\item.\n"
+        f"  - When using \\textbf{{...}} for a bold leading term, immediately follow with ：.\n"
+        f"    Example: \\textbf{{第一类：}}[explanation]\n"
+    )
 
     full_prompt += (
         f"\nReturn ONLY valid LaTeX source for this section. No markdown fences, no explanations.\n"
