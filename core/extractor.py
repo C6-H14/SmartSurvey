@@ -25,10 +25,21 @@ def _extract_json_bracket(text: str) -> str:
 
 def build_extraction_prompt(topic: str, domain_fields: list[str], page_text: str) -> str:
     all_fields = GENERAL_FIELDS + ["trigger_reason"] + domain_fields
+    semantic_hints = {
+        "sensor": "sensor: the type or model of sensor used in the experiment",
+        "accuracy": "accuracy: the reported numerical accuracy or performance metric",
+        "method": "method: the core algorithm or approach proposed",
+        "dataset": "dataset: the benchmark dataset or experimental environment used",
+    }
+    domain_hints = "; ".join(
+        semantic_hints.get(f, f"{f}: the key metric or result reported for {f}")
+        for f in domain_fields
+    )
     return (
         "You extract a structured academic comparison matrix from PDF text.\n"
         f"Review topic: {topic}\n"
         f"Required fields: {', '.join(all_fields)}\n"
+        f"Field semantics: {domain_hints}\n"
         "Rules:\n"
         "- Use missing for fields not supported by the text.\n"
         "- Every limitation, risk, or research gap must include evidence_page and evidence_quote.\n"
@@ -38,6 +49,9 @@ def build_extraction_prompt(topic: str, domain_fields: list[str], page_text: str
         "- CRITICAL WARNING: Any slight modification of the evidence_quote (even a single "
         "capitalization or punctuation difference) will cause our verification system to reject "
         "your input completely. You MUST copy-paste the exact verbatim substring from the PDF text.\n"
+        "- CRITICAL: The 'method' and 'limitation' fields MUST be written in Chinese, "
+        "no more than 20 Chinese characters each, as a concise academic summary. "
+        "Keep evidence_quote in English as-is. No long English paragraphs allowed in the table cells.\n"
         "- Return JSON only: a list containing exactly ONE object.\n\n"
         f"Merged PDF text (first + last pages):\n{page_text}"
     )
