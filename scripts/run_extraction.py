@@ -97,7 +97,7 @@ def main():
 
     # Resolve credentials
     store = CredentialStore()
-    if not store.has_api_key():
+    if not store.has_credentials():
         print("ERROR: No API key found in OS keyring. Run 'streamlit run main.py' to configure one.")
         sys.exit(1)
 

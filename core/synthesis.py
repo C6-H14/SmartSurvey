@@ -191,6 +191,9 @@ def render_survey_tex_with_llm(
             progress_callback(0, 1, state, detail)
 
         raw = extraction_fn(prompt)
+        raw_len = len(raw)
+        raw_preview = raw[:200].replace("\n", " ").strip()
+        print(f"[LLM] Generated {raw_len} chars: {raw_preview}")
         errors = validate_latex_syntax(raw)
 
         if not errors:

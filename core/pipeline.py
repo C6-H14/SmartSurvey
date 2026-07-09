@@ -155,6 +155,7 @@ def generate_llm_artifacts(
     )
     # Fallback: if synthesis produced empty or broken output, use template
     if not survey_tex or len(survey_tex) < 100:
+        print("⚠️ LLM synthesis returned empty or invalid, falling back to template.")
         from core.templates import render_survey_tex
         survey_tex = render_survey_tex(topic, rows)
 
