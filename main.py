@@ -1,7 +1,7 @@
 import streamlit as st
 
 from core.agent import create_extraction_fn
-from core.credentials import CredentialStore
+from core.credentials import CredentialStore, DEFAULT_API_BASE, DEFAULT_MODEL_NAME
 from core.models import ParsedPaper
 from core.pdf_parser import parse_pdf_bytes
 from core.pipeline import extract_with_self_healing, generate_artifacts, generate_llm_artifacts, filter_rows_by_evidence
@@ -15,16 +15,19 @@ def run_app() -> None:
     credential_store = CredentialStore()
     with st.sidebar:
         st.header("Credentials")
-        st.caption("API Key is stored in the OS keyring. Full keys are never displayed.")
-        key_status = "Configured" if credential_store.has_api_key() else "Missing"
-        st.write(f"API Key status: {key_status}")
-        new_key = st.text_input("Update API Key", type="password")
-        if st.button("Save API Key") and new_key:
-            credential_store.set_api_key(new_key)
-            st.success("API Key saved to OS keyring.")
-        if st.button("Clear API Key"):
-            credential_store.clear_api_key()
-            st.warning("API Key cleared.")
+        st.caption("Credentials are stored in the OS keyring. Full keys are never displayed.")
+        creds = credential_store.get_all()
+        status = "Configured" if credential_store.has_credentials() else "Missing"
+        st.write(f"Credential status: {status}")
+        api_key = st.text_input("API Key", type="password", placeholder="Enter API key")
+        api_base = st.text_input("API Base", placeholder=DEFAULT_API_BASE, value=creds["llm_api_base"] or "")
+        model_name = st.text_input("Model Name", placeholder=DEFAULT_MODEL_NAME, value=creds["llm_model_name"] or "")
+        if st.button("Save Credentials") and api_key:
+            credential_store.save_all(api_key, api_base or DEFAULT_API_BASE, model_name or DEFAULT_MODEL_NAME)
+            st.success("Credentials saved to OS keyring.")
+        if st.button("Clear Credentials"):
+            credential_store.clear_all()
+            st.warning("Credentials cleared.")
 
     topic = st.text_input("Review topic", value="industrial automation lab spatial anomaly detection")
     uploaded_files = st.file_uploader("Upload academic PDFs", type=["pdf"], accept_multiple_files=True)
@@ -49,8 +52,8 @@ def run_app() -> None:
             )
 
         if st.button("Generate preview from verified rows"):
-            if not credential_store.has_api_key():
-                st.error("API Key is required. Please configure it in the sidebar.")
+            if not credential_store.has_credentials():
+                st.error("Credentials are required. Please configure them in the sidebar.")
             else:
                 extraction_fn = create_extraction_fn(credential_store=credential_store)
                 progress_bar = st.progress(0)

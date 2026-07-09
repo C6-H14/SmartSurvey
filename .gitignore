@@ -14,7 +14,7 @@ __pycache__/
 # Data directories
 data/input_pdfs/
 data/output_docs/
-data/
+# data/logs/ is version-controlled (Agent_log.md archives + agent_run.log)
 
 # IDE and tooling
 .cursor/

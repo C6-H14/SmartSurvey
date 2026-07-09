@@ -44,17 +44,23 @@ def _add_tex_spacing(value: str) -> str:
 
 
 def render_matrix_table_tex(rows: list[AcademicMatrixRow]) -> str:
+    ragged = ">{\\raggedright\\arraybackslash}X"
     lines = [
         r"\begin{table}[htbp]",
         r"\centering",
         r"\caption{Academic Comparison Matrix}",
-        r"\noindent\begin{tabularx}{\textwidth}{XXXX}",
+        r"\footnotesize",
+        r"\setlength{\tabcolsep}{4pt}",
+        r"\noindent\begin{tabularx}{\textwidth}{" + f"{ragged}{ragged}{ragged}{ragged}" + "}",
         r"\toprule",
         r"Paper & Method & Key Metric & Limitation \\",
         r"\midrule",
     ]
     for row in rows:
-        metric = next(iter(row.domain_fields.values()), row.innovation)
+        metric = next(
+            (v for v in row.domain_fields.values() if v not in ("missing", "")),
+            row.innovation or "unavailable",
+        )
         title = _add_tex_spacing(latex_escape(row.title))
         method = _add_tex_spacing(latex_escape(row.method))
         metric_str = _add_tex_spacing(latex_escape(str(metric)))

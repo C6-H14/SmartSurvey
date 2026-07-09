@@ -759,3 +759,31 @@
   - Phase 3 GREEN: All 11 synthesis tests pass after implementing `render_survey_tex_with_llm`
 - Test results: 41/42 tests passing (1 pre-existing failure in test_agent.py due to SSL/API key issue)
 - **Commit**: `2cd70e8` — "feat: add llm-driven latex synthesis with stack-based validator (Task 19)"
+
+## Task 22.1 - Upgrade CredentialStore to JSON Multi-Key + Migration Guard
+
+- Timestamp: 2026-07-09 +08:00
+- Branch: `feat/task22`
+- Triggered Superpowers skills: `subagent-driven-development`, `test-driven-development`
+- Key prompt and configuration:
+  - Phase 5 kickoff: Upgrade `core/credentials.py` from single-key `llm_api_key` to JSON `json_credentials` with three fields (api_key, api_base, model_name).
+  - Migration Guard: auto-detect legacy `llm_api_key` entry, migrate to JSON, clear old entry.
+  - TDD strict: RED (7 failing tests) → GREEN (rewrite credentials.py) → REFACTOR (commit).
+- Key decisions and actions:
+  - **RED phase**: Rewrote `tests/test_credentials.py` with 7 tests for new API (get_all, save_all, migration guard, clear_all, has_credentials, empty-key validation). All 7 failed as expected.
+  - **GREEN phase**: Rewrote `core/credentials.py` with:
+    - `save_all(api_key, api_base, model_name)` — serializes to JSON, writes to `json_credentials` entry
+    - `get_all() -> dict` — reads JSON; if missing, migrates legacy `llm_api_key`; if nothing, returns defaults
+    - `has_credentials() -> bool` — checks both JSON and legacy entries
+    - `clear_all()` — deletes both entries
+    - Removed old methods (`set_api_key`, `get_api_key`, `clear_api_key`, `has_api_key`)
+    - `MissingCredentialError` still exported for backward compatibility
+  - All 7 tests pass: `7 passed in 0.08s`
+  - Full suite: `50 passed in 1.95s` (no regressions)
+  - Committed as `2fe81df` — "feat: upgrade credential store to json multi-key with migration guard (Task 22.1) [Subagent: Sonnet] [Manual: None] [Agent count: 1]"
+- Specification alignment:
+  - Design spec §2.3 `CredentialStore` API: `get_all()`, `save_all()`, `has_credentials()`, `clear_all()`
+  - Design spec §2.5 Migration Guard: auto-detect, migrate, clear legacy
+  - Design spec §2.2 JSON Credential Schema: `llm_api_key`, `llm_api_base`, `llm_model_name`
+  - SPEC §19.2-19.5 JSON single-key storage, migration guard, three-field credential support
+- Next step: Task 22.2 (agent.py three-level fallback chain) + Task 22.3 (main.py sidebar UI)

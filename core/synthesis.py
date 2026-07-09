@@ -127,6 +127,9 @@ def build_synthesis_prompt(
         f"6. Total length: {word_count_target} Chinese characters.\n"
         f"7. Return ONLY valid LaTeX source. No markdown fences, no explanations.\n"
         f"8. All $, {{, }}, \\begin, \\end must be properly balanced.\n"
+        f"9. CRITICAL: In the Academic Comparison Matrix table, the 'method' and 'limitation' "
+        f"columns MUST be written in Chinese, no more than 20 Chinese characters each, "
+        f"as a concise academic summary. No long English paragraphs allowed in table cells.\n"
     )
 
 
@@ -191,6 +194,9 @@ def render_survey_tex_with_llm(
             progress_callback(0, 1, state, detail)
 
         raw = extraction_fn(prompt)
+        raw_len = len(raw)
+        raw_preview = raw[:200].replace("\n", " ").strip()
+        print(f"[LLM] Generated {raw_len} chars: {raw_preview}")
         errors = validate_latex_syntax(raw)
 
         if not errors:
