@@ -170,3 +170,19 @@ def test_escaped_brace_does_not_trigger_false_positive():
     source = r"\section{Test} Function call: foo\{bar\} baz"
     errors = validate_latex_syntax(source)
     assert errors == []
+
+
+def test_build_synthesis_prompt_has_separator_constraint():
+    """Prompt must instruct LLM to use \noindent\textbf{摘要：} and \noindent\textbf{引言：}."""
+    from core.models import AcademicMatrixRow
+
+    row = AcademicMatrixRow(
+        title="A", authors="B", year="2024", venue="C",
+        research_problem="P", method="M", innovation="I", limitation="L",
+        evidence_page=1, evidence_quote="Q", confidence=0.5, trigger_reason="R",
+    )
+    prompt = build_synthesis_prompt("topic", [row])
+
+    assert r"\noindent\textbf{摘要：}" in prompt or "摘要：" in prompt
+    assert r"\noindent\textbf{引言：}" in prompt or "引言：" in prompt
+    assert "MUST" in prompt

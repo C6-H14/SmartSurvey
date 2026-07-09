@@ -71,3 +71,12 @@ def test_render_matrix_table_uses_tabularx():
     assert "\\textwidth" in output
     # Must NOT use old tabular format
     assert "\\begin{tabular}{llll}" not in output
+
+
+def test_render_survey_has_abstract_intro_separator():
+    """Section 1 must use \noindent\textbf{摘要：} and \noindent\textbf{引言：}."""
+    output = render_survey_tex("industrial anomaly detection", sample_rows())
+
+    assert r"\noindent\textbf{摘要：}" in output
+    assert r"\noindent\textbf{引言：}" in output
+    assert r"\par\bigskip" in output
