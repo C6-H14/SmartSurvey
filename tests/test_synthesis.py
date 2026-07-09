@@ -65,14 +65,13 @@ def test_tabularx_is_valid_latex_environment():
 
 
 class ValidLaTeXExtractor:
-    """Mock extractor that returns valid LaTeX source."""
+    """Mock extractor that returns valid LaTeX section content (no preamble)."""
     def __init__(self):
         self.call_count = 0
 
     def __call__(self, prompt: str) -> str:
         self.call_count += 1
         return (
-            r"\documentclass{ctexart}\usepackage{booktabs}\begin{document}"
             r"\section{Abstract and Introduction}This is a test review."
             r"\section{Technical Taxonomy}Categories here."
             r"\section{Systematic Review and Deep Critique}Critique with evidence."
@@ -81,29 +80,22 @@ class ValidLaTeXExtractor:
             r"\end{tabular}\end{table}"
             r"\section{Research Gaps and Future Work}Future directions."
             r"\section{Conclusion}Summary."
-            r"\end{document}"
         )
 
 
 class InvalidLaTeXExtractor:
-    """Mock extractor that returns LaTeX with syntax errors."""
+    """Mock extractor that returns LaTeX with syntax errors (no preamble)."""
     def __init__(self):
         self.call_count = 0
 
     def __call__(self, prompt: str) -> str:
         self.call_count += 1
         if self.call_count == 1:
-            # First call: broken LaTeX
             return (
-                r"\documentclass{ctexart}\begin{document}"
                 r"\section{Test}Unclosed formula $x + y"
-                r"\end{document}"
             )
-        # Second call: fixed LaTeX
         return (
-            r"\documentclass{ctexart}\begin{document}"
             r"\section{Test}Closed formula $x + y$"
-            r"\end{document}"
         )
 
 
@@ -271,3 +263,28 @@ def test_cjk_bracket_detected():
     valid2 = r"\subsection{摘要：}本文围绕"
     errors3 = validate_latex_syntax(valid2)
     assert errors3 == []
+
+
+def test_render_survey_tex_with_llm_has_preamble_wrap():
+    """Single-pass synthesis must wrap output with hardcoded preamble."""
+    from core.synthesis import render_survey_tex_with_llm
+
+    class ContentOnlyExtractor:
+        def __call__(self, prompt: str) -> str:
+            # LLM output starts directly with \section (no preamble)
+            return r"\section{Abstract and Introduction}Test content."
+
+    result = render_survey_tex_with_llm(
+        topic="test",
+        rows=[],
+        extraction_fn=ContentOnlyExtractor(),
+    )
+
+    # Must have hardcoded preamble
+    assert r"\documentclass{ctexart}" in result
+    assert r"\usepackage[paper=a4paper, margin=1.8cm]{geometry}" in result
+    assert r"\usepackage{amsmath}" in result
+    # Must have the LLM content
+    assert r"\section{Abstract and Introduction}" in result
+    # Must have \end{document}
+    assert r"\end{document}" in result
