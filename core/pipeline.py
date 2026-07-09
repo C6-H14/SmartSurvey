@@ -69,15 +69,26 @@ def generate_llm_artifacts(
     word_count_target: int = 3000,
     progress_callback: Callable[[int, int, str, str], None] | None = None,
 ) -> GeneratedArtifacts:
-    """Generate artifacts with LLM-driven LaTeX synthesis instead of template.
+    """Generate artifacts with LLM-driven LaTeX synthesis.
 
+    Dispatches to single-pass or multi-stage synthesis based on word_count_target.
     Falls back to template-based generation if synthesis produces empty output.
     """
-    survey_tex = render_survey_tex_with_llm(
-        topic, rows, extraction_fn,
-        word_count_target=word_count_target,
-        progress_callback=progress_callback,
-    )
+    # Dispatch: multi-stage for large word counts
+    if word_count_target > 8000:
+        from core.synthesis import render_survey_tex_multi_stage
+        survey_tex = render_survey_tex_multi_stage(
+            topic, rows, extraction_fn,
+            word_count_target=word_count_target,
+            progress_callback=progress_callback,
+        )
+    else:
+        survey_tex = render_survey_tex_with_llm(
+            topic, rows, extraction_fn,
+            word_count_target=word_count_target,
+            progress_callback=progress_callback,
+        )
+
     # Fallback: if synthesis produced empty or broken output, use template
     if not survey_tex or len(survey_tex) < 100:
         print("⚠️ LLM synthesis returned empty or invalid, falling back to template.")

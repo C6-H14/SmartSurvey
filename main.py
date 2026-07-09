@@ -34,9 +34,12 @@ def run_app() -> None:
 
     word_count_target = st.slider(
         "Target word count for manuscript",
-        min_value=1000, max_value=10000, value=3000, step=500,
-        help="Controls how many Chinese characters the LLM synthesis should target.",
+        min_value=1000, max_value=50000, value=3000, step=500,
+        help="Controls how many Chinese characters the LLM synthesis should target. "
+             "Values above 8000 will trigger multi-stage chained synthesis.",
     )
+    if word_count_target > 8000:
+        st.info("📝 字数超过 8000，系统将自动切换为分章节多轮合成模式，以突破大模型单次输出上限。")
 
     if uploaded_files:
         parsed = [parse_pdf_bytes(file.getvalue(), file.name) for file in uploaded_files]
