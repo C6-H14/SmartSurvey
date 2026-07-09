@@ -150,7 +150,6 @@ def extract_with_self_healing(
 
         accepted: list[AcademicMatrixRow] = []
         blocked_any = False
-        blocked_any = False
         for row in rows:
             # Validate against ALL pages of the paper, not just one page
             result = validate_evidence(

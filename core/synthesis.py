@@ -229,7 +229,7 @@ def _build_preamble() -> str:
         r"\usepackage{booktabs}" + "\n"
         r"\usepackage{tabularx}" + "\n"
         r"\usepackage[backend=biber,style=gb7714-2015]{biblatex}" + "\n"
-        r"\addbibresource{ref.bib}" + "\n"
+        r"\addbibresource{references.bib}" + "\n"
         r"\begin{document}" + "\n"
     )
 
