@@ -3075,4 +3075,244 @@ Known implementation notes:
 
 ---
 
-> **Branching convention:** Each active task should be implemented on its own branch (`feat/task-xx`), pushed to remote, and submitted as a PR for merging.
+## Phase 5: Multi-Credential Manager & Bug Fixes (Current)
+
+**Goal:** Upgrade `core/credentials.py` to support three-field JSON credential storage (api_key, api_base, model_name) with automatic migration from the legacy single-key format. Fix 3 blocking academic-quality bugs. Add `agent_run.log` for LLM extraction monitoring.
+
+**Architecture:** OS Keyring entry changes from plain-text `llm_api_key` to JSON `json_credentials` containing three fields. `CredentialStore.get_all()` auto-detects legacy keys and migrates. `agent.py` reads from keyring with a three-level fallback chain (keyring -> env vars -> hardcoded defaults). Bug fixes span `core/extractor.py`, `core/templates.py`, `core/synthesis.py`, `core/pipeline.py`, `scripts/run_extraction.py`.
+
+---
+
+### Task 22.1: Upgrade CredentialStore — JSON Single-Key + Migration Guard
+
+**Files:**
+- Modify: `core/credentials.py`
+- Modify: `tests/test_credentials.py`
+
+**Interfaces:**
+- Consumes: `keyring` library (unchanged dependency)
+- Produces: `CredentialStore.get_all() -> dict`, `save_all(api_key, api_base, model_name)`, `has_credentials() -> bool`, `clear_all()`
+
+- [x] **Step 1: Write failing tests for new CredentialStore API**
+
+Rewrite `tests/test_credentials.py` with tests for:
+- `test_get_all_with_json_entry`: save_all + get_all returns three fields
+- `test_get_all_migrates_legacy_key`: legacy key triggers auto-migration to JSON
+- `test_get_all_no_credentials_returns_defaults`: empty keyring returns defaults
+- `test_save_all_writes_json`: save_all serializes to JSON
+- `test_clear_all_removes_both_entries`: clears both JSON and legacy entries
+- `test_has_credentials_detects_json_entry`: has_credentials works
+- `test_empty_api_key_raises_on_save`: empty key raises ValueError
+
+- [x] **Step 2: Run tests to verify failure**
+
+Run: `python -m pytest tests/test_credentials.py -v`
+
+Expected: FAIL — old CredentialStore methods don't support new API.
+
+- [x] **Step 3: Rewrite `core/credentials.py` with new JSON API + Migration Guard**
+
+Replace `CredentialStore` with:
+- `save_all(api_key, api_base, model_name)`: serialize to JSON, write to `json_credentials`
+- `get_all() -> dict`: read JSON entry; if missing, check legacy `llm_api_key` and auto-migrate; if nothing, return defaults
+- `has_credentials() -> bool`: check JSON or legacy entry
+- `clear_all() -> None`: delete both entries
+- Remove old `set_api_key()`, `get_api_key()`, `clear_api_key()`, `has_api_key()` methods
+
+- [x] **Step 4: Run credential tests to verify all pass**
+
+Run: `python -m pytest tests/test_credentials.py -v`
+
+Expected: All 7 new tests PASS.
+
+- [x] **Step 5: Commit**
+
+```bash
+git add core/credentials.py tests/test_credentials.py
+git commit -m "feat: upgrade credential store to json multi-key with migration guard (Task 22.1) [Subagent: Sonnet] [Manual: None] [Agent count: 1]"
+```
+
+### Task 22.2: Upgrade agent.py — Three-Level Fallback Chain
+
+**Files:**
+- Modify: `core/agent.py`
+- Modify: `tests/test_agent.py`
+
+**Interfaces:**
+- Consumes: `CredentialStore.get_all() -> dict` (from Task 22.1)
+- Produces: `get_llm_agent()` with keyring → env var → hardcoded default fallback
+
+**Three-level priority:**
+1. Keyring: `store.get_all()` returns dict with `llm_api_key`, `llm_api_base`, `llm_model_name`
+2. Environment variables: `OPENAI_API_KEY`, `OPENAI_API_BASE`, `LLM_MODEL_NAME`
+3. Hardcoded defaults: `DEFAULT_API_BASE`, `DEFAULT_MODEL_NAME` from `core/credentials.py`
+
+- [x] **Step 1: Write failing tests for three-level fallback**
+
+Write tests in `tests/test_agent.py`:
+- `test_agent_uses_keyring_credentials`: keyring values take priority over env vars
+- `test_agent_falls_back_to_env_vars`: empty keyring uses env vars
+- `test_agent_falls_back_to_defaults`: nothing configured uses hardcoded defaults
+- `test_agent_injects_credentials_to_chatopenai`: verify ChatOpenAI receives correct params
+
+- [x] **Step 2: Run tests to verify failure**
+
+Run: `python -m pytest tests/test_agent.py -v`
+
+Expected: FAIL — old agent uses `get_api_key()` which no longer exists.
+
+- [x] **Step 3: Rewrite `core/agent.py` with three-level fallback**
+
+Replace `get_llm_agent()`:
+- Call `store.get_all()` to get credentials dict
+- For each field (api_key, api_base, model_name): keyring value → env var → hardcoded default
+- Remove calls to old `get_api_key()` method
+
+- [x] **Step 4: Run agent tests to verify all pass**
+
+Run: `python -m pytest tests/test_agent.py -v`
+
+Expected: All new tests PASS.
+
+- [x] **Step 5: Commit**
+
+```bash
+git add core/agent.py tests/test_agent.py
+git commit -m "feat: upgrade agent.py with three-level fallback chain (Task 22.2) [Subagent: Sonnet] [Manual: None] [Agent count: 1]"
+```
+
+### Task 22.3: Upgrade main.py Sidebar — Three-Field Credential UI
+
+**Files:**
+- Modify: `main.py`
+
+**Interfaces:**
+- Consumes: `CredentialStore.save_all()`, `get_all()`, `has_credentials()`, `clear_all()`
+- Consumes: `DEFAULT_API_BASE`, `DEFAULT_MODEL_NAME` from `core/credentials.py`
+
+- [x] **Step 1: Update `main.py` sidebar**
+
+Replace old single-key credential UI with three-field form:
+- Show credential status via `has_credentials()`
+- Three text inputs: API Key (password masked), API Base (shows default), Model Name (shows default)
+- "Save Credentials" button calls `save_all(api_key, api_base, model_name)`
+- "Clear Credentials" button calls `clear_all()`
+- Remove calls to old `has_api_key()`, `set_api_key()`, `clear_api_key()`
+
+- [x] **Step 2: Run app syntax check**
+
+Run: `python -c "import ast; ast.parse(open('main.py').read()); print('main.py syntax OK')"`
+
+Expected: syntax OK.
+
+- [x] **Step 3: Run full test suite**
+
+Run: `python -m pytest tests -v --ignore=tests/test_agent.py`
+
+Expected: All credential and pipeline tests PASS.
+
+- [x] **Step 4: Commit**
+
+```bash
+git add main.py
+git commit -m "feat: add three-field credential UI to streamlit sidebar (Task 22.3) [Subagent: Sonnet] [Manual: None] [Agent count: 1]"
+```
+
+### Task 22.4: Fix Bug 1 — Hollow Content Fallback
+
+**Files:**
+- Modify: `scripts/run_extraction.py`
+- Modify: `core/pipeline.py`
+- Modify: `core/synthesis.py`
+
+**Symptoms:** Batch-extraction produced `survey_draft.tex` where all sections except the Academic Comparison Matrix contained only hollow placeholder text (e.g., "本节依据论文方法..."), never the LLM-synthesized quality Chinese prose.
+
+**Root cause:** `scripts/run_extraction.py` never called `generate_llm_artifacts` (the LLM-driven synthesis path). Also `has_api_key()` was used instead of `has_credentials()` after Task 22.1 removed the old API.
+
+**Fixes:**
+1. `scripts/run_extraction.py`:
+   - Replace `store.has_api_key()` → `store.has_credentials()` (line 100)
+   - Ensure `extraction_fn` is passed to `generate_llm_artifacts`
+2. `core/pipeline.py`:
+   - In `generate_llm_artifacts`, add `print("⚠️ LLM synthesis returned empty or invalid, falling back to template.")` when falling back
+3. `core/synthesis.py`:
+   - In `render_survey_tex_with_llm`, add `print(f"[LLM] Entering synthesis...")` at entry
+   - At exit/success, print `print(f"[LLM] Generated {len(raw)} chars: {raw[:200]}")`
+
+- [x] **Step 1: Fix `scripts/run_extraction.py`**
+- [x] **Step 2: Fix `core/pipeline.py` with fallback warning**
+- [x] **Step 3: Fix `core/synthesis.py` with LLM logging**
+- [x] **Step 4: Run full test suite**
+- [x] **Step 5: Commit**
+
+### Task 22.5: Fix Bug 2 — Giant English Table
+
+**Files:**
+- Modify: `core/extractor.py`
+- Modify: `core/synthesis.py`
+- Modify: `core/templates.py`
+
+**Symptoms:** Exported `matrix_table.tex` had oversized tables with long English paragraphs in cells, breaking PDF layout. Poor readability.
+
+**Fixes:**
+1. `core/extractor.py` — `build_extraction_prompt`: append CRITICAL rule — method/limitation fields MUST be Chinese, ≤20 chars, concise academic summary
+2. `core/synthesis.py` — `build_synthesis_prompt`: same CRITICAL rule for table cells
+3. `core/templates.py` — `render_matrix_table_tex`:
+   - Inject `\footnotesize` before tabularx
+   - Inject `\setlength{\tabcolsep}{4pt}`
+   - Use `>{\raggedright\arraybackslash}X` for all 4 X columns instead of plain `X`
+   - Keep `\noindent` (already present)
+
+- [x] **Step 1: Add prompt constraints in `core/extractor.py`**
+- [x] **Step 2: Add prompt constraints in `core/synthesis.py`**
+- [x] **Step 3: Add table micro-typography in `core/templates.py`**
+- [x] **Step 4: Run full test suite**
+- [x] **Step 5: Commit**
+
+### Task 22.6: Fix Bug 3 — Key Metric Missing
+
+**Files:**
+- Modify: `core/extractor.py`
+- Modify: `core/templates.py`
+
+**Symptoms:** Key Metric column showed all "missing" values instead of actual data.
+
+**Fixes:**
+1. `core/extractor.py` — `build_extraction_prompt`: add semantic descriptions for each domain field key (e.g., 'sensor: the type of sensor used')
+2. `core/templates.py` — `render_matrix_table_tex`: strengthen metric fallback to filter out "missing"/empty values before falling back to innovation
+
+- [x] **Step 1: Add semantic descriptions in `core/extractor.py`**
+- [x] **Step 2: Fix metric fallback in `core/templates.py`**
+- [x] **Step 3: Run full test suite**
+- [x] **Step 4: Commit**
+### Task 22.7: Add `agent_run.log` Logging System
+
+**Files:**
+- Modify: `.gitignore`
+- Modify: `docs/SPEC.md`
+- Create: `docs/superpowers/specs/2026-07-09-phase-5-credentials-bugfix-design.md`
+- Move: `docs/Agent_log.md` → `data/logs/Agent_log.md` (full backup archive)
+- Move: `docs/Agent_log1.md` → `data/logs/Agent_log1.md` (early task archive)
+- Move: `docs/Agent_log2.md` → `data/logs/Agent_log2.md` (current dev log)
+
+**Log Architecture:**
+
+```
+data/logs/
+├── Agent_log.md        # Complete backup archive (Tasks 1–789, all sessions)
+├── Agent_log1.md       # Early task archive (Tasks 0–15)
+├── Agent_log2.md       # Current development log (Tasks 16+)
+└── agent_run.log       # Runtime LLM extraction log (auto-generated)
+```
+
+**Changes:**
+1. `.gitignore`: Remove blanket `data/` ignore, replace with `data/input_pdfs/`, `data/output_docs/`
+2. Move log files to `data/logs/` with correct naming
+3. Update `docs/SPEC.md` with Phase 5 and logging section (§19)
+4. Create `docs/superpowers/specs/2026-07-09-phase-5-credentials-bugfix-design.md`
+
+- [x] **Step 1: Move log files and update naming**
+- [x] **Step 2: Update `.gitignore`**
+- [x] **Step 3: Update `docs/SPEC.md` with Phase 5 section**
+- [x] **Step 4: Create design spec document**
+- [x] **Step 5: Commit**

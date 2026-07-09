@@ -596,3 +596,69 @@ XML 反馈格式:
 ### 18.1 第四阶段 (Phase 4, 可选)
 
 - Task 22: Zotero Web API 自动文献归档集成（RIS/CSV/Better BibTeX 导出）。延后原因：属于便利性功能，不影响核心综述生成质量。
+
+## 19. 第五阶段 (Phase 5): 多凭证管理与 Bug 修复
+
+### 19.1 概述
+
+Phase 5 完成四个目标：
+1. **多凭证管理** — CredentialStore 从单键升级为三字段 JSON 存储（api\_key, api\_base, model\_name），支持 OS 钥匙串 ← 环境变量 ← 硬编码默认值三级回退链。
+2. **Bug 修复** — 修复 3 个阻塞性学术质量 Bug（空洞内容回退、巨型英文表格、Key Metric 缺失）。
+3. **日志规范** — 引入 `agent_run.log` 运行时提取日志和 `data/logs/` 日志归档架构。
+4. **UI 对齐** — Streamlit 侧栏三字段凭证表单。
+
+### 19.2 JSON 凭证存储
+
+OS Keyring 数据结构变更:
+
+```
+旧: llm_api_key = "sk-xxxx"
+新: json_credentials = '{"llm_api_key":"sk-xxx","llm_api_base":"https://...","llm_model_name":"deepseek-v4-flash"}'
+```
+
+旧格式自动检测并迁移（Migration Guard），迁移后自动清除旧条目。
+
+### 19.3 三级回退优先级
+
+```
+1. OS Keyring (get_all())
+2. 环境变量 (OPENAI_API_KEY, OPENAI_API_BASE, LLM_MODEL_NAME)
+3. 硬编码默认值 (DEFAULT_API_BASE, DEFAULT_MODEL_NAME)
+```
+
+注意：`get_all()` 在空 keyring 时仍返回非空默认值（`api_base`/`model_name` 有填充），所以必须以 `has_credentials()` 门控 keyring 优先，否则环境变量回退失效。
+
+### 19.4 Bug 修复清单
+
+| Bug | 症状 | 根因 | 修复文件 |
+|-----|------|------|---------|
+| 1. 空洞内容回退 | `survey_draft.tex` 各章节仅含占位符模板文本 | `run_extraction.py` 从未调用 `generate_llm_artifacts`; 缺少 LLM 合成回退提示 | `scripts/run_extraction.py`, `core/pipeline.py`, `core/synthesis.py` |
+| 2. 巨型英文表格 | 表格单元格内全英文长段落，排版溢出 | Prompt 缺少中文字数约束；表格缺少物理微缩排版 | `core/extractor.py`, `core/synthesis.py`, `core/templates.py` |
+| 3. Key Metric 缺失 | Key Metric 列全显示 "missing" | Extraction prompt 缺少语义提示；domain\_fields 回退脆弱 | `core/extractor.py`, `core/templates.py` |
+
+### 19.5 日志文件架构
+
+运行时日志与开发日志统一存放在 `data/logs/` 目录（受版本控制，不 gitignored）：
+
+```
+data/logs/
+├── Agent_log.md        # 完整备份存档（Tasks 1–789，全量会话记录）
+├── Agent_log1.md       # 早期任务归档（Tasks 0–15）
+├── Agent_log2.md       # 当前开发日志（Tasks 16+）
+└── agent_run.log       # LLM 提取运行时日志（自动生成，追加写入）
+```
+
+`agent_run.log` 格式：
+
+```
+[2026-07-09 14:30:01] [EXTRACTION] Starting batch: 4 PDFs
+[2026-07-09 14:30:05] [LLM] Paper "paper_name" → 1 row, 0 corrections
+[2026-07-09 14:30:08] [LLM] Generated 4823 chars
+[2026-07-09 14:30:08] [EVIDENCE] 3 rows accepted, 1 blocked
+[2026-07-09 14:30:08] [FALLBACK] ⚠️ LLM synthesis returned empty, using template
+```
+
+### 19.6 第五阶段测试
+
+- Phase 5 新增测试：11 个（7 凭证 + 4 agent）
+- 全量测试：54/54 通过（Phase 4 基线为 50）
