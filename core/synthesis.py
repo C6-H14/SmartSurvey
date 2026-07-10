@@ -80,9 +80,10 @@ def validate_latex_syntax(latex_source: str) -> list[str]:
             context_end = min(len(latex_source), i + 10)
             context = latex_source[context_start:context_end].replace("\n", " ")
             errors.append(
-                f"CJK character '{latex_source[i]}' detected near position {i} "
-                f"(context: ...{context}...) -- possibly replacing '}}'. "
-                f"Fix all CJK brackets in LaTeX source."
+                f"检测到中文符号 '{latex_source[i]}' 位于位置 {i} 附近"
+                f"(上下文: ...{context}...) —— "
+                f"可能由于输入法冲突错误替换了右花括号 }}。"
+                f"请修复 LaTeX 源码中的所有中文符号。"
             )
         i += 1
     if brace_count > 0:
@@ -114,6 +115,15 @@ def build_synthesis_prompt(
         for row in rows
     )
 
+    # Build section guidance block from SECTION_TEMPLATES
+    section_guidance_lines = []
+    for i, tmpl in enumerate(SECTION_TEMPLATES):
+        section_guidance_lines.append(
+            f"  Section {i+1} ({tmpl['name']}) [{tmpl['weight'].upper()}]: "
+            f"{tmpl['guidance'].format(topic=topic)}"
+        )
+    section_guidance_block = "\n".join(section_guidance_lines)
+
     return (
         f"You are an academic writing assistant. Generate a Chinese academic survey manuscript in LaTeX.\n\n"
         f"Review topic: {topic}\n\n"
@@ -137,22 +147,12 @@ def build_synthesis_prompt(
         f"5. Write body text in Chinese, keep evidence quotes in English.\n"
         f"6. Total length: {word_count_target} Chinese characters.\n"
         f"7. Return ONLY valid LaTeX source. No markdown fences, no explanations.\n"
-        f"8. All $, {{, }}, \\begin, \\end must be properly balanced.\n"
-        f"9. CRITICAL: Chapter 1 (Abstract and Introduction) MUST strictly start and format with: "
-        f"\\noindent\\textbf{{摘要：}}[abstract text]\\par\\bigskip\\noindent\\textbf{{引言：}}[introduction text]\n"
-        f"   Do NOT output long paragraphs without this format separation.\n"
-        f"10. CRITICAL: In the Academic Comparison Matrix table, the 'method' and 'limitation' "
-        f"columns MUST be written in Chinese, no more than 20 Chinese characters each, "
-        f"as a concise academic summary. No long English paragraphs allowed in table cells.\n"
-        f"11. CRITICAL: Start your output DIRECTLY from \\section{{Abstract and Introduction}}.\n"
+        f"8. All $, {{, }}, \\begin, \\end must be properly balanced.\n\n"
+        f"SECTION GUIDANCE:\n"
+        f"{section_guidance_block}\n\n"
+        f"CRITICAL: Start your output DIRECTLY from \\section{{Abstract and Introduction}}.\n"
         f"    Do NOT output \\documentclass, any preamble commands, \\begin{{document}}, or \\end{{document}}.\n"
         f"    These are injected by the system automatically.\n"
-        f"12. CRITICAL: When listing technical categories, consensus challenges, or research gaps,\n"
-        f"    you MUST use the \\begin{{itemize}} LaTeX environment. Each category must be a separate\n"
-        f"    \\item. Do NOT stack multiple categories in one long sentence paragraph.\n"
-        f"13. CRITICAL: When using \\textbf{{...}} for a bold leading term, you MUST immediately follow\n"
-        f"    the closing brace with a Chinese colon ：. Example: \\textbf{{第一类：}}[explanation]\n"
-        f"    — NOT \\textbf{{第一类}}[explanation] (missing colon).\n"
     )
 
 
@@ -263,6 +263,65 @@ SECTION_NAMES = [
     "Conclusion",
 ]
 
+SECTION_TEMPLATES: list[dict] = [
+    {
+        "name": "Abstract and Introduction",
+        "weight": "heavy",
+        "guidance": (
+            "根据综述主题【{topic}】编写相关的研究背景、核心应用价值、"
+            "面临的核心挑战以及本文综述结构。"
+            "必须严格且强制采用 \\noindent\\textbf{{摘要：}}..."
+            "\\par\\bigskip\\noindent\\textbf{{引言：}}..."
+            "的双重物理分段结构。内容不少于 400 字。"
+        ),
+    },
+    {
+        "name": "Technical Taxonomy",
+        "weight": "light",
+        "guidance": (
+            "根据对比矩阵中各文献的方法特征，针对主题【{topic}】"
+            "划分出清晰的技术体系与分类。"
+            "必须采用 \\begin{{itemize}} 列表环境，各类别独立 \\item，"
+            "严禁在单行内用长句堆叠。"
+        ),
+    },
+    {
+        "name": "Systematic Review and Deep Critique",
+        "weight": "light",
+        "guidance": (
+            "针对下方 rows 中校验通过的文献，结合主题【{topic}】进行深入、批判性的横向评述。"
+            "每篇文献的局限性评论必须引用其 evidence_page。"
+        ),
+    },
+    {
+        "name": "Academic Comparison Matrix",
+        "weight": "light",
+        "guidance": (
+            "直接嵌入下方提供的 booktabs 三线表作为【{topic}】的学术对比矩阵，"
+            "无需额外文字说明。表中 method 和 limitation 列必须使用中文，"
+            "每项不超过 20 字。"
+        ),
+    },
+    {
+        "name": "Research Gaps and Future Work",
+        "weight": "heavy",
+        "guidance": (
+            "从上述已验证的局限性出发，归纳当前在【{topic}】场景下面临的"
+            "重大研究缺口。必须采用 \\begin{{itemize}} 列表环境，"
+            "输出至少 3 个具体的研究缺口（Gap），每项以 \\textbf{{...：}} 开头"
+            "（加粗并以中文冒号结尾），内容不少于 500 字。"
+        ),
+    },
+    {
+        "name": "Conclusion",
+        "weight": "light",
+        "guidance": (
+            "总结全文核心发现，概括【{topic}】领域当前的研究状态"
+            "与未来发展方向。"
+        ),
+    },
+]
+
 
 def _build_section_prompt(
     section_index: int,
@@ -315,21 +374,11 @@ def _build_section_prompt(
             f"that was already covered in previous sections.\n"
         )
 
-    # Add separator constraint for section 0
-    if section_index == 0:
-        full_prompt += (
-            f"\nCRITICAL FORMAT REQUIREMENT for Section 1:\n"
-            f"  \\noindent\\textbf{{摘要：}}[abstract text]"
-            f"\\par\\bigskip\\noindent\\textbf{{引言：}}[introduction text]\n"
-            f"  Do NOT output long paragraphs without this format separation.\n"
-        )
-
+    # Inject section-specific guidance from SECTION_TEMPLATES
+    tmpl = SECTION_TEMPLATES[section_index]
     full_prompt += (
-        f"\nCRITICAL FORMATTING RULES:\n"
-        f"  - When listing technical categories, consensus challenges, or research gaps,\n"
-        f"    use \\begin{{itemize}} with each category as a separate \\item.\n"
-        f"  - When using \\textbf{{...}} for a bold leading term, immediately follow with ：.\n"
-        f"    Example: \\textbf{{第一类：}}[explanation]\n"
+        f"\nSECTION GUIDANCE:\n"
+        f"  {tmpl['guidance'].format(topic=topic)}\n"
     )
 
     full_prompt += (
