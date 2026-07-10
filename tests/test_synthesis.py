@@ -398,3 +398,4 @@ def test_cjk_bracket_detection_error_precision():
     errors = validate_latex_syntax(broken)
     assert any("检测到中文符号" in e or "CJK" in e for e in errors)
     assert any("输入法冲突" in e or "替换了" in e or "possibly replacing" in e for e in errors)
+

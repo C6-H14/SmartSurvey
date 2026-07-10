@@ -161,7 +161,6 @@ def test_zero_drop_retains_all_three_papers():
     even when evidence validation fails on all retries.
     """
     from core.pipeline import extract_with_self_healing
-    from core.models import AcademicMatrixRow
 
     class ThreePaperExtractor:
         """Simulates 3 papers: A passes, B passes after 1 retry, C fails all retries."""
