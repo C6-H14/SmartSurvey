@@ -1,4 +1,4 @@
-from core.synthesis import build_synthesis_prompt, render_survey_tex_with_llm, validate_latex_syntax
+from core.synthesis import build_synthesis_prompt, render_survey_tex_with_llm, validate_latex_syntax, SECTION_TEMPLATES
 
 
 def test_build_preamble_contains_magic_comments():
@@ -65,14 +65,13 @@ def test_tabularx_is_valid_latex_environment():
 
 
 class ValidLaTeXExtractor:
-    """Mock extractor that returns valid LaTeX source."""
+    """Mock extractor that returns valid LaTeX section content (no preamble)."""
     def __init__(self):
         self.call_count = 0
 
     def __call__(self, prompt: str) -> str:
         self.call_count += 1
         return (
-            r"\documentclass{ctexart}\usepackage{booktabs}\begin{document}"
             r"\section{Abstract and Introduction}This is a test review."
             r"\section{Technical Taxonomy}Categories here."
             r"\section{Systematic Review and Deep Critique}Critique with evidence."
@@ -81,29 +80,22 @@ class ValidLaTeXExtractor:
             r"\end{tabular}\end{table}"
             r"\section{Research Gaps and Future Work}Future directions."
             r"\section{Conclusion}Summary."
-            r"\end{document}"
         )
 
 
 class InvalidLaTeXExtractor:
-    """Mock extractor that returns LaTeX with syntax errors."""
+    """Mock extractor that returns LaTeX with syntax errors (no preamble)."""
     def __init__(self):
         self.call_count = 0
 
     def __call__(self, prompt: str) -> str:
         self.call_count += 1
         if self.call_count == 1:
-            # First call: broken LaTeX
             return (
-                r"\documentclass{ctexart}\begin{document}"
                 r"\section{Test}Unclosed formula $x + y"
-                r"\end{document}"
             )
-        # Second call: fixed LaTeX
         return (
-            r"\documentclass{ctexart}\begin{document}"
             r"\section{Test}Closed formula $x + y$"
-            r"\end{document}"
         )
 
 
@@ -204,7 +196,7 @@ def test_build_synthesis_prompt_has_separator_constraint():
 
     assert r"\noindent\textbf{摘要：}" in prompt or "摘要：" in prompt
     assert r"\noindent\textbf{引言：}" in prompt or "引言：" in prompt
-    assert "MUST" in prompt
+    assert "CRITICAL" in prompt
 
 
 def test_render_survey_tex_multi_stage_returns_valid_latex():
@@ -251,3 +243,159 @@ def test_render_survey_tex_multi_stage_returns_valid_latex():
     # Must pass LaTeX validation
     errors = validate_latex_syntax(result)
     assert errors == []
+
+
+def test_cjk_bracket_detected():
+    """CJK right-angle bracket replacing } must be detected."""
+    from core.synthesis import validate_latex_syntax
+
+    # 》 replacing } — a real LLM hallucination found in production
+    broken = r"\subsection{核心贡献与技术谱系》"
+    errors = validate_latex_syntax(broken)
+    assert any("》" in e or "CJK" in e for e in errors)
+
+    # Valid LaTeX with CJK content should NOT trigger false positive
+    valid = r"\subsection{核心贡献与技术谱系}"
+    errors2 = validate_latex_syntax(valid)
+    assert errors2 == []
+
+    # Closing brace with CJK after it is fine
+    valid2 = r"\subsection{摘要：}本文围绕"
+    errors3 = validate_latex_syntax(valid2)
+    assert errors3 == []
+
+
+def test_build_synthesis_prompt_has_itemize_constraint():
+    """Prompt must require itemize for lists."""
+    from core.synthesis import build_synthesis_prompt
+    from core.models import AcademicMatrixRow
+
+    row = AcademicMatrixRow(
+        title="A", authors="B", year="2024", venue="C",
+        research_problem="P", method="M", innovation="I", limitation="L",
+        evidence_page=1, evidence_quote="Q", confidence=0.5, trigger_reason="R",
+    )
+    prompt = build_synthesis_prompt("topic", [row])
+
+    assert "begin{itemize}" in prompt
+    assert "item" in prompt
+
+
+def test_build_synthesis_prompt_has_colon_constraint():
+    """Prompt must require Chinese colon after \\textbf{...}."""
+    from core.synthesis import build_synthesis_prompt
+    from core.models import AcademicMatrixRow
+
+    row = AcademicMatrixRow(
+        title="A", authors="B", year="2024", venue="C",
+        research_problem="P", method="M", innovation="I", limitation="L",
+        evidence_page=1, evidence_quote="Q", confidence=0.5, trigger_reason="R",
+    )
+    prompt = build_synthesis_prompt("topic", [row])
+
+    assert "：\"" in prompt or "：" in prompt
+    assert "textbf" in prompt
+
+
+def test_render_survey_tex_with_llm_has_preamble_wrap():
+    """Single-pass synthesis must wrap output with hardcoded preamble."""
+    from core.synthesis import render_survey_tex_with_llm
+
+    class ContentOnlyExtractor:
+        def __call__(self, prompt: str) -> str:
+            # LLM output starts directly with \section (no preamble)
+            return r"\section{Abstract and Introduction}Test content."
+
+    result = render_survey_tex_with_llm(
+        topic="test",
+        rows=[],
+        extraction_fn=ContentOnlyExtractor(),
+    )
+
+    # Must have hardcoded preamble
+    assert r"\documentclass{ctexart}" in result
+    assert r"\usepackage[paper=a4paper, margin=1.8cm]{geometry}" in result
+    assert r"\usepackage{amsmath}" in result
+    # Must have the LLM content
+    assert r"\section{Abstract and Introduction}" in result
+    # Must have \end{document}
+    assert r"\end{document}" in result
+
+
+# === Dimension A: Topic Neutrality ===
+
+def test_prompt_no_domain_hardcoding():
+    """Prompt must not contain domain-specific terms for any topic."""
+    from core.models import AcademicMatrixRow
+    row = AcademicMatrixRow(
+        title="A", authors="B", year="2024", venue="C",
+        research_problem="P", method="M", innovation="I", limitation="L",
+        evidence_page=1, evidence_quote="Q", confidence=0.5, trigger_reason="R",
+    )
+    for test_topic in ["medical lesion segmentation", "algebraic geometry"]:
+        prompt = build_synthesis_prompt(test_topic, [row])
+        assert "robot" not in prompt.lower()
+        assert "industrial" not in prompt.lower()
+        assert "机械臂" not in prompt
+        assert test_topic in prompt
+
+
+# === Dimension B: SECTION_TEMPLATES Integrity ===
+
+def test_section_templates_integrity():
+    """SECTION_TEMPLATES must have exactly 6 entries with valid structure."""
+    from core.synthesis import SECTION_TEMPLATES
+    assert len(SECTION_TEMPLATES) == 6
+    for t in SECTION_TEMPLATES:
+        assert "name" in t
+        assert "weight" in t
+        assert "guidance" in t
+        assert "{topic}" in t["guidance"]
+        assert t["weight"] in ("heavy", "light")
+    heavy = [t for t in SECTION_TEMPLATES if t["weight"] == "heavy"]
+    light = [t for t in SECTION_TEMPLATES if t["weight"] == "light"]
+    assert len(heavy) == 2  # Chapter 1 and Chapter 5
+    assert len(light) == 4
+    # heavy guidance must be longer than the shortest light guidance
+    min_light_len = min(len(t["guidance"]) for t in light)
+    for h in heavy:
+        assert len(h["guidance"]) > min_light_len, f"{h['name']} heavy guidance too short"
+
+
+def test_section_templates_names_match_section_names():
+    """SECTION_TEMPLATES names must match SECTION_NAMES in order."""
+    from core.synthesis import SECTION_TEMPLATES, SECTION_NAMES
+    assert len(SECTION_TEMPLATES) == len(SECTION_NAMES)
+    for tmpl, name in zip(SECTION_TEMPLATES, SECTION_NAMES):
+        assert tmpl["name"] == name, f"{tmpl['name']} != {name}"
+
+
+# === Dimension C: Two-Path Consistency ===
+
+def test_both_paths_use_same_section_guidance():
+    """Section 0 guidance must appear in both build_synthesis_prompt and _build_section_prompt(0)."""
+    from core.synthesis import build_synthesis_prompt, _build_section_prompt
+    from core.models import AcademicMatrixRow
+    row = AcademicMatrixRow(
+        title="A", authors="B", year="2024", venue="C",
+        research_problem="P", method="M", innovation="I", limitation="L",
+        evidence_page=1, evidence_quote="Q", confidence=0.5, trigger_reason="R",
+    )
+    topic = "test topic"
+    full = build_synthesis_prompt(topic, [row])
+    sectional = _build_section_prompt(0, topic, [row], 3000)
+    # Both must reference the core guidance indicator for section 0
+    assert "研究背景" in full
+    assert "研究背景" in sectional
+
+
+# === Dimension D: CJK Precision ===
+
+def test_cjk_bracket_detection_error_precision():
+    """Error message must include precise locating hints in Chinese."""
+    from core.synthesis import validate_latex_syntax
+    broken = r"\subsection{核心贡献与技术谱系》"
+    errors = validate_latex_syntax(broken)
+    assert any("检测到中文符号" in e or "CJK" in e for e in errors)
+    assert any("输入法冲突" in e or "替换了" in e or "possibly replacing" in e for e in errors)
+

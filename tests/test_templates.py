@@ -80,3 +80,20 @@ def test_render_survey_has_abstract_intro_separator():
     assert r"\noindent\textbf{摘要：}" in output
     assert r"\noindent\textbf{引言：}" in output
     assert r"\par\bigskip" in output
+
+
+def test_render_matrix_table_noindent_on_separate_line():
+    """\noindent must be on its own line before \begin{tabularx}."""
+    from core.templates import render_matrix_table_tex
+    from core.models import AcademicMatrixRow
+
+    row = AcademicMatrixRow(
+        title="A", authors="B", year="2024", venue="C",
+        research_problem="P", method="M", innovation="I", limitation="L",
+        evidence_page=1, evidence_quote="Q", confidence=0.5, trigger_reason="R",
+    )
+    output = render_matrix_table_tex([row])
+
+    # \noindent must be on its own line, not glued to \begin{tabularx}
+    assert "\\noindent\n\\begin{tabularx}" in output
+    assert "\\noindent\\begin{tabularx}" not in output

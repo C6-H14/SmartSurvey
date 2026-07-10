@@ -152,3 +152,96 @@ def test_generate_llm_artifacts_falls_back_to_template_on_empty_synthesis():
     # Must fall back to template-based rendering
     assert r"\documentclass{ctexart}" in artifacts.survey_tex
     assert "Paper A" not in artifacts.survey_tex  # template uses row.title
+
+
+def test_zero_drop_retains_all_three_papers():
+    """3 papers in, 3 rows out — Paper C degraded to missing (unverified).
+
+    This tests the full zero-drop guarantee: no paper is silently dropped
+    even when evidence validation fails on all retries.
+    """
+    from core.pipeline import extract_with_self_healing
+
+    class ThreePaperExtractor:
+        """Simulates 3 papers: A passes, B passes after 1 retry, C fails all retries."""
+        def __init__(self):
+            self.call_count = 0
+            # First call: return all 3 as valid JSON
+            self.first_response = (
+                '[\n'
+                '  {"title": "Paper A", "authors": "Alice", "year": "2024", '
+                '"venue": "C", "research_problem": "P1", "method": "M1", '
+                '"innovation": "I1", "limitation": "L1", "evidence_page": 1, '
+                '"evidence_quote": "valid quote A", "confidence": 0.8, '
+                '"trigger_reason": "stated", "domain_fields": {"metric": "acc"}},\n'
+                '  {"title": "Paper B", "authors": "Bob", "year": "2023", '
+                '"venue": "D", "research_problem": "P2", "method": "M2", '
+                '"innovation": "I2", "limitation": "L2", "evidence_page": 2, '
+                '"evidence_quote": "valid quote B", "confidence": 0.7, '
+                '"trigger_reason": "stated", "domain_fields": {"metric": "f1"}},\n'
+                '  {"title": "Paper C", "authors": "Carol", "year": "2022", '
+                '"venue": "E", "research_problem": "P3", "method": "M3", '
+                '"innovation": "I3", "limitation": "L3", "evidence_page": 3, '
+                '"evidence_quote": "hallucinated quote C", "confidence": 0.6, '
+                '"trigger_reason": "stated", "domain_fields": {"metric": "auc"}}\n'
+                ']'
+            )
+            # Subsequent calls: same but fix Paper B's quote
+            self.fix_response = (
+                '[\n'
+                '  {"title": "Paper A", "authors": "Alice", "year": "2024", '
+                '"venue": "C", "research_problem": "P1", "method": "M1", '
+                '"innovation": "I1", "limitation": "L1", "evidence_page": 1, '
+                '"evidence_quote": "valid quote A", "confidence": 0.8, '
+                '"trigger_reason": "stated", "domain_fields": {"metric": "acc"}},\n'
+                '  {"title": "Paper B", "authors": "Bob", "year": "2023", '
+                '"venue": "D", "research_problem": "P2", "method": "M2", '
+                '"innovation": "I2", "limitation": "L2", "evidence_page": 2, '
+                '"evidence_quote": "valid quote B", "confidence": 0.7, '
+                '"trigger_reason": "stated", "domain_fields": {"metric": "f1"}},\n'
+                '  {"title": "Paper C", "authors": "Carol", "year": "2022", '
+                '"venue": "E", "research_problem": "P3", "method": "M3", '
+                '"innovation": "I3", "limitation": "L3", "evidence_page": 3, '
+                '"evidence_quote": "hallucinated quote C", "confidence": 0.6, '
+                '"trigger_reason": "stated", "domain_fields": {"metric": "auc"}}\n'
+                ']'
+            )
+
+        def __call__(self, prompt: str) -> str:
+            self.call_count += 1
+            if self.call_count == 1:
+                return self.first_response
+            return self.fix_response
+
+    page_text = {
+        1: "valid quote A is present in this text",
+        2: "valid quote B is present in this text",
+        3: "no matching text here at all",
+    }
+
+    extractor = ThreePaperExtractor()
+    rows, warnings = extract_with_self_healing(
+        merged_context="sample context",
+        page_text_by_number=page_text,
+        topic="test topic",
+        domain_fields=["metric"],
+        extraction_fn=extractor,
+        max_retries=3,
+    )
+
+    assert len(rows) == 3, f"Expected 3 rows, got {len(rows)}"
+    # Paper A should be accepted with full data
+    paper_a = [r for r in rows if r.title == "Paper A"]
+    assert len(paper_a) == 1
+    assert paper_a[0].limitation == "L1"
+    assert paper_a[0].evidence_quote == "valid quote A"
+    # Paper B should be accepted with full data
+    paper_b = [r for r in rows if r.title == "Paper B"]
+    assert len(paper_b) == 1
+    assert paper_b[0].limitation == "L2"
+    assert paper_b[0].evidence_quote == "valid quote B"
+    # Paper C should be degraded
+    paper_c = [r for r in rows if r.title == "Paper C"]
+    assert len(paper_c) == 1
+    assert paper_c[0].limitation == "missing (unverified)"
+    assert paper_c[0].evidence_quote == "unverified"
