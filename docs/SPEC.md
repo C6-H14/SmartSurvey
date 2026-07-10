@@ -984,3 +984,113 @@ Example: \textbf{第一类：}[explanation] — NOT \textbf{第一类}[explanati
 | `core/templates.py` | `\noindent` 分行 |
 | `tests/test_synthesis.py` | 新增 CJK 括号测试、preamble 包裹测试、itemize 约束测试、冒号约束测试 |
 | `tests/test_templates.py` | 更新表格居中测试 |
+
+---
+
+## 22. 第八阶段 (Phase 8): RAG 思维链泄漏清洗与格式加固
+
+### 22.1 概述
+
+Phase 8 完成五项硬性规约的落地，目标是让 `survey_draft.tex` 达到可直接提交学术教授审阅的 A 档质量。
+
+### 22.2 RAG 思维链/检索标记清洗规约
+
+#### 22.2.1 问题描述
+
+大模型在生成正文时泄漏内部 RAG 检索标记，如 `(evidence_page=2)` 等键名残留在最终手稿中，严重破坏学术严谨性。
+
+#### 22.2.2 解决方案
+
+双重保险防线：
+
+**第一道防线（Prompt 层）：** 在 `build_synthesis_prompt()` 和 `_build_section_prompt()` 中追加强制约束，严禁 LLM 在正文中输出 `evidence_page=` 等内部键名，必须使用学术界标准引用格式（如 `[1]`, `[2]`）。
+
+**第二道防线（物理拦截层）：** 在 `core/synthesis.py` 的 `render_survey_tex_with_llm()` 和 `render_survey_tex_multi_stage()` 输出端，编写 Python 正则后处理器，使用正则 `\(evidence_page=[^\)]+\)` 彻底将此类泄漏字符物理清洗掉。
+
+#### 22.2.3 涉及文件
+
+- `core/synthesis.py` — Prompt 追加约束 + 正则后处理器
+- `tests/test_synthesis.py` — 新增泄漏检测测试
+
+### 22.3 硬核 LaTeX 数学公式支撑规约
+
+#### 22.3.1 问题描述
+
+综述手稿缺乏硬核数学公式支撑，误差度量等核心论证仅靠文字描述，学术深度不足。
+
+#### 22.3.2 解决方案
+
+在 extractor 提示词 (`build_extraction_prompt`) 与 synthesis 提示词 (`build_synthesis_prompt`, `_build_section_prompt`) 中追加规则：
+- 要求大模型在提取和学术论述时，必须强制抓取并使用标准 LaTeX 行内/行间数学公式（如 `$E(u) = \int_\Omega |\nabla u|^2 dx$` 等物理/数学测度公式）
+- 对核心误差度量展开硬核学术论证，而非仅用文字描述
+
+#### 22.3.3 涉及文件
+
+- `core/extractor.py` — 提取提示词追加数学公式约束
+- `core/synthesis.py` — 合成提示词追加数学公式约束
+- `tests/test_extractor.py` — 新增数学公式约束测试
+- `tests/test_synthesis.py` — 新增数学公式约束测试
+
+### 22.4 LaTeX 排版美学细节规约
+
+#### 22.4.1 问题描述
+
+手稿排版存在以下细节问题：
+1. 页边距不一致
+2. 摘要引言未物理分段
+3. 分类用长句堆叠而非列表
+4. 加粗领头词冒号在花括号外部导致视觉落差
+5. 右花括号 `}` 偶尔被误写为中文右书名号 `》`
+
+#### 22.4.2 解决方案
+
+| # | 规约 | 实现方式 | 状态 |
+|:-:|:-----|:---------|:----:|
+| 1 | 页边距 `margin=1.8cm` | `_build_preamble()` 中 `geometry` 宏包 | ✅ Phase 7 |
+| 2 | 摘要引言物理分段 | `\noindent\textbf{摘要：}...\par\bigskip\noindent\textbf{引言：}` | ✅ Phase 7 |
+| 3 | 列表化分类 | `\begin{itemize}` 环境 + 独立 `\item` | ✅ Phase 7 |
+| 4 | 加粗冒号包裹 | `\textbf{...：}` 冒号在花括号内 | ✅ Phase 7 |
+| 5 | 括号笔误硬卡控 | `validate_latex_syntax()` CJK 检测 | ✅ Phase 7 |
+
+以上规约已在 Phase 7 中通过 `SECTION_TEMPLATES` 注册表全部实现，此处归档确认。
+
+### 22.5 100% 零丢失保证规约 (Zero-Drop Guarantee)
+
+#### 22.5.1 问题描述
+
+旧版 `filter_rows_by_evidence()` 使用后置标题模糊匹配，导致部分论文因标题匹配失败而被静默吞掉，违背"输入多少篇 PDF，输出就必须有多少行"的硬性要求。
+
+#### 22.5.2 解决方案
+
+彻底废除后置匹配过滤。在 `core/pipeline.py` 的 `extract_with_self_healing()` 主循环内部，直接进行"提取-自愈-校验-就地降级"的物理闭环：
+
+- 每篇论文独立提取
+- 证据校验不通过时，通过 `_apply_degradation()` 将 limitation 标记为 `"missing (unverified)"`，evidence_quote 标记为 `"unverified"`
+- 所有论文（包括降级后的论文）均保留在最终输出中
+- 在 `scripts/run_extraction.py` 中追加终极兜底：若 JSON 提取经全部重试后仍为空，使用文件名创建降级行
+
+#### 22.5.3 涉及文件
+
+- `core/pipeline.py` — 废除 `filter_rows_by_evidence()`，`extract_with_self_healing()` 内联零丢失
+- `scripts/run_extraction.py` — 终极文件名兜底降级
+- `tests/test_pipeline.py` — 新增零丢失测试（单篇降级 + 三篇场景）
+
+### 22.6 测试用例去硬编码规约
+
+#### 22.6.1 问题描述
+
+全量测试用例中仍存在多处硬编码的 `"industrial automation lab..."` 旧版主题，导致测试用例不洁净、不易维护。
+
+#### 22.6.2 解决方案
+
+逐一检查 `tests/` 目录下的所有测试文件，将遗留的硬编码工业主题字符串替换为通用的学术中性测试字符串：
+
+| 文件 | 行号 | 旧值 | 新值 |
+|:----|:----|:-----|:-----|
+| `tests/test_templates.py` | 35, 43, 78 | `"industrial anomaly detection"` | `"test topic"` |
+| `tests/test_extractor.py` | 6 | `"industrial anomaly detection"` | `"test topic"` |
+
+#### 22.6.3 涉及文件
+
+- `tests/test_templates.py` — 清洗硬编码主题
+- `tests/test_extractor.py` — 清洗硬编码主题
