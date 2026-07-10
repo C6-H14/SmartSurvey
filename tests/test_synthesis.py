@@ -399,3 +399,30 @@ def test_cjk_bracket_detection_error_precision():
     assert any("检测到中文符号" in e or "CJK" in e for e in errors)
     assert any("输入法冲突" in e or "替换了" in e or "possibly replacing" in e for e in errors)
 
+
+def test_evidence_page_leak_stripped():
+    """evidence_page= residuals must be stripped from final output."""
+    from core.synthesis import _strip_evidence_page_leaks
+
+    # evidence_page= leak patterns
+    dirty = (
+        r"\section{Test}Some text (evidence_page=2) more text "
+        r"(evidence_page=5) and (evidence_page=42) end."
+    )
+    clean = _strip_evidence_page_leaks(dirty)
+    assert "(evidence_page=" not in clean
+    assert "Some text  more text  and  end." == clean or "Some text  more text  and  end." in clean
+
+
+def test_prompt_forbids_evidence_page():
+    """build_synthesis_prompt must forbid evidence_page= in output."""
+    from core.models import AcademicMatrixRow
+    row = AcademicMatrixRow(
+        title="A", authors="B", year="2024", venue="C",
+        research_problem="P", method="M", innovation="I", limitation="L",
+        evidence_page=1, evidence_quote="Q", confidence=0.5, trigger_reason="R",
+    )
+    prompt = build_synthesis_prompt("test topic", [row])
+    assert "evidence_page" not in prompt or "禁止" in prompt or "严禁" in prompt or "CRITICAL" in prompt
+    assert "标准引用" in prompt or "[1]" in prompt or "citation" in prompt.lower()
+

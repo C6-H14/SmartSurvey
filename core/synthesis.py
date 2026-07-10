@@ -4,6 +4,18 @@ from typing import Callable
 from core.models import AcademicMatrixRow
 
 
+def _strip_evidence_page_leaks(text: str) -> str:
+    """Strip RAG thinking-chain residuals like (evidence_page=2) from LaTeX output.
+
+    Args:
+        text: Raw LaTeX source that may contain evidence_page leaks.
+
+    Returns:
+        Cleaned LaTeX source with all (evidence_page=N) patterns removed.
+    """
+    return re.sub(r'\(evidence_page=\d+\)', '', text)
+
+
 def validate_latex_syntax(latex_source: str) -> list[str]:
     """Validate LaTeX syntax with zero-dependency stack scanning.
 
@@ -147,7 +159,9 @@ def build_synthesis_prompt(
         f"5. Write body text in Chinese, keep evidence quotes in English.\n"
         f"6. Total length: {word_count_target} Chinese characters.\n"
         f"7. Return ONLY valid LaTeX source. No markdown fences, no explanations.\n"
-        f"8. All $, {{, }}, \\begin, \\end must be properly balanced.\n\n"
+        f"8. All $, {{, }}, \\begin, \\end must be properly balanced.\n"
+        f"9. CRITICAL: Do NOT output internal key names like 'evidence_page=' in the body text.\n"
+        f"    Use standard academic citation format [1], [2] instead.\n\n"
         f"SECTION GUIDANCE:\n"
         f"{section_guidance_block}\n\n"
         f"CRITICAL: Start your output DIRECTLY from \\section{{Abstract and Introduction}}.\n"
@@ -216,6 +230,9 @@ def render_survey_tex_with_llm(
 
         # Wrap with hardcoded preamble
         wrapped = _build_preamble() + raw + "\n\n" + r"\end{document}" + "\n"
+
+        # Strip RAG thinking-chain leaks before returning
+        wrapped = _strip_evidence_page_leaks(wrapped)
 
         errors = validate_latex_syntax(wrapped)
 
@@ -384,6 +401,11 @@ def _build_section_prompt(
     full_prompt += (
         f"\nReturn ONLY valid LaTeX source for this section. No markdown fences, no explanations.\n"
     )
+
+    full_prompt += (
+        f"\nCRITICAL: Do NOT output internal key names like 'evidence_page=' in the text.\n"
+        f"    Use standard academic citation format [1], [2] instead.\n"
+    )
     return full_prompt
 
 
@@ -444,6 +466,9 @@ def render_survey_tex_multi_stage(
     parts.append(r"\end{document}" + "\n")
 
     result = "".join(parts)
+
+    # Strip RAG thinking-chain leaks
+    result = _strip_evidence_page_leaks(result)
 
     # Validate and log
     errors = validate_latex_syntax(result)
