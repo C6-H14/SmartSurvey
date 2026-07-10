@@ -3,7 +3,7 @@ from core.extractor import build_extraction_prompt, build_self_healing_prompt, p
 
 def test_build_extraction_prompt_includes_general_and_domain_fields():
     prompt = build_extraction_prompt(
-        topic="industrial anomaly detection",
+        topic="test topic",
         domain_fields=["sensor", "accuracy"],
         page_text="Page 1 text",
     )

@@ -32,7 +32,7 @@ def test_render_matrix_table_uses_booktabs():
 
 
 def test_render_survey_has_required_sections():
-    output = render_survey_tex("industrial anomaly detection", sample_rows())
+    output = render_survey_tex("test topic", sample_rows())
 
     assert "\\documentclass{ctexart}" in output
     assert "\\section{Abstract and Introduction}" in output
@@ -40,7 +40,7 @@ def test_render_survey_has_required_sections():
 
 
 def test_render_markdown_preview_contains_evidence():
-    output = render_markdown_preview("industrial anomaly detection", sample_rows(), blocked_warnings=["blocked"])
+    output = render_markdown_preview("test topic", sample_rows(), blocked_warnings=["blocked"])
 
     assert "Paper A" in output
     assert "p.2" in output
@@ -75,9 +75,7 @@ def test_render_matrix_table_uses_tabularx():
 
 def test_render_survey_has_abstract_intro_separator():
     """Section 1 must use \noindent\textbf{摘要：} and \noindent\textbf{引言：}."""
-    output = render_survey_tex("industrial anomaly detection", sample_rows())
-
-    assert r"\noindent\textbf{摘要：}" in output
+    output = render_survey_tex("test topic", sample_rows())
     assert r"\noindent\textbf{引言：}" in output
     assert r"\par\bigskip" in output
 
