@@ -29,7 +29,11 @@ def run_app() -> None:
             credential_store.clear_all()
             st.warning("Credentials cleared.")
 
-    topic = st.text_input("Review topic", value="industrial automation lab spatial anomaly detection")
+    topic = st.text_input(
+        "Review topic",
+        placeholder="e.g., medical image segmentation, algebraic geometry, 3D object detection...",
+        help="请输入您本次综述论文的精确学术主题。系统将基于此主题动态构建学术矩阵与论文大纲。",
+    )
     uploaded_files = st.file_uploader("Upload academic PDFs", type=["pdf"], accept_multiple_files=True)
 
     word_count_target = st.slider(
@@ -55,7 +59,9 @@ def run_app() -> None:
             )
 
         if st.button("Generate preview from verified rows"):
-            if not credential_store.has_credentials():
+            if not topic or not topic.strip():
+                st.warning("⚠️ 请先输入您要研究的学术综述主题！")
+            elif not credential_store.has_credentials():
                 st.error("Credentials are required. Please configure them in the sidebar.")
             else:
                 extraction_fn = create_extraction_fn(credential_store=credential_store)
