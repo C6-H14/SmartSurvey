@@ -52,6 +52,9 @@ def build_extraction_prompt(topic: str, domain_fields: list[str], page_text: str
         "- CRITICAL: The 'method' and 'limitation' fields MUST be written in Chinese, "
         "no more than 20 Chinese characters each, as a concise academic summary. "
         "Keep evidence_quote in English as-is. No long English paragraphs allowed in the table cells.\n"
+        f"- CRITICAL: When extracting metrics or error measures, you MUST capture the original "
+        f"LaTeX math formulas (e.g., $E(u) = \\int_\\Omega |\\nabla u|^2 dx$) used in the paper. "
+        f"Include these formulas in the extracted fields for academic rigor.\n"
         "- Return JSON only: a list containing exactly ONE object.\n\n"
         f"Merged PDF text (first + last pages):\n{page_text}"
     )

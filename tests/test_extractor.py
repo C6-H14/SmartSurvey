@@ -25,6 +25,14 @@ def test_parse_matrix_json_converts_missing_fields_to_missing():
     assert rows[0].domain_fields["sensor"] == "missing"
 
 
+def test_extraction_prompt_has_math_constraint():
+    """Extraction prompt must require LaTeX math formulas."""
+    from core.extractor import build_extraction_prompt
+    prompt = build_extraction_prompt("test topic", ["metric"], "sample page text")
+    assert "formula" in prompt.lower() or "公式" in prompt or "equation" in prompt.lower()
+    assert "$" in prompt or "\\(" in prompt
+
+
 def test_build_self_healing_prompt_contains_xml_tags():
     original = build_extraction_prompt("test topic", ["sensor"], "Page 1 text.")
     corrected = build_self_healing_prompt(

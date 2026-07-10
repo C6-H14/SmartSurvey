@@ -161,7 +161,10 @@ def build_synthesis_prompt(
         f"7. Return ONLY valid LaTeX source. No markdown fences, no explanations.\n"
         f"8. All $, {{, }}, \\begin, \\end must be properly balanced.\n"
         f"9. CRITICAL: Do NOT output internal key names like 'evidence_page=' in the body text.\n"
-        f"    Use standard academic citation format [1], [2] instead.\n\n"
+        f"    Use standard academic citation format [1], [2] instead.\n"
+        f"10. CRITICAL: Use standard LaTeX math formulas ($...$ or $$...$$) when discussing "
+        f"error metrics, loss functions, or mathematical formulations. "
+        f"This is essential for academic rigor.\n\n"
         f"SECTION GUIDANCE:\n"
         f"{section_guidance_block}\n\n"
         f"CRITICAL: Start your output DIRECTLY from \\section{{Abstract and Introduction}}.\n"
@@ -396,6 +399,11 @@ def _build_section_prompt(
     full_prompt += (
         f"\nSECTION GUIDANCE:\n"
         f"  {tmpl['guidance'].format(topic=topic)}\n"
+    )
+
+    full_prompt += (
+        f"\nCRITICAL: Use LaTeX math formulas ($...$ or $$...$$) when discussing "
+        f"error metrics or mathematical formulations.\n"
     )
 
     full_prompt += (

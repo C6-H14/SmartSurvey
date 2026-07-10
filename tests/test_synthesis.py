@@ -1,6 +1,19 @@
 from core.synthesis import build_synthesis_prompt, render_survey_tex_with_llm, validate_latex_syntax, SECTION_TEMPLATES
 
 
+def test_synthesis_prompt_has_math_constraint():
+    """Synthesis prompt must require LaTeX math formulas."""
+    from core.models import AcademicMatrixRow
+    row = AcademicMatrixRow(
+        title="A", authors="B", year="2024", venue="C",
+        research_problem="P", method="M", innovation="I", limitation="L",
+        evidence_page=1, evidence_quote="Q", confidence=0.5, trigger_reason="R",
+    )
+    prompt = build_synthesis_prompt("test topic", [row])
+    assert "formula" in prompt.lower() or "公式" in prompt or "equation" in prompt.lower()
+    assert "$" in prompt or "\\(" in prompt
+
+
 def test_build_preamble_contains_magic_comments():
     """Preamble must include xelatex magic comments."""
     from core.synthesis import _build_preamble
