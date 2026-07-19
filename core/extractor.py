@@ -65,6 +65,31 @@ def _string_value(data: dict[str, Any], field: str) -> str:
     return str(value) if value not in (None, "") else "missing"
 
 
+def _normalize_authors(value: Any) -> str:
+    """Normalize author field to BibTeX 'and'-separated format.
+
+    Handles:
+    - Python list (from JSON array): ['A', 'B'] -> 'A and B'
+    - Comma-separated string: 'A, B' -> 'A and B'
+    - Already standard: 'A and B' -> 'A and B'
+    - Single author or missing: unchanged
+    """
+    if isinstance(value, list):
+        parts = [v.strip() for v in value if v.strip()]
+        return " and ".join(parts) if parts else "missing"
+
+    result = str(value) if value not in (None, "") else "missing"
+    if result == "missing":
+        return result
+
+    # Comma-separated but not yet in 'and' format
+    if "," in result and " and " not in result:
+        parts = [v.strip() for v in result.split(",")]
+        return " and ".join(parts)
+
+    return result
+
+
 def _int_value(data: dict[str, Any], field: str) -> int:
     """Extract int from field, returning 0 if field is missing or non-numeric."""
     value = data.get(field, 0)
@@ -111,7 +136,7 @@ def parse_matrix_json(raw_json: str, domain_fields: list[str]) -> list[AcademicM
         rows.append(
             AcademicMatrixRow(
                 title=_string_value(item, "title"),
-                authors=_string_value(item, "authors"),
+                authors=_normalize_authors(item.get("authors", "missing")),
                 year=_string_value(item, "year"),
                 venue=_string_value(item, "venue"),
                 research_problem=_string_value(item, "research_problem"),

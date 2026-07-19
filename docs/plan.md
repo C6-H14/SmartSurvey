@@ -3132,6 +3132,31 @@ git add core/credentials.py tests/test_credentials.py
 git commit -m "feat: upgrade credential store to json multi-key with migration guard (Task 22.1) [Subagent: Sonnet] [Manual: None] [Agent count: 1]"
 ```
 
+---
+
+## Phase 8: RAG Leak Cleanup, Math Formula Support & Test De-Hardcoding (Completed)
+
+Phase 8 consists of 3 tasks (evidence_page= leak cleanup, math formula constraints, test de-hardcoding) implemented in `docs/superpowers/plans/2026-07-10-phase8-plan.md`. All committed.
+
+---
+
+## Task 24: BibTeX Author Parsing Hardening (Completed)
+
+**Files:**
+- Modify: `core/extractor.py` (add `_normalize_authors` helper, wire into `parse_matrix_json`)
+- Create: `tests/test_extractor_author.py` (5 tests for author normalization)
+
+**Problem:** LLM output occasionally returns `authors` as a Python list literal (e.g., `['Paul Bergmann', 'Kilian Batzner']`) or a comma-separated string (e.g., `"Paul Bergmann, Kilian Batzner"`). Both cause `str()` to produce BibTeX-invalid author strings that crash LaTeX compilation.
+
+**Solution:** New `_normalize_authors()` function in `core/extractor.py` that handles three formats:
+- Python list (from JSON array): `['A', 'B']` → `'A and B'`
+- Comma-separated string: `'A, B'` → `'A and B'`
+- Already standard: `'A and B'` → unchanged
+
+- [x] **Step 1 (RED)**: Write 5 failing tests in `tests/test_extractor_author.py`
+- [x] **Step 2 (GREEN)**: Implement `_normalize_authors()` in `core/extractor.py` and wire into `parse_matrix_json`
+- [x] **Step 3 (Document & Commit)**: Log to `Agent_log2.md`, update PLAN.md, commit
+
 ### Task 22.2: Upgrade agent.py — Three-Level Fallback Chain
 
 **Files:**

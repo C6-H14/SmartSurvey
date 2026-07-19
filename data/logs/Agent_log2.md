@@ -376,3 +376,38 @@
   - Design spec §2.2 JSON Credential Schema: `llm_api_key`, `llm_api_base`, `llm_model_name`
   - SPEC §19.2-19.5 JSON single-key storage, migration guard, three-field credential support
 - Next step: Task 22.2 (agent.py three-level fallback chain) + Task 22.3 (main.py sidebar UI)
+
+## Task 24 — BibTeX Author Parsing Hardening
+
+- Timestamp: 2026-07-19 +08:00
+- Branch: `task24` (new branch for this task)
+- Triggered Superpowers skills: `test-driven-development`
+- Key prompt and configuration:
+  - TDD cycle for Task 24: harden `parse_matrix_json` in `core/extractor.py` to handle three author formats.
+  - Problem: LLM output occasionally returns `authors` as Python list literal (`['Paul Bergmann', 'Kilian Batzner']`) or comma-separated string (`"Paul Bergmann, Kilian Batzner"`), both of which create BibTeX-invalid `str()` representations.
+- Key decisions and actions:
+  - **RED phase**: Created `tests/test_extractor_author.py` with 5 tests:
+    - `test_parse_authors_python_list_literal` — FAILED as expected (str() of list: `"['Paul Bergmann', 'Kilian Batzner']"`)
+    - `test_parse_authors_comma_separated_string` — FAILED as expected (comma not replaced with `and`)
+    - `test_parse_authors_already_standard` — PASSED (already correct)
+    - `test_parse_authors_single_author` — PASSED (no change needed)
+    - `test_parse_authors_missing` — PASSED (already handled)
+  - **GREEN phase**: Added `_normalize_authors(value: Any) -> str` to `core/extractor.py`:
+    - If value is a list, join with `" and "`
+    - If value is a comma-separated string (has `,` but no ` and `), replace `, ` with ` and `
+    - Otherwise, return as-is (via `_string_value` logic)
+    - Wired into `parse_matrix_json` by replacing `authors=_string_value(item, "authors")` with `authors=_normalize_authors(item.get("authors", "missing"))`
+  - All 5 tests now pass: `5 passed in 0.04s`
+  - Full suite: `81 passed in 7.41s` (zero regressions)
+- Files changed:
+  - `core/extractor.py` — added `_normalize_authors()` helper, updated `parse_matrix_json` to use it
+  - `tests/test_extractor_author.py` — new test file with 5 author normalization tests
+  - `docs/PLAN.md` — appended Task 24 section
+  - `data/logs/Agent_log2.md` — this log entry
+- Specification alignment:
+  - SPEC §8.5 BibTeX: author field must produce valid BibTeX-compatible `and`-separated format
+  - SPEC §12.3 No mock library: all tests use real JSON input with no mocks
+- Lessons learned:
+  - `json.loads` parses JSON arrays as Python lists, so `str()` on a list gives `"['A', 'B']"` — terrible for BibTeX
+  - The `_normalize_authors` check must distinguish between "already has ` and `" and "has `, ` but no ` and `" to avoid double-processing
+  - Missing authors should remain `"missing"` to maintain backward compatibility with existing tests
