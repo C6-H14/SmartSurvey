@@ -377,6 +377,23 @@
   - SPEC §19.2-19.5 JSON single-key storage, migration guard, three-field credential support
 - Next step: Task 22.2 (agent.py three-level fallback chain) + Task 22.3 (main.py sidebar UI)
 
+## Task 26 — Zero-Drop Guarantee (Inline Scope Binding) — Closure Verification
+
+- Timestamp: 2026-07-19 +08:00
+- Branch: `feat/phase-7`
+- Triggered skills: `brainstorming`
+- **Context:** User requested to start Task 26 from scratch. Brainstorming inspection revealed the task was already fully implemented — `extract_with_self_healing` already uses `page_text_by_number` for inline evidence validation, `_apply_degradation()` already marks failed rows as `"missing (unverified)"`, and `filter_rows_by_evidence()` / `_find_matching_paper()` have been deleted from all code files.
+- **Verification results:**
+  - `core/pipeline.py:106-194` — `extract_with_self_healing` receives `page_text_by_number` and validates per-paper inline
+  - `core/pipeline.py:197-214` — `_apply_degradation` marks `limitation → "missing (unverified)"`, `evidence_quote → "unverified"`
+  - No `filter_rows_by_evidence` or `_find_matching_paper` in any source file (only docs references remain)
+  - `scripts/run_extraction.py:186` — `# Zero-Drop: all rows pass through` comment
+  - `main.py:97` — `# Zero-Drop: all rows pass through` comment
+  - `tests/test_pipeline.py` — 3 Zero-Drop tests: `test_zero_drop_retains_degraded_row`, `test_zero_drop_accepts_valid_row`, `test_zero_drop_retains_all_three_papers`
+- **Full test suite**: 81/81 passed
+- **Documentation**: Appended Task 26 section to `docs/PLAN.md` with completed checkboxes
+- **Commit**: `28c0be2` (already committed as part of earlier Task 24 work; Task 26 is a closure verification only, no new code changes needed)
+
 ## Task 24 — BibTeX Author Parsing Hardening
 
 - Timestamp: 2026-07-19 +08:00

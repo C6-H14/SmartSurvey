@@ -3157,6 +3157,31 @@ Phase 8 consists of 3 tasks (evidence_page= leak cleanup, math formula constrain
 - [x] **Step 2 (GREEN)**: Implement `_normalize_authors()` in `core/extractor.py` and wire into `parse_matrix_json`
 - [x] **Step 3 (Document & Commit)**: Log to `Agent_log2.md`, update PLAN.md, commit
 
+---
+
+## Task 26: Zero-Drop Guarantee — Inline Scope Binding (Completed — Verified 2026-07-19)
+
+**Files:**
+- Modify: `core/pipeline.py` (refactor `extract_with_self_healing` to accept `page_text_by_number` for inline binding)
+- Modify: `tests/test_pipeline.py` (replace old `filter_rows_by_evidence` tests with Zero-Drop tests)
+- Modify: `scripts/run_extraction.py` (remove `filter_rows_by_evidence` call, use inline binding)
+- Modify: `main.py` (remove `filter_rows_by_evidence` call, use inline binding)
+
+**Problem:** Old `filter_rows_by_evidence()` used post-hoc fuzzy title matching (`_find_matching_paper`). When `pdf_parser.py` returned `paper.title == "missing"` for non-standard PDFs, the matcher failed silently and the paper's rows were dropped.
+
+**Solution:** Inline Scope Binding — abolish `filter_rows_by_evidence()` and `_find_matching_paper()` entirely. `extract_with_self_healing()` now receives `page_text_by_number` directly and validates evidence inline. After 3 failed self-healing attempts, `_apply_degradation()` marks the row as `"missing (unverified)"` and **forces it into the final list**.
+
+**Verification:**
+- `test_zero_drop_retains_degraded_row` — single paper, 3 retries fail → degraded row retained
+- `test_zero_drop_accepts_valid_row` — single paper, passes through unchanged
+- `test_zero_drop_retains_all_three_papers` — 3 papers (A passes, B passes, C degraded) → exactly 3 rows output
+
+- [x] **Core implementation**: `extract_with_self_healing` with `page_text_by_number` inline binding
+- [x] **Adaptive degradation**: `_apply_degradation()` with `"missing (unverified)"` fallback
+- [x] **Remove legacy code**: Delete `filter_rows_by_evidence()` and `_find_matching_paper()` from all files
+- [x] **Zero-Drop tests**: 3 tests covering single-pass, single-degrade, and 3-paper mixed scenario
+- [x] **Full suite**: 81 tests passing with zero regressions
+
 ### Task 22.2: Upgrade agent.py — Three-Level Fallback Chain
 
 **Files:**
