@@ -1,4 +1,8 @@
 import re
+import shutil
+import subprocess
+import tempfile
+import os
 from typing import Callable
 
 from core.models import AcademicMatrixRow
@@ -104,6 +108,78 @@ def validate_latex_syntax(latex_source: str) -> list[str]:
     return errors
 
 
+def _parse_xelatex_log(log_content: str) -> list[str]:
+    """Extract LaTeX compilation errors from .log file content.
+
+    Looks for lines starting with '!' (LaTeX error marker), deduplicates,
+    and returns at most 5 error lines.
+
+    Args:
+        log_content: Raw content of survey_draft.log.
+
+    Returns:
+        Deduplicated list of error strings, max 5 entries. Empty = no errors found.
+    """
+    errors: list[str] = []
+    seen: set[str] = set()
+    for line in log_content.splitlines():
+        if re.match(r'^!\s', line):
+            stripped = line.strip()
+            if stripped not in seen:
+                seen.add(stripped)
+                errors.append(stripped)
+    return errors[:5]
+
+
+def compile_with_xelatex(latex_source: str, timeout: int = 60) -> list[str]:
+    """Compile LaTeX source with xelatex and extract compilation errors.
+
+    Runs in a temporary directory to avoid polluting the working tree.
+    If xelatex is not available, or compilation times out, returns empty list
+    (silent degradation — does not crash the pipeline).
+
+    Args:
+        latex_source: Complete .tex file content (with preamble and \\end{{document}}).
+        timeout: Max seconds to wait for xelatex to finish (default 60).
+
+    Returns:
+        Deduplicated error lines from .log, max 5. Empty = compiled OK or unavailable.
+    """
+    if not shutil.which("xelatex"):
+        return []
+
+    try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tex_path = os.path.join(tmpdir, "survey_draft.tex")
+            with open(tex_path, "w", encoding="utf-8") as f:
+                f.write(latex_source)
+
+            result = subprocess.run(
+                ["xelatex", "-interaction=nonstopmode", "-halt-on-error",
+                 os.path.basename(tex_path)],
+                cwd=tmpdir,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+            )
+
+            if result.returncode == 0:
+                return []
+
+            log_path = os.path.join(tmpdir, "survey_draft.log")
+            if os.path.exists(log_path):
+                with open(log_path, "r", encoding="utf-8", errors="replace") as f:
+                    log_content = f.read()
+                return _parse_xelatex_log(log_content)
+            return []
+
+    except subprocess.TimeoutExpired:
+        print("[XeLaTeX] Compilation timed out after {timeout}s — falling back to static validation.")
+        return []
+    except Exception:
+        return []
+
+
 def build_synthesis_prompt(
     topic: str,
     rows: list[AcademicMatrixRow],
@@ -123,7 +199,7 @@ def build_synthesis_prompt(
     )
 
     matrix_rows = "\n".join(
-        f"    {row.title} & {row.method} & {row.limitation} \\\\"
+        f"    {row.title} — {row.method} — {row.limitation}"
         for row in rows
     )
 
@@ -141,12 +217,9 @@ def build_synthesis_prompt(
         f"Review topic: {topic}\n\n"
         f"Papers to review ({len(rows)} total):\n{paper_list}\n\n"
         f"Extracted comparison data:\n"
-        f"\\begin{{tabularx}}{{\\textwidth}}{{XXXX}}\n"
-        f"  Paper & Method & Limitation \\\\\n"
-        f"  \\midrule\n{matrix_rows}"
-        f"\\end{{tabularx}}\n\n"
+        f"Paper list:\n{matrix_rows}\n\n"
         f"REQUIREMENTS:\n"
-        f"1. Use \\documentclass{{ctexart}}, \\usepackage{{booktabs}}, and \\usepackage{{tabularx}}.\n"
+        f"1. Use \\documentclass{{ctexart}}.\n"
         f"2. Include EXACTLY these six sections:\n"
         f"   \\section{{Abstract and Introduction}}\n"
         f"   \\section{{Technical Taxonomy}}\n"
@@ -154,7 +227,10 @@ def build_synthesis_prompt(
         f"   \\section{{Academic Comparison Matrix}}\n"
         f"   \\section{{Research Gaps and Future Work}}\n"
         f"   \\section{{Conclusion}}\n"
-        f"3. The \\section{{Academic Comparison Matrix}} must contain a full booktabs table using tabularx.\n"
+        f"3. The \\section{{Academic Comparison Matrix}} must use \\begin{{description}} environment. "
+        f"Each paper is a \\item[\\textbf{{N. Title (Year)：}}] with structured paragraphs "
+        f"(\\textbf{{技术方法：}}, \\textbf{{关键优势：}}, \\textbf{{核心局限：}}). "
+        f"Do NOT use tabular, tabularx, or booktabs environments.\n"
         f"4. Each critique of a paper's limitation must reference its evidence_page.\n"
         f"5. Write body text in Chinese, keep evidence quotes in English.\n"
         f"6. Total length: {word_count_target} Chinese characters.\n"
@@ -239,6 +315,13 @@ def render_survey_tex_with_llm(
 
         errors = validate_latex_syntax(wrapped)
 
+        # Physical xelatex compilation check (only if static validation passes)
+        if not errors:
+            xelatex_errors = compile_with_xelatex(wrapped)
+            if xelatex_errors:
+                print(f"[XeLaTeX] {len(xelatex_errors)} compilation error(s) detected.")
+                errors = xelatex_errors
+
         if not errors:
             if progress_callback:
                 progress_callback(0, 1, "completed", "LaTeX manuscript generated successfully.")
@@ -265,8 +348,6 @@ def _build_preamble() -> str:
         "% !TEX root = survey_draft.tex\n"
         r"\documentclass{ctexart}" + "\n"
         r"\usepackage[paper=a4paper, margin=1.8cm]{geometry}" + "\n"
-        r"\usepackage{booktabs}" + "\n"
-        r"\usepackage{tabularx}" + "\n"
         r"\usepackage{amsmath}" + "\n"
         r"\usepackage[backend=biber,style=gb7714-2015]{biblatex}" + "\n"
         r"\addbibresource{references.bib}" + "\n"
@@ -317,9 +398,11 @@ SECTION_TEMPLATES: list[dict] = [
         "name": "Academic Comparison Matrix",
         "weight": "light",
         "guidance": (
-            "直接嵌入下方提供的 booktabs 三线表作为【{topic}】的学术对比矩阵，"
-            "无需额外文字说明。表中 method 和 limitation 列必须使用中文，"
-            "每项不超过 20 字。"
+            "针对综述主题【{topic}】，使用 \\begin{{description}} 结构化列表环境，"
+            "为每篇文献创建独立的段落条目。"
+            "每篇文献格式为 \\item[\\textbf{{N. 论文标题 (年份)：}}] \\hfill \\\\ ，"
+            "内部包含 \\textbf{{技术方法：}}、\\textbf{{关键优势：}}、\\textbf{{核心局限：}} 三个分段。"
+            "禁止使用 tabular、tabularx 或 booktabs 表格环境。"
         ),
     },
     {
@@ -484,6 +567,13 @@ def render_survey_tex_multi_stage(
         print(f"[LLM] Multi-stage synthesis completed with {len(errors)} validation warnings:")
         for e in errors:
             print(f"  - {e}")
+    else:
+        # Physical xelatex compilation check
+        xelatex_errors = compile_with_xelatex(result)
+        if xelatex_errors:
+            print(f"[XeLaTeX] Multi-stage: {len(xelatex_errors)} compilation error(s) detected.")
+            for e in xelatex_errors:
+                print(f"  - {e}")
 
     if progress_callback:
         progress_callback(0, 1, "completed",

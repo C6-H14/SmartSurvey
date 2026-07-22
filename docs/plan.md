@@ -3182,6 +3182,41 @@ Phase 8 consists of 3 tasks (evidence_page= leak cleanup, math formula constrain
 - [x] **Zero-Drop tests**: 3 tests covering single-pass, single-degrade, and 3-paper mixed scenario
 - [x] **Full suite**: 81 tests passing with zero regressions
 
+---
+
+## Phase 9: Physical Compiler Self-Healing & Description List (Current)
+
+**Goal:** Two disruptive architectural refactors: (1) replace tabularx tables with `description` list environment; (2) introduce physical xelatex compilation for unsupervised self-healing.
+
+**Architecture:** `core/templates.py` drops `\begin{tabularx}` in favor of `\begin{description}` per-paper structured paragraphs. `core/synthesis.py` adds `compile_with_xelatex()` using `subprocess.run` in a temp directory, extracting real `!` error lines from `.log`. Both synthesis paths (single-pass and multi-stage) use physical compilation as a fallback check after static scanning.
+
+---
+
+### Task 27: Description List — Replace tabularx Tables
+
+**Files:**
+- Modify: `core/templates.py` (rewrite `render_matrix_table_tex` to output `description` environment)
+- Modify: `core/synthesis.py` (remove `booktabs`/`tabularx` from preamble; update prompt guidance)
+- Test: `tests/test_templates.py` (add description tests, remove tabularx tests)
+
+- [ ] **Step 1 (RED)**: Write failing test for description output
+- [ ] **Step 2 (GREEN)**: Implement `render_matrix_table_tex` with `\begin{description}...\end{description}`
+- [ ] **Step 3**: Update `_build_preamble()` to remove `booktabs`/`tabularx`; update `build_synthesis_prompt()` guidance
+- [ ] **Step 4**: Run full suite, fix any regressions
+- [ ] **Step 5**: Commit
+
+### Task 28: Physical XeLaTeX Compiler Self-Healing
+
+**Files:**
+- Modify: `core/synthesis.py` (add `compile_with_xelatex`, `_parse_xelatex_log`; update both render functions)
+- Test: `tests/test_synthesis.py` (add xelatex error parsing tests)
+
+- [ ] **Step 1 (RED)**: Write failing tests for `_parse_xelatex_log()` and `compile_with_xelatex()`
+- [ ] **Step 2 (GREEN)**: Implement `_parse_xelatex_log()` and `compile_with_xelatex()`
+- [ ] **Step 3**: Wire physical compilation into `render_survey_tex_with_llm()` and `render_survey_tex_multi_stage()`
+- [ ] **Step 4**: Run full suite, fix any regressions
+- [ ] **Step 5**: Commit
+
 ### Task 22.2: Upgrade agent.py — Three-Level Fallback Chain
 
 **Files:**
