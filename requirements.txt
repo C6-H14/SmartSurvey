@@ -5,3 +5,4 @@ pymupdf
 python-dotenv
 pytest
 keyring
+arxiv
