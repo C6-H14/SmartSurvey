@@ -63,20 +63,19 @@ def build_knowledge_graph(vault_data: list[dict]) -> "Network":
     """)
 
     added_nodes: set[tuple[str, str]] = set()
-    node_counter = [0]
+    node_id_by_key: dict[tuple[str, str], int] = {}
+    next_id = 0
 
     def _add_node(label: str, group: str, title: str = "", size: int = 10) -> int:
         """Add a node if not already present; return its id."""
+        nonlocal next_id
         key = (label, group)
         if key in added_nodes:
-            # Find the existing node id
-            for node in graph.nodes:
-                if node.get("label") == label:
-                    return node["id"]
-            # Fallback: create a new one (shouldn't happen)
-        nid = node_counter[0]
-        node_counter[0] += 1
+            return node_id_by_key[key]
+        nid = next_id
+        next_id += 1
         added_nodes.add(key)
+        node_id_by_key[key] = nid
 
         color_map = {
             "paper": "#97c2fc",
