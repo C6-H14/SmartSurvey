@@ -2,6 +2,7 @@ import streamlit as st
 
 from core.agent import create_extraction_fn
 from core.credentials import CredentialStore, DEFAULT_API_BASE, DEFAULT_MODEL_NAME
+from core.graph import build_knowledge_graph, render_knowledge_graph
 from core.models import ParsedPaper
 from core.pdf_parser import parse_pdf_bytes
 from core.pipeline import extract_with_self_healing, generate_artifacts, generate_llm_artifacts
@@ -115,6 +116,8 @@ def run_app() -> None:
                 st.download_button("Download matrix_table.tex", artifacts.matrix_table_tex, "matrix_table.tex")
                 st.download_button("Download references.bib", artifacts.references_bib, "references.bib")
 
+    _render_knowledge_graph_tab()
+
 
 def _get_merged_core_pages(paper: ParsedPaper) -> tuple[str, dict[int, str]]:
     """Merge first 3 pages and last 2 non-reference pages into one context.
@@ -155,6 +158,37 @@ def _is_reference_page(page_text: str) -> bool:
     ref_markers = ["[1]", "[2]", "[3]", "[4]", "[5]"]
     count = sum(1 for m in ref_markers if m in lower)
     return count >= 3 or "references" in lower[:80]
+
+
+def _render_knowledge_graph_tab() -> None:
+    """Render a 2D interactive knowledge graph from vault data in the Streamlit UI."""
+    import json
+    import os
+
+    vault_path = os.path.join("data", "vault_100_lab_anomaly.json")
+
+    if not os.path.exists(vault_path):
+        st.info("📚 文献知识图谱需要 vault 数据文件 (`data/vault_100_lab_anomaly.json`)，请先运行数据获取脚本。")
+        return
+
+    with st.expander("🔍 文献知识图谱", expanded=False):
+        with open(vault_path, encoding="utf-8") as f:
+            vault_data = json.load(f)
+
+        if not vault_data:
+            st.warning("⚠️ vault 数据为空，无法生成知识图谱。")
+            return
+
+        st.caption(f"数据来源: {vault_path}（共 {len(vault_data)} 篇文献）")
+
+        if st.button("🔍 生成文献知识图谱"):
+            with st.spinner("正在构建知识图谱..."):
+                graph = build_knowledge_graph(vault_data)
+                html_path = render_knowledge_graph(graph)
+                with open(html_path, encoding="utf-8") as f:
+                    html_content = f.read()
+            st.components.v1.html(html_content, height=650, scrolling=True)
+            st.success(f"✅ 知识图谱已生成: {html_path}")
 
 
 if __name__ == "__main__":

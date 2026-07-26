@@ -6,3 +6,4 @@ python-dotenv
 pytest
 keyring
 arxiv
+pyvis
