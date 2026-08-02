@@ -1,14 +1,40 @@
 # scripts/fetch_vault.py
+import argparse
 import json
 import os
+import re
 from typing import Any
 
 
+def _sanitize_topic(topic: str) -> str:
+    """Convert a topic string into a safe filesystem fragment."""
+    slug = re.sub(r"[^a-zA-Z0-9_\- ]", "", topic)
+    slug = slug.strip().replace(" ", "_")
+    return slug[:60]
+
+
+def _build_query(topic: str) -> str:
+    """
+    Build an arXiv query string from a free-form topic.
+
+    Splits the topic into keywords and constructs a boolean OR query
+    on the abstract field, scoped to cs (Computer Science) category.
+    """
+    keywords = [kw.strip() for kw in re.split(r"[,;]+", topic) if kw.strip()]
+    if not keywords:
+        keywords = ["anomaly detection"]
+
+    parts = " OR ".join(f'abs:"{kw}"' for kw in keywords)
+    return f"cat:cs.CV AND ({parts})"
+
+
 def fetch_lab_anomaly_vault(
-    arxiv_client: Any | None = None, max_results: int = 100
+    arxiv_client: Any | None = None,
+    max_results: int = 100,
+    topic: str = "3D anomaly detection",
 ) -> list[dict]:
     """
-    自动从 arXiv 检索并抓取【自动化实验室异常检测与机器人安全】方向的 Top-100 论文元数据与摘要。
+    自动从 arXiv 检索并抓取指定学术主题的论文元数据与摘要。
 
     Parameters
     ----------
@@ -17,16 +43,18 @@ def fetch_lab_anomaly_vault(
         When None, a real arxiv.Client is created lazily.
     max_results : int
         Maximum number of results to fetch.
+    topic : str
+        Research topic to search for. Supports comma/semicolon-separated keywords.
 
     Returns
     -------
     list[dict]
         Paper metadata entries harvested from ArXiv.
     """
-    print(f"🚀 开始从 arXiv 自动收割【自动化实验室/机器人异常检测】前沿文献 (目标: {max_results} 篇)...")
+    topic_slug = _sanitize_topic(topic)
+    print(f"🚀 开始从 arXiv 自动收割文献 (主题: {topic}, 目标: {max_results} 篇)...")
 
-    # 针对您大研场景（RealSense + YOLO + 机械臂 + 异常检测）定制的精确检索式
-    query = 'cat:cs.CV AND (abs:"anomaly detection" OR abs:"workspace safety" OR abs:"intrusion detection" OR abs:"robotic arm")'
+    query = _build_query(topic)
 
     import arxiv  # lazy import to avoid top-level dependency in CI
 
@@ -38,7 +66,7 @@ def fetch_lab_anomaly_vault(
     search = arxiv.Search(
         query=query,
         max_results=max_results,
-        sort_by=arxiv.SortCriterion.Relevance,  # 按相关度排序
+        sort_by=arxiv.SortCriterion.Relevance,
     )
 
     vault_data = []
@@ -60,16 +88,33 @@ def fetch_lab_anomaly_vault(
             f"  [{idx+1}/{len(results)}] 成功收割: {paper_info['title'][:55]}... ({paper_info['year']})"
         )
 
-    out_path = "data/vault_100_lab_anomaly.json"
+    out_path = f"data/vault_{topic_slug}.json"
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(vault_data, f, ensure_ascii=False, indent=2)
 
     print(
-        f"\n🎉 恭喜！100 篇【实验室异常检测】专属文献数据库已自动构建完成！保存于: {out_path}"
+        f"\n🎉 恭喜！{len(vault_data)} 篇【{topic}】专属文献数据库已自动构建完成！保存于: {out_path}"
     )
 
     return vault_data
 
 
 if __name__ == "__main__":
-    fetch_lab_anomaly_vault(max_results=100)
+    parser = argparse.ArgumentParser(
+        description="从 arXiv 自动收割指定学术主题的文献元数据与摘要"
+    )
+    parser.add_argument(
+        "--topic",
+        type=str,
+        default="3D anomaly detection",
+        help='研究主题关键词，支持逗号/分号分隔多个关键词 (默认: "3D anomaly detection")',
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=100,
+        help="最大收割论文数量 (默认: 100)",
+    )
+    args = parser.parse_args()
+
+    fetch_lab_anomaly_vault(max_results=args.limit, topic=args.topic)

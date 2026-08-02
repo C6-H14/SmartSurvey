@@ -107,8 +107,8 @@ def test_fetch_vault_saves_json_file(monkeypatch, tmp_path):
     monkeypatch.chdir(tmp_path)
     result = fetch_lab_anomaly_vault(arxiv_client=fake_client, max_results=10)
 
-    # The file is written to data/vault_100_lab_anomaly.json relative to cwd
-    file_path = tmp_path / "data" / "vault_100_lab_anomaly.json"
+    # The file is written to data/vault_{topic_slug}.json relative to cwd
+    file_path = tmp_path / "data" / "vault_3D_anomaly_detection.json"
     assert file_path.exists()
 
     with open(file_path, encoding="utf-8") as f:
@@ -134,7 +134,7 @@ def test_fetch_vault_empty_results(monkeypatch, tmp_path):
     assert isinstance(result, list)
     assert len(result) == 0
 
-    file_path = tmp_path / "data" / "vault_100_lab_anomaly.json"
+    file_path = tmp_path / "data" / "vault_3D_anomaly_detection.json"
     assert file_path.exists()
 
     with open(file_path, encoding="utf-8") as f:
