@@ -984,3 +984,240 @@ Example: \textbf{第一类：}[explanation] — NOT \textbf{第一类}[explanati
 | `core/templates.py` | `\noindent` 分行 |
 | `tests/test_synthesis.py` | 新增 CJK 括号测试、preamble 包裹测试、itemize 约束测试、冒号约束测试 |
 | `tests/test_templates.py` | 更新表格居中测试 |
+
+---
+
+## 22. 第八阶段 (Phase 8): RAG 思维链泄漏清洗与格式加固
+
+### 22.1 概述
+
+Phase 8 完成五项硬性规约的落地，目标是让 `survey_draft.tex` 达到可直接提交学术教授审阅的 A 档质量。
+
+### 22.2 RAG 思维链/检索标记清洗规约
+
+#### 22.2.1 问题描述
+
+大模型在生成正文时泄漏内部 RAG 检索标记，如 `(evidence_page=2)` 等键名残留在最终手稿中，严重破坏学术严谨性。
+
+#### 22.2.2 解决方案
+
+双重保险防线：
+
+**第一道防线（Prompt 层）：** 在 `build_synthesis_prompt()` 和 `_build_section_prompt()` 中追加强制约束，严禁 LLM 在正文中输出 `evidence_page=` 等内部键名，必须使用学术界标准引用格式（如 `[1]`, `[2]`）。
+
+**第二道防线（物理拦截层）：** 在 `core/synthesis.py` 的 `render_survey_tex_with_llm()` 和 `render_survey_tex_multi_stage()` 输出端，编写 Python 正则后处理器，使用正则 `\(evidence_page=[^\)]+\)` 彻底将此类泄漏字符物理清洗掉。
+
+#### 22.2.3 涉及文件
+
+- `core/synthesis.py` — Prompt 追加约束 + 正则后处理器
+- `tests/test_synthesis.py` — 新增泄漏检测测试
+
+### 22.3 硬核 LaTeX 数学公式支撑规约
+
+#### 22.3.1 问题描述
+
+综述手稿缺乏硬核数学公式支撑，误差度量等核心论证仅靠文字描述，学术深度不足。
+
+#### 22.3.2 解决方案
+
+在 extractor 提示词 (`build_extraction_prompt`) 与 synthesis 提示词 (`build_synthesis_prompt`, `_build_section_prompt`) 中追加规则：
+- 要求大模型在提取和学术论述时，必须强制抓取并使用标准 LaTeX 行内/行间数学公式（如 `$E(u) = \int_\Omega |\nabla u|^2 dx$` 等物理/数学测度公式）
+- 对核心误差度量展开硬核学术论证，而非仅用文字描述
+
+#### 22.3.3 涉及文件
+
+- `core/extractor.py` — 提取提示词追加数学公式约束
+- `core/synthesis.py` — 合成提示词追加数学公式约束
+- `tests/test_extractor.py` — 新增数学公式约束测试
+- `tests/test_synthesis.py` — 新增数学公式约束测试
+
+### 22.4 LaTeX 排版美学细节规约
+
+#### 22.4.1 问题描述
+
+手稿排版存在以下细节问题：
+1. 页边距不一致
+2. 摘要引言未物理分段
+3. 分类用长句堆叠而非列表
+4. 加粗领头词冒号在花括号外部导致视觉落差
+5. 右花括号 `}` 偶尔被误写为中文右书名号 `》`
+
+#### 22.4.2 解决方案
+
+| # | 规约 | 实现方式 | 状态 |
+|:-:|:-----|:---------|:----:|
+| 1 | 页边距 `margin=1.8cm` | `_build_preamble()` 中 `geometry` 宏包 | ✅ Phase 7 |
+| 2 | 摘要引言物理分段 | `\noindent\textbf{摘要：}...\par\bigskip\noindent\textbf{引言：}` | ✅ Phase 7 |
+| 3 | 列表化分类 | `\begin{itemize}` 环境 + 独立 `\item` | ✅ Phase 7 |
+| 4 | 加粗冒号包裹 | `\textbf{...：}` 冒号在花括号内 | ✅ Phase 7 |
+| 5 | 括号笔误硬卡控 | `validate_latex_syntax()` CJK 检测 | ✅ Phase 7 |
+
+以上规约已在 Phase 7 中通过 `SECTION_TEMPLATES` 注册表全部实现，此处归档确认。
+
+### 22.5 100% 零丢失保证规约 (Zero-Drop Guarantee)
+
+#### 22.5.1 问题描述
+
+旧版 `filter_rows_by_evidence()` 使用后置标题模糊匹配，导致部分论文因标题匹配失败而被静默吞掉，违背"输入多少篇 PDF，输出就必须有多少行"的硬性要求。
+
+#### 22.5.2 解决方案
+
+彻底废除后置匹配过滤。在 `core/pipeline.py` 的 `extract_with_self_healing()` 主循环内部，直接进行"提取-自愈-校验-就地降级"的物理闭环：
+
+- 每篇论文独立提取
+- 证据校验不通过时，通过 `_apply_degradation()` 将 limitation 标记为 `"missing (unverified)"`，evidence_quote 标记为 `"unverified"`
+- 所有论文（包括降级后的论文）均保留在最终输出中
+- 在 `scripts/run_extraction.py` 中追加终极兜底：若 JSON 提取经全部重试后仍为空，使用文件名创建降级行
+
+#### 22.5.3 涉及文件
+
+- `core/pipeline.py` — 废除 `filter_rows_by_evidence()`，`extract_with_self_healing()` 内联零丢失
+- `scripts/run_extraction.py` — 终极文件名兜底降级
+- `tests/test_pipeline.py` — 新增零丢失测试（单篇降级 + 三篇场景）
+
+### 22.6 测试用例去硬编码规约
+
+#### 22.6.1 问题描述
+
+全量测试用例中仍存在多处硬编码的 `"industrial automation lab..."` 旧版主题，导致测试用例不洁净、不易维护。
+
+#### 22.6.2 解决方案
+
+逐一检查 `tests/` 目录下的所有测试文件，将遗留的硬编码工业主题字符串替换为通用的学术中性测试字符串：
+
+| 文件 | 行号 | 旧值 | 新值 |
+|:----|:----|:-----|:-----|
+| `tests/test_templates.py` | 35, 43, 78 | `"industrial anomaly detection"` | `"test topic"` |
+| `tests/test_extractor.py` | 6 | `"industrial anomaly detection"` | `"test topic"` |
+
+#### 22.6.3 涉及文件
+
+- `tests/test_templates.py` — 清洗硬编码主题
+- `tests/test_extractor.py` — 清洗硬编码主题
+
+---
+
+## 23. 第九阶段 (Phase 9): 物理编译自愈与 Description 列表重构
+
+### 23.1 概述
+
+Phase 9 完成两个降维打击级的架构重构：
+
+1. **彻底废除 LaTeX 三线表，改用 `description` 结构化段落列表**（`core/templates.py`）
+2. **引入物理 XeLaTeX 编译器接入，实现无监督自愈系统**（`core/synthesis.py`、`core/pipeline.py`）
+
+---
+
+### 23.2 Description 列表替代三线表
+
+#### 23.2.1 问题描述
+
+文献数量多、技术维度多（7 列）时，在 A4 纸内强行排版 `tabularx` 多行表格必然发生物理溢出。`overfull \hbox` 警告无法通过 `X` 列完全消除。
+
+#### 23.2.2 解决方案
+
+将第四节《学术对比矩阵》从 `tabularx` 三线表重构为 `\begin{description}...\end{description}` 结构化段落列表。
+
+#### 23.2.3 格式规范
+
+```latex
+\begin{description}
+
+\item[\textbf{1. 论文标题 (2024)：}] \hfill \\
+\textbf{技术方法：} xxx \\
+\textbf{关键优势：} xxx \\
+\textbf{核心局限：} xxx
+
+\item[\textbf{2. 论文标题二 (2023)：}] \hfill \\
+\textbf{技术方法：} xxx \\
+\textbf{关键优势：} xxx \\
+\textbf{核心局限：} xxx
+
+\end{description}
+```
+
+#### 23.2.4 涉及文件
+
+- `core/templates.py` — 重写 `render_matrix_table_tex()` 输出 `description` 环境
+- `core/synthesis.py` — `_build_preamble()` 移除 `booktabs`、`tabularx` 宏包；`build_synthesis_prompt()` 更新为 `description` 格式指引
+- `tests/test_templates.py` — 替换 `test_render_matrix_table_uses_tabularx` 为 `test_render_matrix_table_uses_description`
+
+#### 23.2.5 验收标准
+
+- `render_matrix_table_tex()` 输出 `\begin{description}` 和 `\end{description}`
+- 每篇文献一个 `\item[\textbf{N. Title (Year)：}] \hfill \\`
+- 内部包含 `\textbf{技术方法：}`、`\textbf{关键优势：}`、`\textbf{核心局限：}` 分段
+- 不再输出 `\begin{tabularx}`、`\toprule`、`\midrule`、`\bottomrule`
+- 导言区不再包含 `\usepackage{booktabs}`、`\usepackage{tabularx}`
+
+---
+
+### 23.3 物理 XeLaTeX 编译器接入与无监督自愈
+
+#### 23.3.1 问题描述
+
+现有静态栈扫描器（`validate_latex_syntax`）只能检测 `$` 奇偶、`\begin`/`\end` 配对和花括号平衡，无法捕获"未定义宏包、未定义命令（如 `\mathbb` 需要 `amssymb`）、编码错误"等复杂 LaTeX 底层编译异常。
+
+#### 23.3.2 解决方案
+
+在 `core/synthesis.py` 中引入物理编译探测层。自愈重试时，先在后台通过 `subprocess.run()` 调用用户本地的 `xelatex` 对 `survey_draft.tex` 进行一次非阻塞编译，提取真实报错后反馈给 LLM。
+
+#### 23.3.3 函数接口
+
+```python
+def compile_with_xelatex(latex_source: str, timeout: int = 60) -> list[str]:
+    """
+    在临时目录中编译 LaTeX 源码，返回从 .log 提取的编译错误列表。
+
+    参数:
+        latex_source: 完整的 .tex 文件内容（含导言区）。
+        timeout: 编译超时秒数（默认 60）。
+
+    返回:
+        去重后的错误消息列表，最多 5 条。空列表 = 编译通过。
+        若 xelatex 不可用、超时或编译成功，均返回空列表（静默降级）。
+    """
+```
+
+#### 23.3.4 安全设计
+
+| 维度 | 策略 |
+|------|------|
+| **超时控制** | `subprocess.run(..., timeout=60)`，超时后静默降级，不重试 |
+| **环境探测** | `shutil.which("xelatex")`，不存在则静默降级为静态扫描 |
+| **临时目录隔离** | 强制在 `tempfile.TemporaryDirectory()` 中编译，后自动清理 |
+| **错误行提取** | 正则 `^!\s+` 从 `.log` 提取，去重后取前 5 条 |
+| **重试策略** | 物理编译失败时触发 1 次自愈重试，与静态扫描共享 `MAX_SYNTHESIS_RETRIES` |
+
+#### 23.3.5 数据流
+
+```
+render_survey_tex_with_llm()
+  ├── 1. LLM 生成原始 LaTeX 源码
+  ├── 2. 包裹导言区 + \end{document}
+  ├── 3. 静态扫描 validate_latex_syntax()
+  │     ├── 通过 → 返回
+  │     └── 有错误 → 进入自愈
+  ├── 4. 物理编译 compile_with_xelatex()  ← 新增
+  │     ├── xelatex 不存在 → 跳过（静默）
+  │     ├── 超时 → 跳过（静默）
+  │     ├── 编译成功 → 返回
+  │     └── 编译失败 → 提取 ! 错误行
+  ├── 5. 将静态错误 + 编译错误合并为 <latex-compilation-errors>
+  ├── 6. 喂给 LLM 进行 1 次自愈重试
+  └── 7. 返回最终结果（即使仍有错误）
+```
+
+#### 23.3.6 涉及文件
+
+- `core/synthesis.py` — 新增 `compile_with_xelatex()`、`_parse_xelatex_log()`；更新 `render_survey_tex_with_llm()` 和 `render_survey_tex_multi_stage()` 引入物理编译
+- `core/pipeline.py` — 无变更（synthesis 模块内部封装）
+- `tests/test_synthesis.py` — 新增 `test_compile_with_xelatex_log_parsing()` 单元测试
+
+#### 23.3.7 验收标准
+
+- `_parse_xelatex_log()` 能从模拟 `.log` 内容中提取 `!` 开头的错误行
+- `compile_with_xelatex()` 在 xelatex 不存在时返回空列表（不崩溃）
+- `compile_with_xelatex()` 在超时时返回空列表（不崩溃）
+- 物理编译错误通过 `<latex-compilation-errors>` XML 标签反馈给 LLM
+- `render_survey_tex_with_llm()` 在有 xelatex 时自动触发物理编译

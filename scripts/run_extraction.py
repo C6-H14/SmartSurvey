@@ -1,11 +1,10 @@
 """Batch extraction: parse PDFs, run self-healing extraction, export artifacts.
 
 Usage:
-    python -m scripts.run_extraction
-
-Requires a valid LLM API key in the OS keyring.
+    python -m scripts.run_extraction --topic "medical image segmentation"
 """
 
+import argparse
 import glob
 import os
 import sys
@@ -23,7 +22,6 @@ from core.schema import domain_fields_for_topic
 
 INPUT_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "input_pdfs")
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "output_docs")
-TOPIC = "industrial automation lab spatial anomaly detection"
 PROGRESS_BAR_LEN = 20
 
 
@@ -93,6 +91,11 @@ def _get_merged_core_pages(paper: ParsedPaper) -> tuple[str, dict[int, str]]:
 
 
 def main():
+    parser = argparse.ArgumentParser(description="SmartSurvey 批量文献自愈提取编译器")
+    parser.add_argument("--topic", required=True, help="指定本次文献综述的学术主题（如：'medical image segmentation'）")
+    args = parser.parse_args()
+    TOPIC = args.topic
+
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
     # Resolve credentials

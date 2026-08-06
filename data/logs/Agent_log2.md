@@ -1,6 +1,64 @@
 # Agent Log
 
-## Task 16.1 - Self-Healing Extraction Pipeline
+## Task 25.1 - Streamlit 2D 交互式文献知识图谱
+
+- Timestamp: 2026-07-26 +08:00
+- Triggered Superpowers skills: `subagent-driven-development`, `test-driven-development`
+- Branch: phase6
+- Key decisions and actions:
+  - **RED**: 编写 tests/test_graph.py 的 5 个测试用例
+    - test_extract_entities_from_paper（从 paper 字典提取实体）
+    - test_build_knowledge_graph_returns_network（2 篇论文共享作者，验证节点/边数）
+    - test_build_knowledge_graph_handles_single_paper（单篇论文 ≥3 节点）
+    - test_build_knowledge_graph_empty_vault（空输入 → 空图）
+    - test_render_knowledge_graph_creates_html（HTML 文件生成 + 内容验证）
+  - 确认 5 个测试全部失败（ModuleNotFoundError）
+  - **GREEN**: 实现 core/graph.py
+    - _extract_entities(paper) → dict（作者/年份/会议提取）
+    - build_knowledge_graph(vault_data) → Network（PyVis，颜色编码节点，barnesHut 物理引擎）
+    - render_knowledge_graph(graph, output_dir) → str（保存 HTML 并返回绝对路径）
+  - 集成到 main.py（可折叠 expander + 按钮 + st.components.v1.html 嵌入）
+  - 添加 pyvis 到 requirements.txt
+  - 全量回归测试：97 passed（零回归）
+  - Code Review 审查：Approved ✅
+    - 修复：node dedup 改为 O(1) dict 查找 + nonlocal 替代 list hack
+- Specification alignment:
+  - 符合 Phase 6 施工图 Task 25 的全部要求
+  - 5 个测试覆盖正常、空数据、单论文、HTML 渲染等场景
+  - 颜色编码：paper=蓝、author=红、venue=绿、year=黄
+- Lessons learned:
+  - 审查者发现了 _add_node 中 label-only 匹配的潜在 bug（同 label 不同 group 时返回错误 ID）
+  - node_counter = [0] 的 Python 2 遗留模式已被 nonlocal 替代
+  - 改为 O(1) dict 查找，消除了 O(n) 遍历
+
+- Timestamp: 2026-07-26 +08:00
+- Triggered Superpowers skills: `subagent-driven-development`, `test-driven-development`
+- Key prompt and configuration:
+  - Phase 6 Task 24: 为 scripts/fetch_vault.py 添加 TDD 测试 + 重构为可测试模式
+  - Branch: phase6 (全新开发分支)
+- Key decisions and actions:
+  - **RED**: 编写 tests/test_fetch_vault.py 的三个测试用例（FakeArxivClient 模拟注入）
+    - test_fetch_vault_returns_list_of_dicts（2 条结果，验证标题/年份/作者/pdf_url）
+    - test_fetch_vault_saves_json_file（验证 JSON 文件侧效应）
+    - test_fetch_vault_empty_results（空结果集处理）
+  - 确认 3 个测试全部失败（TypeError: fetch_lab_anomaly_vault 不接受 arxiv_client 参数）
+  - **GREEN**: 重构 scripts/fetch_vault.py
+    - 添加 arxiv_client: Any | None = None 参数（DI 注入）
+    - 添加 -> list[dict] 返回类型
+    - 惰性 import arxiv（函数体内 import，避免 CI 环境报错）
+    - 保留 JSON 文件写入侧效应
+    - 更新 if __name__ == "__main__" 调用
+  - 全量回归测试：92 passed（零回归）
+  - Code Review 发现：缺少 arxiv 依赖声明（requirements.txt）→ 已修复提交 56feeb9
+  - 最终审查：Spec ✅ | Task quality: Approved
+- Specification alignment:
+  - 符合 Phase 6 施工图 Task 24 的全部要求
+  - 覆盖 3 个测试用例：正常返回、JSON 文件保存、空结果
+  - DI 注入模式与项目中 agent.py 的创建保持一致
+- Lessons learned:
+  - 子 Agent 实现了核心功能，但遗漏了 requirements.txt 依赖声明
+  - Code Review 审查了这一点，快速修复后任务达成 Approved
+  - 92 个测试全部通过，零回归
 
 - Timestamp: 2026-07-07 +08:00
 - Triggered Superpowers skills: `executing-plans`, `test-driven-development`
@@ -376,3 +434,55 @@
   - Design spec §2.2 JSON Credential Schema: `llm_api_key`, `llm_api_base`, `llm_model_name`
   - SPEC §19.2-19.5 JSON single-key storage, migration guard, three-field credential support
 - Next step: Task 22.2 (agent.py three-level fallback chain) + Task 22.3 (main.py sidebar UI)
+
+## Task 26 — Zero-Drop Guarantee (Inline Scope Binding) — Closure Verification
+
+- Timestamp: 2026-07-19 +08:00
+- Branch: `feat/phase-7`
+- Triggered skills: `brainstorming`
+- **Context:** User requested to start Task 26 from scratch. Brainstorming inspection revealed the task was already fully implemented — `extract_with_self_healing` already uses `page_text_by_number` for inline evidence validation, `_apply_degradation()` already marks failed rows as `"missing (unverified)"`, and `filter_rows_by_evidence()` / `_find_matching_paper()` have been deleted from all code files.
+- **Verification results:**
+  - `core/pipeline.py:106-194` — `extract_with_self_healing` receives `page_text_by_number` and validates per-paper inline
+  - `core/pipeline.py:197-214` — `_apply_degradation` marks `limitation → "missing (unverified)"`, `evidence_quote → "unverified"`
+  - No `filter_rows_by_evidence` or `_find_matching_paper` in any source file (only docs references remain)
+  - `scripts/run_extraction.py:186` — `# Zero-Drop: all rows pass through` comment
+  - `main.py:97` — `# Zero-Drop: all rows pass through` comment
+  - `tests/test_pipeline.py` — 3 Zero-Drop tests: `test_zero_drop_retains_degraded_row`, `test_zero_drop_accepts_valid_row`, `test_zero_drop_retains_all_three_papers`
+- **Full test suite**: 81/81 passed
+- **Documentation**: Appended Task 26 section to `docs/PLAN.md` with completed checkboxes
+- **Commit**: `28c0be2` (already committed as part of earlier Task 24 work; Task 26 is a closure verification only, no new code changes needed)
+
+## Task 24 — BibTeX Author Parsing Hardening
+
+- Timestamp: 2026-07-19 +08:00
+- Branch: `task24` (new branch for this task)
+- Triggered Superpowers skills: `test-driven-development`
+- Key prompt and configuration:
+  - TDD cycle for Task 24: harden `parse_matrix_json` in `core/extractor.py` to handle three author formats.
+  - Problem: LLM output occasionally returns `authors` as Python list literal (`['Paul Bergmann', 'Kilian Batzner']`) or comma-separated string (`"Paul Bergmann, Kilian Batzner"`), both of which create BibTeX-invalid `str()` representations.
+- Key decisions and actions:
+  - **RED phase**: Created `tests/test_extractor_author.py` with 5 tests:
+    - `test_parse_authors_python_list_literal` — FAILED as expected (str() of list: `"['Paul Bergmann', 'Kilian Batzner']"`)
+    - `test_parse_authors_comma_separated_string` — FAILED as expected (comma not replaced with `and`)
+    - `test_parse_authors_already_standard` — PASSED (already correct)
+    - `test_parse_authors_single_author` — PASSED (no change needed)
+    - `test_parse_authors_missing` — PASSED (already handled)
+  - **GREEN phase**: Added `_normalize_authors(value: Any) -> str` to `core/extractor.py`:
+    - If value is a list, join with `" and "`
+    - If value is a comma-separated string (has `,` but no ` and `), replace `, ` with ` and `
+    - Otherwise, return as-is (via `_string_value` logic)
+    - Wired into `parse_matrix_json` by replacing `authors=_string_value(item, "authors")` with `authors=_normalize_authors(item.get("authors", "missing"))`
+  - All 5 tests now pass: `5 passed in 0.04s`
+  - Full suite: `81 passed in 7.41s` (zero regressions)
+- Files changed:
+  - `core/extractor.py` — added `_normalize_authors()` helper, updated `parse_matrix_json` to use it
+  - `tests/test_extractor_author.py` — new test file with 5 author normalization tests
+  - `docs/PLAN.md` — appended Task 24 section
+  - `data/logs/Agent_log2.md` — this log entry
+- Specification alignment:
+  - SPEC §8.5 BibTeX: author field must produce valid BibTeX-compatible `and`-separated format
+  - SPEC §12.3 No mock library: all tests use real JSON input with no mocks
+- Lessons learned:
+  - `json.loads` parses JSON arrays as Python lists, so `str()` on a list gives `"['A', 'B']"` — terrible for BibTeX
+  - The `_normalize_authors` check must distinguish between "already has ` and `" and "has `, ` but no ` and `" to avoid double-processing
+  - Missing authors should remain `"missing"` to maintain backward compatibility with existing tests

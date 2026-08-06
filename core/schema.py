@@ -26,4 +26,4 @@ def domain_fields_for_topic(topic: str) -> list[str]:
         ]
     if any(token in normalized for token in ["anomaly", "industrial", "automation", "robot", "workspace"]):
         return ["sensor", "accuracy", "latency", "deployment_scene", "decision_mechanism"]
-    return ["domain_object", "key_metric", "method_family", "evaluation_context"]
+    return ["method", "metric", "application"]

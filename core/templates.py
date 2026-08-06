@@ -44,33 +44,27 @@ def _add_tex_spacing(value: str) -> str:
 
 
 def render_matrix_table_tex(rows: list[AcademicMatrixRow]) -> str:
-    ragged = ">{\\raggedright\\arraybackslash}X"
+    """Render academic comparison matrix as a LaTeX description list.
+
+    Each paper becomes a \item[\textbf{N. Title (Year)：}] with structured
+    paragraphs for method, innovation, and limitation — avoiding tabular overflow.
+    """
     lines = [
-        r"\begin{table}[htbp]",
-        r"\centering",
-        r"\caption{Academic Comparison Matrix}",
-        r"\footnotesize",
-        r"\setlength{\tabcolsep}{4pt}",
-        r"\noindent",
-        r"\begin{tabularx}{\textwidth}{" + f"{ragged}{ragged}{ragged}{ragged}" + "}",
-        r"\toprule",
-        r"Paper & Method & Key Metric & Limitation \\",
-        r"\midrule",
+        r"\begin{description}",
     ]
-    for row in rows:
-        metric = next(
-            (v for v in row.domain_fields.values() if v not in ("missing", "")),
-            row.innovation or "unavailable",
-        )
-        title = _add_tex_spacing(latex_escape(row.title))
-        method = _add_tex_spacing(latex_escape(row.method))
-        metric_str = _add_tex_spacing(latex_escape(str(metric)))
-        limitation = _add_tex_spacing(latex_escape(row.limitation))
+    for idx, row in enumerate(rows, start=1):
+        title = latex_escape(row.title)
+        method = latex_escape(row.method)
+        innovation = latex_escape(row.innovation)
+        limitation = latex_escape(row.limitation)
         lines.append(
-            f"{title} & {method} & {metric_str} & {limitation} \\\\"
+            f"  \\item[\\textbf{{{idx}. {title} ({row.year})：}}] \\hfill \\\\\n"
+            f"    \\textbf{{技术方法：}}{method} \\\\\n"
+            f"    \\textbf{{关键优势：}}{innovation} \\\\\n"
+            f"    \\textbf{{核心局限：}}{limitation}"
         )
-    lines.extend([r"\bottomrule", r"\end{tabularx}", r"\end{table}"])
-    return "\n".join(lines)
+    lines.append(r"\end{description}")
+    return "\n\n".join(lines)
 
 
 def render_survey_tex(topic: str, rows: list[AcademicMatrixRow]) -> str:
@@ -88,7 +82,7 @@ def render_survey_tex(topic: str, rows: list[AcademicMatrixRow]) -> str:
         "Conclusion": "本文总结结构化矩阵、证据约束和后续研究价值。",
     }
     body = "\n\n".join(f"\\section{{{name}}}\n{content}" for name, content in sections.items())
-    return "\\documentclass{ctexart}\n\\usepackage{booktabs}\n\\usepackage{tabularx}\n\\begin{document}\n" + body + "\n\\end{document}\n"
+    return "\\documentclass{ctexart}\n\\begin{document}\n" + body + "\n\\end{document}\n"
 
 
 def render_markdown_preview(

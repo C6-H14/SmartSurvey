@@ -12,6 +12,22 @@ SmartSurvey is an AI4SE non-harness application for evidence-bound academic lite
 
 ## Install
 
+### 一键安装（推荐）
+
+**Windows:**
+
+```powershell
+powershell -ExecutionPolicy Bypass -File setup.ps1
+```
+
+**macOS / Linux:**
+
+```bash
+chmod +x setup.sh && ./setup.sh
+```
+
+### 手动安装
+
 ```bash
 python -m venv .venv
 .venv\Scripts\activate

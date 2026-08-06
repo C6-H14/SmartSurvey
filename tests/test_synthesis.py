@@ -1,6 +1,19 @@
 from core.synthesis import build_synthesis_prompt, render_survey_tex_with_llm, validate_latex_syntax, SECTION_TEMPLATES
 
 
+def test_synthesis_prompt_has_math_constraint():
+    """Synthesis prompt must require LaTeX math formulas."""
+    from core.models import AcademicMatrixRow
+    row = AcademicMatrixRow(
+        title="A", authors="B", year="2024", venue="C",
+        research_problem="P", method="M", innovation="I", limitation="L",
+        evidence_page=1, evidence_quote="Q", confidence=0.5, trigger_reason="R",
+    )
+    prompt = build_synthesis_prompt("test topic", [row])
+    assert "formula" in prompt.lower() or "公式" in prompt or "equation" in prompt.lower()
+    assert "$" in prompt or "\\(" in prompt
+
+
 def test_build_preamble_contains_magic_comments():
     """Preamble must include xelatex magic comments."""
     from core.synthesis import _build_preamble
@@ -75,9 +88,12 @@ class ValidLaTeXExtractor:
             r"\section{Abstract and Introduction}This is a test review."
             r"\section{Technical Taxonomy}Categories here."
             r"\section{Systematic Review and Deep Critique}Critique with evidence."
-            r"\section{Academic Comparison Matrix}\begin{table}\begin{tabular}{lll}\toprule"
-            r"Paper & Method & Limitation \\\midrule Paper A & vision & lighting \\\bottomrule"
-            r"\end{tabular}\end{table}"
+            r"\section{Academic Comparison Matrix}\begin{description}"
+            r"\item[\textbf{1. Paper A (2024)：}] \hfill \\"
+            r"\textbf{技术方法：}vision \\"
+            r"\textbf{关键优势：}fast \\"
+            r"\textbf{核心局限：}lighting"
+            r"\end{description}"
             r"\section{Research Gaps and Future Work}Future directions."
             r"\section{Conclusion}Summary."
         )
@@ -100,16 +116,18 @@ class InvalidLaTeXExtractor:
 
 
 def test_render_survey_tex_with_llm_valid():
-    """Valid LaTeX passes through without self-healing."""
+    """Valid LaTeX passes through static validation (xelatex compilation may or may not succeed)."""
     extractor = ValidLaTeXExtractor()
     result = render_survey_tex_with_llm(
         topic="test topic",
         rows=[],
         extraction_fn=extractor,
     )
-    assert extractor.call_count == 1  # no retry needed
+    # Result must be valid LaTeX regardless of retries
     assert r"\documentclass{ctexart}" in result
     assert r"\section{Abstract and Introduction}" in result
+    # At minimum, the LLM was called once
+    assert extractor.call_count >= 1
 
 
 def test_render_survey_tex_with_llm_self_healing():
@@ -398,4 +416,95 @@ def test_cjk_bracket_detection_error_precision():
     errors = validate_latex_syntax(broken)
     assert any("检测到中文符号" in e or "CJK" in e for e in errors)
     assert any("输入法冲突" in e or "替换了" in e or "possibly replacing" in e for e in errors)
+
+
+def test_evidence_page_leak_stripped():
+    """evidence_page= residuals must be stripped from final output."""
+    from core.synthesis import _strip_evidence_page_leaks
+
+    # evidence_page= leak patterns
+    dirty = (
+        r"\section{Test}Some text (evidence_page=2) more text "
+        r"(evidence_page=5) and (evidence_page=42) end."
+    )
+    clean = _strip_evidence_page_leaks(dirty)
+    assert "(evidence_page=" not in clean
+    assert "Some text  more text  and  end." == clean or "Some text  more text  and  end." in clean
+
+
+def test_prompt_forbids_evidence_page():
+    """build_synthesis_prompt must forbid evidence_page= in output."""
+    from core.models import AcademicMatrixRow
+    row = AcademicMatrixRow(
+        title="A", authors="B", year="2024", venue="C",
+        research_problem="P", method="M", innovation="I", limitation="L",
+        evidence_page=1, evidence_quote="Q", confidence=0.5, trigger_reason="R",
+    )
+    prompt = build_synthesis_prompt("test topic", [row])
+    assert "evidence_page" not in prompt or "禁止" in prompt or "严禁" in prompt or "CRITICAL" in prompt
+    assert "标准引用" in prompt or "[1]" in prompt or "citation" in prompt.lower()
+
+
+# ===== Phase 9: Physical XeLaTeX compiler self-healing =====
+
+def test_parse_xelatex_log_extracts_error_lines():
+    """_parse_xelatex_log must extract lines starting with ! from .log content."""
+    from core.synthesis import _parse_xelatex_log
+
+    log_content = (
+        "This is a log file\n"
+        "! Undefined control sequence.\n"
+        "l.12 \\mathbb\n"
+        "The control sequence at the end of the top line\n"
+        "! Missing $ inserted.\n"
+        "l.25 some text\n"
+        "Some more context\n"
+    )
+    errors = _parse_xelatex_log(log_content)
+    assert len(errors) == 2
+    assert "Undefined control sequence" in errors[0] or "! Undefined control sequence" in errors[0]
+    assert "Missing $ inserted" in errors[1] or "! Missing $ inserted" in errors[1]
+
+
+def test_parse_xelatex_log_returns_empty_for_clean_log():
+    """_parse_xelatex_log must return empty list when no ! lines exist."""
+    from core.synthesis import _parse_xelatex_log
+
+    log_content = (
+        "This is a clean log file\n"
+        "Output written on survey_draft.pdf (1 page).\n"
+        "Transcript written on survey_draft.log.\n"
+    )
+    errors = _parse_xelatex_log(log_content)
+    assert errors == []
+
+
+def test_parse_xelatex_log_deduplicates():
+    """_parse_xelatex_log must deduplicate repeated error lines."""
+    from core.synthesis import _parse_xelatex_log
+
+    log_content = (
+        "! Undefined control sequence.\n"
+        "l.12 \\mathbb\n"
+        "! Undefined control sequence.\n"
+        "l.20 \\mathbb{R}\n"
+    )
+    errors = _parse_xelatex_log(log_content)
+    assert len(errors) == 1  # deduplicated
+    assert "Undefined control sequence" in errors[0]
+
+
+def test_parse_xelatex_log_limits_to_five():
+    """_parse_xelatex_log must return at most 5 error lines."""
+    from core.synthesis import _parse_xelatex_log
+
+    log_content = "\n".join(f"! Error number {i}.\n" for i in range(10))
+    errors = _parse_xelatex_log(log_content)
+    assert len(errors) <= 5
+
+
+def test_compile_with_xelatex_importable():
+    """compile_with_xelatex must be importable from core.synthesis."""
+    from core.synthesis import compile_with_xelatex
+    assert callable(compile_with_xelatex)
 

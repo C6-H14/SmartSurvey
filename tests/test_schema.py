@@ -37,3 +37,10 @@ def test_domain_fields_for_matrix_multiplication():
 
     assert "complexity_bound" in fields
     assert "tensor_rank_or_border_rank" in fields
+
+
+def test_domain_fields_generic_fallback():
+    """Unknown topic must return generic fallback fields, not empty list."""
+    for unknown_topic in ["medical lesion segmentation", "graph neural networks", "quantum computing"]:
+        fields = domain_fields_for_topic(unknown_topic)
+        assert fields == ["method", "metric", "application"], f"Failed for {unknown_topic}: {fields}"
