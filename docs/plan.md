@@ -3401,3 +3401,721 @@ data/logs/
 - [x] **Step 3: Update `docs/SPEC.md` with Phase 5 section**
 - [x] **Step 4: Create design spec document**
 - [x] **Step 5: Commit**
+
+---
+
+## Phase 6: 文献库自动装填与 2D 交互式知识图谱
+
+**Goal:** 实现三大独立功能模块：Zotero Web API 学术文献自动归档（Task 23）、ArXiv 学术文献自动收割机（Task 24）、Streamlit 2D 可交互文献知识图谱（Task 25），将文献元数据采集、自动归档和可视化探索串联为完整工作流。
+
+**Architecture:** `core/zotero.py` 封装 Zotero Web API 客户端，支持集合/条目创建和 PDF 附件上传。`scripts/fetch_vault.py` 通过 ArXiv API 检索并自动收割论文元数据，存入本地 JSON 文献库。`core/graph.py` 利用 PyVis 将文献库渲染为 2D 交互式知识图谱，嵌入 Streamlit 侧边栏或主面板。
+
+**Tech Stack:** Python, `arxiv` (PyPI), `pyzotero` (PyPI), `pyvis` (PyPI), Streamlit, pytest
+
+---
+
+### Task 23: Zotero Web API 自动归档集成
+
+**Files:**
+- Create: `core/zotero.py` (ZoteroClient class)
+- Create: `tests/test_zotero.py`
+- Modify: `requirements.txt` (add `pyzotero`)
+
+**Interfaces:**
+- Produces: `ZoteroClient(api_key, library_id, library_type) -> ZoteroClient`
+  - `create_collection(name) -> str` (returns collection_id)
+  - `create_item(metadata: dict, collection_id: str | None = None) -> str` (returns item_key)
+  - `upload_attachment(item_key, pdf_path, title) -> str` (returns attachment_key)
+  - `search_items(query) -> list[dict]`
+
+- [ ] **Step 1: Write failing ZoteroClient tests**
+
+Create `tests/test_zotero.py`:
+
+```python
+from core.zotero import ZoteroClient
+
+
+class FakeZotero:
+    """In-memory fake for pyzotero's Zotero API."""
+    def __init__(self, api_key, library_id, library_type):
+        self.api_key = api_key
+        self.library_id = library_id
+        self.library_type = library_type
+        self.collections = {}
+        self.items = []
+        self.attachments = []
+
+    def create_collection(self, collection):
+        name = collection.get("name", "unnamed")
+        cid = f"col-{len(self.collections) + 1}"
+        self.collections[cid] = name
+        return {"data": {"key": cid}}
+
+    def create_items(self, items):
+        created = []
+        for item in items:
+            key = f"item-{len(self.items) + 1}"
+            self.items.append({"key": key, "data": item})
+            created.append({"success": {"data": {"key": key}}})
+        return {"0": {"successful": created}}
+
+    def children(self, parent_key, item_type=None):
+        return self.attachments
+
+    def upload_pdf(self, item_key, pdf_path, filename=None):
+        return {"success": 1}
+
+
+def test_zotero_client_create_collection():
+    client = ZoteroClient(api_key="sk-test", library_id="12345", library_type="user", _backend=FakeZotero)
+    cid = client.create_collection("My Lab Papers")
+    assert cid.startswith("col-")
+    assert client._backend.collections[cid] == "My Lab Papers"
+
+
+def test_zotero_client_create_item():
+    client = ZoteroClient(api_key="sk-test", library_id="12345", library_type="user", _backend=FakeZotero)
+    item_key = client.create_item({
+        "title": "Deep Anomaly Detection",
+        "creators": [{"firstName": "Alice", "lastName": "Wang"}],
+        "date": "2024",
+        "itemType": "journalArticle",
+    })
+    assert item_key.startswith("item-")
+
+
+def test_zotero_client_create_item_with_collection():
+    client = ZoteroClient(api_key="sk-test", library_id="12345", library_type="user", _backend=FakeZotero)
+    cid = client.create_collection("CV Papers")
+    item_key = client.create_item(
+        {"title": "Paper A", "itemType": "journalArticle"},
+        collection_id=cid,
+    )
+    assert item_key is not None
+
+
+def test_zotero_client_search_items():
+    client = ZoteroClient(api_key="sk-test", library_id="12345", library_type="user", _backend=FakeZotero)
+    client.create_item({"title": "Anomaly Detection", "itemType": "journalArticle"})
+    results = client.search_items("Anomaly")
+    assert len(results) >= 1
+```
+
+- [ ] **Step 2: Run Zotero tests to verify failure**
+
+Run: `python -m pytest tests/test_zotero.py -v`
+
+Expected: FAIL with `ModuleNotFoundError: No module named 'core.zotero'`.
+
+- [ ] **Step 3: Implement ZoteroClient**
+
+Create `core/zotero.py`:
+
+```python
+"""Zotero Web API client for academic literature auto-archiving."""
+
+from typing import Any
+
+
+class ZoteroClient:
+    """Client for Zotero Web API with dependency injection for testing.
+
+    Args:
+        api_key: Zotero API key.
+        library_id: Library ID (user or group ID).
+        library_type: 'user' or 'group'.
+        _backend: Dependency injection hook for testing (default: pyzotero.Zotero).
+    """
+
+    def __init__(
+        self,
+        api_key: str,
+        library_id: str,
+        library_type: str = "user",
+        _backend: type | None = None,
+    ):
+        self.api_key = api_key
+        self.library_id = library_id
+        self.library_type = library_type
+
+        if _backend is not None:
+            self._zotero = _backend(api_key, library_id, library_type)
+        else:
+            from pyzotero import Zotero as _Zotero
+            self._zotero = _Zotero(api_key, library_id, library_type)
+
+    def create_collection(self, name: str) -> str:
+        """Create a new collection and return its ID."""
+        result = self._zotero.create_collection({"name": name})
+        return result["data"]["key"]
+
+    def create_item(self, metadata: dict, collection_id: str | None = None) -> str:
+        """Create a new item (optionally in a collection) and return its key."""
+        items = [metadata]
+        result = self._zotero.create_items(items)
+        first_key = result["0"]["successful"][0]["success"]["data"]["key"]
+        return first_key
+
+    def upload_attachment(self, item_key: str, pdf_path: str, title: str) -> str:
+        """Upload a PDF attachment to an existing item."""
+        result = self._zotero.upload_pdf(item_key, pdf_path, filename=title)
+        return str(result.get("success", 0))
+
+    def search_items(self, query: str) -> list[dict]:
+        """Search items by title/query string."""
+        items = self._zotero.items()
+        return [item for item in items if query.lower() in str(item.get("data", {}).get("title", "")).lower()]
+```
+
+- [ ] **Step 4: Run Zotero tests to verify pass**
+
+Run: `python -m pytest tests/test_zotero.py -v`
+
+Expected: All 4 tests PASS.
+
+- [ ] **Step 5: Add `pyzotero` to requirements.txt**
+
+```text
+pyzotero
+```
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add core/zotero.py tests/test_zotero.py requirements.txt
+git commit -m "feat: add zotero web api auto-archive client (Task 23) [Subagent: Sonnet] [Manual: None] [Agent count: 1]"
+```
+
+---
+
+### Task 24: ArXiv 学术文献自动收割机
+
+**Files:**
+- Modify: `scripts/fetch_vault.py` (refactor for testability — add `_backend` DI parameter)
+- Create: `tests/test_fetch_vault.py`
+- Modify: `requirements.txt` (add `arxiv` if not present)
+
+**Interfaces:**
+- Consumes: `arxiv.Client` (via PyPI `arxiv` package)
+- Produces: `fetch_lab_anomaly_vault(arxiv_client=None, max_results=100) -> list[dict]`
+
+**Note:** `scripts/fetch_vault.py` already exists with a working `fetch_lab_anomaly_vault()` function. This task applies TDD retroactively: write tests that define the expected contract, then refactor the existing code to pass them.
+
+- [ ] **Step 1: Write failing tests for `fetch_lab_anomaly_vault`**
+
+Create `tests/test_fetch_vault.py`:
+
+```python
+import json
+import tempfile
+from pathlib import Path
+
+from scripts.fetch_vault import fetch_lab_anomaly_vault
+
+
+class FakeArxivResult:
+    """Simulates a single arxiv.Result object."""
+    def __init__(self, title, authors, published, summary, journal_ref, entry_id, pdf_url):
+        self.title = title
+        self.authors = [type("Author", (), {"name": a})() for a in authors]
+        self.published = type("Date", (), {"year": published})()
+        self.summary = summary
+        self.journal_ref = journal_ref
+        self.entry_id = entry_id
+        self.pdf_url = pdf_url
+
+
+class FakeArxivClient:
+    """In-memory fake for arxiv.Client."""
+    def __init__(self, results=None):
+        self.results = results or []
+
+    def results(self, search):
+        return self.results
+
+
+def test_fetch_vault_returns_list_of_dicts():
+    """fetch_lab_anomaly_vault must return a list of paper dicts."""
+    fake_client = FakeArxivClient(results=[
+        FakeArxivResult(
+            title="Deep Anomaly Detection in Industrial Workspaces",
+            authors=["Alice Wang", "Bob Li"],
+            published=2024,
+            summary="This paper proposes a vision-based anomaly detection method for robotic arms.",
+            journal_ref="arXiv preprint",
+            entry_id="http://arxiv.org/abs/2401.12345v1",
+            pdf_url="http://arxiv.org/pdf/2401.12345v1",
+        ),
+        FakeArxivResult(
+            title="Workspace Safety Monitoring Using Depth Cameras",
+            authors=["Charlie Zhang"],
+            published=2023,
+            summary="A safety monitoring system using RealSense depth cameras.",
+            journal_ref="ICRA 2023",
+            entry_id="http://arxiv.org/abs/2302.67890v2",
+            pdf_url="http://arxiv.org/pdf/2302.67890v2",
+        ),
+    ])
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        orig_cwd = Path.cwd()
+        try:
+            __import__("os").chdir(tmpdir)
+            results = fetch_lab_anomaly_vault(arxiv_client=fake_client, max_results=10)
+        finally:
+            __import__("os").chdir(str(orig_cwd))
+
+    assert isinstance(results, list)
+    assert len(results) == 2
+    assert results[0]["title"] == "Deep Anomaly Detection in Industrial Workspaces"
+    assert results[1]["title"] == "Workspace Safety Monitoring Using Depth Cameras"
+    assert results[0]["year"] == "2024"
+    assert results[1]["authors"] == ["Charlie Zhang"]
+    assert results[0]["pdf_url"] == "http://arxiv.org/pdf/2401.12345v1"
+
+
+def test_fetch_vault_saves_json_file():
+    """fetch_lab_anomaly_vault must write a JSON file to disk."""
+    fake_client = FakeArxivClient(results=[
+        FakeArxivResult(
+            title="Test Paper",
+            authors=["Test Author"],
+            published=2024,
+            summary="Test abstract.",
+            journal_ref=None,
+            entry_id="http://arxiv.org/abs/2401.00001v1",
+            pdf_url="http://arxiv.org/pdf/2401.00001v1",
+        ),
+    ])
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        orig_cwd = Path.cwd()
+        try:
+            __import__("os").chdir(tmpdir)
+            results = fetch_lab_anomaly_vault(arxiv_client=fake_client, max_results=10)
+            vault_path = Path(tmpdir) / "data" / "vault_100_lab_anomaly.json"
+            assert vault_path.exists()
+            with open(vault_path) as f:
+                data = json.load(f)
+            assert len(data) == 1
+            assert data[0]["title"] == "Test Paper"
+        finally:
+            __import__("os").chdir(str(orig_cwd))
+
+
+def test_fetch_vault_empty_results():
+    """fetch_lab_anomaly_vault handles empty results gracefully."""
+    fake_client = FakeArxivClient(results=[])
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        orig_cwd = Path.cwd()
+        try:
+            __import__("os").chdir(tmpdir)
+            results = fetch_lab_anomaly_vault(arxiv_client=fake_client, max_results=10)
+        finally:
+            __import__("os").chdir(str(orig_cwd))
+
+    assert results == []
+```
+
+- [ ] **Step 2: Run the new tests to verify they fail**
+
+Run: `python -m pytest tests/test_fetch_vault.py -v`
+
+Expected: FAIL because `fetch_lab_anomaly_vault` doesn't accept `arxiv_client` parameter yet.
+
+- [ ] **Step 3: Refactor `scripts/fetch_vault.py` for testability**
+
+Replace the existing `fetch_lab_anomaly_vault` function:
+
+```python
+import json
+import os
+from typing import Any
+
+
+def fetch_lab_anomaly_vault(
+    arxiv_client: Any | None = None,
+    max_results: int = 100,
+) -> list[dict]:
+    """
+    自动从 arXiv 检索并抓取【自动化实验室异常检测与机器人安全】方向的论文元数据与摘要。
+
+    Args:
+        arxiv_client: Dependency injection for testing (default: arxiv.Client()).
+        max_results: Maximum number of results to fetch.
+
+    Returns:
+        List of paper metadata dictionaries.
+    """
+    print(f"🚀 开始从 arXiv 自动收割【自动化实验室/机器人异常检测】前沿文献 (目标: {max_results} 篇)...")
+
+    # 针对大研场景（RealSense + YOLO + 机械臂 + 异常检测）定制的精确检索式
+    query = 'cat:cs.CV AND (abs:"anomaly detection" OR abs:"workspace safety" OR abs:"intrusion detection" OR abs:"robotic arm")'
+
+    if arxiv_client is None:
+        import arxiv
+        client = arxiv.Client()
+    else:
+        client = arxiv_client
+
+    search = __import__("arxiv").Search(
+        query=query,
+        max_results=max_results,
+        sort_by=__import__("arxiv").SortCriterion.Relevance,
+    )
+
+    vault_data = []
+    os.makedirs("data", exist_ok=True)
+
+    results = list(client.results(search))
+    for idx, result in enumerate(results):
+        paper_info = {
+            "id": result.entry_id.split("/")[-1],
+            "title": result.title.replace("\n", " ").strip(),
+            "authors": [author.name for author in result.authors],
+            "year": str(result.published.year),
+            "venue": result.journal_ref or "arXiv preprint",
+            "abstract": result.summary.replace("\n", " ").strip(),
+            "pdf_url": result.pdf_url,
+        }
+        vault_data.append(paper_info)
+        print(f"  [{idx+1}/{len(results)}] 成功收割: {paper_info['title'][:55]}... ({paper_info['year']})")
+
+    out_path = "data/vault_100_lab_anomaly.json"
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(vault_data, f, ensure_ascii=False, indent=2)
+
+    print(f"\n🎉 恭喜！已完成文献自动收割，保存于: {out_path}")
+
+    return vault_data
+
+
+if __name__ == "__main__":
+    fetch_lab_anomaly_vault(max_results=100)
+```
+
+- [ ] **Step 4: Run tests to verify they pass**
+
+Run: `python -m pytest tests/test_fetch_vault.py -v`
+
+Expected: All 3 tests PASS.
+
+- [ ] **Step 5: Run full test suite to check for regressions**
+
+Run: `python -m pytest tests -v`
+
+Expected: All existing tests continue to pass.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add scripts/fetch_vault.py tests/test_fetch_vault.py
+git commit -m "feat: refactor arxiv harvester for testability with TDD (Task 24) [Subagent: Sonnet] [Manual: None] [Agent count: 1]"
+```
+
+---
+
+### Task 25: Streamlit 2D 可交互文献知识图谱
+
+**Files:**
+- Create: `core/graph.py` (build_knowledge_graph, render_knowledge_graph, _extract_entities)
+- Create: `tests/test_graph.py`
+- Modify: `requirements.txt` (add `pyvis`)
+
+**Interfaces:**
+- Produces: `build_knowledge_graph(vault_data: list[dict]) -> Graph` (pyvis Network)
+- Produces: `render_knowledge_graph(graph, output_path) -> str` (returns HTML path)
+- Consumes: Vault data from `data/vault_100_lab_anomaly.json`
+
+- [ ] **Step 1: Write failing tests for knowledge graph builder**
+
+Create `tests/test_graph.py`:
+
+```python
+from core.graph import build_knowledge_graph, _extract_entities, render_knowledge_graph
+
+
+def test_extract_entities_from_paper():
+    """_extract_entities must extract author, year, and venue nodes."""
+    paper = {
+        "title": "Deep Anomaly Detection",
+        "authors": ["Alice Wang", "Bob Li"],
+        "year": "2024",
+        "venue": "arXiv preprint",
+        "abstract": "A vision-based anomaly detection method using deep learning.",
+    }
+    entities = _extract_entities(paper)
+
+    assert "Alice Wang" in entities["authors"]
+    assert "Bob Li" in entities["authors"]
+    assert entities["year"] == "2024"
+    assert entities["venue"] == "arXiv preprint"
+
+
+def test_build_knowledge_graph_returns_network():
+    """build_knowledge_graph must return a pyvis Network with nodes and edges."""
+    vault_data = [
+        {
+            "title": "Deep Anomaly Detection",
+            "authors": ["Alice Wang"],
+            "year": "2024",
+            "venue": "arXiv preprint",
+            "abstract": "Vision-based anomaly detection.",
+        },
+        {
+            "title": "Workspace Safety",
+            "authors": ["Alice Wang", "Bob Li"],
+            "year": "2023",
+            "venue": "ICRA 2023",
+            "abstract": "Safety monitoring using depth cameras.",
+        },
+    ]
+
+    graph = build_knowledge_graph(vault_data)
+    assert graph is not None
+
+    # Must have nodes (paper nodes + author nodes + venue nodes)
+    assert len(graph.nodes) >= 4
+    # Must have edges (paper-author connections)
+    assert len(graph.edges) >= 3
+
+
+def test_build_knowledge_graph_handles_single_paper():
+    """build_knowledge_graph must handle single-paper vault gracefully."""
+    vault_data = [
+        {
+            "title": "Only Paper",
+            "authors": ["Solo Author"],
+            "year": "2024",
+            "venue": "CVPR",
+            "abstract": "A single paper.",
+        },
+    ]
+
+    graph = build_knowledge_graph(vault_data)
+    assert graph is not None
+    assert len(graph.nodes) >= 3  # paper + author + venue
+
+
+def test_build_knowledge_graph_empty_vault():
+    """build_knowledge_graph returns empty graph for empty vault."""
+    graph = build_knowledge_graph([])
+    assert graph is not None
+    assert len(graph.nodes) == 0
+
+
+def test_render_knowledge_graph_creates_html():
+    """render_knowledge_graph must write an HTML file."""
+    from pyvis.network import Network
+    graph = Network()
+    graph.add_node(1, label="Test Paper")
+    graph.add_node(2, label="Test Author")
+    graph.add_edge(1, 2)
+
+    import tempfile
+    from pathlib import Path
+    with tempfile.TemporaryDirectory() as tmpdir:
+        html_path = render_knowledge_graph(graph, output_dir=tmpdir)
+        file_path = Path(html_path)
+        assert file_path.exists()
+        assert file_path.suffix == ".html"
+        content = file_path.read_text(encoding="utf-8")
+        assert "Test Paper" in content
+```
+
+- [ ] **Step 2: Run graph tests to verify failure**
+
+Run: `python -m pytest tests/test_graph.py -v`
+
+Expected: FAIL with `ModuleNotFoundError: No module named 'core.graph'`.
+
+- [ ] **Step 3: Implement knowledge graph module**
+
+Create `core/graph.py`:
+
+```python
+"""2D interactive knowledge graph builder for literature vault data."""
+
+import os
+from typing import Any
+
+
+def _extract_entities(paper: dict) -> dict:
+    """Extract entity nodes (authors, year, venue) from a paper metadata dict."""
+    return {
+        "authors": list(paper.get("authors", [])),
+        "year": str(paper.get("year", "unknown")),
+        "venue": paper.get("venue", "unknown"),
+    }
+
+
+def build_knowledge_graph(vault_data: list[dict]) -> Any:
+    """Build a pyvis Network graph from vault data.
+
+    Nodes represent papers, authors, and venues.
+    Edges connect papers to their authors and venues.
+
+    Args:
+        vault_data: List of paper metadata dicts from the vault JSON.
+
+    Returns:
+        pyvis.network.Network instance.
+    """
+    from pyvis.network import Network
+
+    graph = Network(height="600px", width="100%", directed=False, notebook=False)
+    graph.set_options("""
+    var options = {
+      "nodes": {
+        "font": {"size": 14},
+        "shape": "dot",
+        "size": 10
+      },
+      "edges": {
+        "color": {"inherit": true},
+        "smooth": {"type": "continuous"}
+      },
+      "physics": {
+        "stabilization": {"iterations": 100},
+        "barnesHut": {"gravitationalConstant": -3000, "springLength": 200}
+      }
+    }
+    """)
+
+    added_nodes = set()
+    node_counter = [0]  # mutable counter for closure
+
+    def _add_node(label: str, group: str, title: str = "") -> int:
+        """Add a node if not already present, return its ID."""
+        key = (label, group)
+        if key in added_nodes:
+            # Find existing node by label
+            for node in graph.nodes:
+                if node.get("label") == label and node.get("group") == group:
+                    return node["id"]
+        node_counter[0] += 1
+        nid = node_counter[0]
+        color_map = {"paper": "#97c2fc", "author": "#fc9797", "venue": "#97fcb8", "year": "#fcf897"}
+        graph.add_node(
+            nid,
+            label=label,
+            group=group,
+            title=title,
+            color=color_map.get(group, "#d3d3d3"),
+            size=15 if group == "paper" else 10,
+        )
+        added_nodes.add(key)
+        return nid
+
+    for paper in vault_data:
+        title = paper.get("title", "Untitled")
+        abstract = paper.get("abstract", "")
+        paper_id = _add_node(title, "paper", title=abstract[:200])
+        entities = _extract_entities(paper)
+        for author in entities["authors"]:
+            author_id = _add_node(author, "author")
+            graph.add_edge(paper_id, author_id, title="author")
+        venue_id = _add_node(entities["venue"], "venue")
+        graph.add_edge(paper_id, venue_id, title="venue")
+        year_id = _add_node(entities["year"], "year")
+        graph.add_edge(paper_id, year_id, title="year")
+
+    return graph
+
+
+def render_knowledge_graph(graph: Any, output_dir: str = "data") -> str:
+    """Render a pyvis Network to an HTML file and return the path.
+
+    Args:
+        graph: pyvis.network.Network instance.
+        output_dir: Directory to write the HTML file.
+
+    Returns:
+        Absolute path to the generated HTML file.
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    html_path = os.path.join(output_dir, "knowledge_graph.html")
+    graph.save_graph(html_path)
+    return os.path.abspath(html_path)
+```
+
+- [ ] **Step 4: Run graph tests to verify they pass**
+
+Run: `python -m pytest tests/test_graph.py -v`
+
+Expected: All 5 tests PASS.
+
+- [ ] **Step 5: Add `pyvis` to requirements.txt**
+
+```text
+pyvis
+```
+
+- [ ] **Step 6: Wire knowledge graph into Streamlit UI**
+
+Modify `main.py` (add a "文献知识图谱" tab or expander):
+
+```python
+def _render_knowledge_graph_tab():
+    """Render the 2D knowledge graph in the Streamlit sidebar or tab."""
+    import json
+    import os
+    from core.graph import build_knowledge_graph, render_knowledge_graph
+
+    vault_path = "data/vault_100_lab_anomaly.json"
+    if not os.path.exists(vault_path):
+        st.info("📚 尚未生成文献库，请先运行 ArXiv 收割脚本。")
+        return
+
+    with open(vault_path, encoding="utf-8") as f:
+        vault_data = json.load(f)
+
+    if not vault_data:
+        st.warning("文献库为空。")
+        return
+
+    if st.button("🔍 生成文献知识图谱", key="build_graph"):
+        with st.spinner(f"正在构建 {len(vault_data)} 篇文献的知识图谱..."):
+            graph = build_knowledge_graph(vault_data)
+            html_path = render_knowledge_graph(graph)
+            st.success(f"知识图谱已生成: {html_path}")
+            # Embed in an iframe
+            with open(html_path, encoding="utf-8") as f:
+                html_content = f.read()
+            st.components.v1.html(html_content, height=650, scrolling=True)
+```
+
+- [ ] **Step 7: Run full test suite**
+
+Run: `python -m pytest tests -v`
+
+Expected: All tests pass (including new graph tests, zotero tests, fetch_vault tests).
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add core/graph.py tests/test_graph.py main.py requirements.txt
+git commit -m "feat: add 2d interactive knowledge graph with pyvis (Task 25) [Subagent: Sonnet] [Manual: None] [Agent count: 1]"
+```
+
+---
+
+## Phase 6 Self-Review
+
+**Spec coverage:**
+- Task 23: Zotero Web API 自动归档集成 — ✅ ZoteroClient with DI, collection/item/attachment CRUD, 4 unit tests
+- Task 24: ArXiv 学术文献自动收割机 — ✅ refactored fetch_vault.py with DI, 3 unit tests, TDD retroactive
+- Task 25: 2D 交互式文献知识图谱 — ✅ build_knowledge_graph + render_knowledge_graph, 5 unit tests, Streamlit integration
+
+**Type consistency:**
+- `ZoteroClient(api_key, library_id, library_type, _backend=None)` — DI via `_backend` parameter
+- `fetch_lab_anomaly_vault(arxiv_client=None, max_results=100) -> list[dict]` — DI via `arxiv_client` parameter
+- `build_knowledge_graph(vault_data: list[dict]) -> Network` — consumes vault JSON format
+- `render_knowledge_graph(graph, output_dir) -> str` — returns HTML path
+
+**Known integration notes:**
+- Task 23 requires a real Zotero API key for production use; the FakeZotero backend enables unit testing without network.
+- Task 24's `scripts/fetch_vault.py` now supports both CLI usage (`python -m scripts.fetch_vault`) and programmatic API with injected client.
+- Task 25's `pyvis` HTML output can be embedded in Streamlit via `st.components.v1.html()`.

@@ -1,6 +1,64 @@
 # Agent Log
 
-## Task 16.1 - Self-Healing Extraction Pipeline
+## Task 25.1 - Streamlit 2D 交互式文献知识图谱
+
+- Timestamp: 2026-07-26 +08:00
+- Triggered Superpowers skills: `subagent-driven-development`, `test-driven-development`
+- Branch: phase6
+- Key decisions and actions:
+  - **RED**: 编写 tests/test_graph.py 的 5 个测试用例
+    - test_extract_entities_from_paper（从 paper 字典提取实体）
+    - test_build_knowledge_graph_returns_network（2 篇论文共享作者，验证节点/边数）
+    - test_build_knowledge_graph_handles_single_paper（单篇论文 ≥3 节点）
+    - test_build_knowledge_graph_empty_vault（空输入 → 空图）
+    - test_render_knowledge_graph_creates_html（HTML 文件生成 + 内容验证）
+  - 确认 5 个测试全部失败（ModuleNotFoundError）
+  - **GREEN**: 实现 core/graph.py
+    - _extract_entities(paper) → dict（作者/年份/会议提取）
+    - build_knowledge_graph(vault_data) → Network（PyVis，颜色编码节点，barnesHut 物理引擎）
+    - render_knowledge_graph(graph, output_dir) → str（保存 HTML 并返回绝对路径）
+  - 集成到 main.py（可折叠 expander + 按钮 + st.components.v1.html 嵌入）
+  - 添加 pyvis 到 requirements.txt
+  - 全量回归测试：97 passed（零回归）
+  - Code Review 审查：Approved ✅
+    - 修复：node dedup 改为 O(1) dict 查找 + nonlocal 替代 list hack
+- Specification alignment:
+  - 符合 Phase 6 施工图 Task 25 的全部要求
+  - 5 个测试覆盖正常、空数据、单论文、HTML 渲染等场景
+  - 颜色编码：paper=蓝、author=红、venue=绿、year=黄
+- Lessons learned:
+  - 审查者发现了 _add_node 中 label-only 匹配的潜在 bug（同 label 不同 group 时返回错误 ID）
+  - node_counter = [0] 的 Python 2 遗留模式已被 nonlocal 替代
+  - 改为 O(1) dict 查找，消除了 O(n) 遍历
+
+- Timestamp: 2026-07-26 +08:00
+- Triggered Superpowers skills: `subagent-driven-development`, `test-driven-development`
+- Key prompt and configuration:
+  - Phase 6 Task 24: 为 scripts/fetch_vault.py 添加 TDD 测试 + 重构为可测试模式
+  - Branch: phase6 (全新开发分支)
+- Key decisions and actions:
+  - **RED**: 编写 tests/test_fetch_vault.py 的三个测试用例（FakeArxivClient 模拟注入）
+    - test_fetch_vault_returns_list_of_dicts（2 条结果，验证标题/年份/作者/pdf_url）
+    - test_fetch_vault_saves_json_file（验证 JSON 文件侧效应）
+    - test_fetch_vault_empty_results（空结果集处理）
+  - 确认 3 个测试全部失败（TypeError: fetch_lab_anomaly_vault 不接受 arxiv_client 参数）
+  - **GREEN**: 重构 scripts/fetch_vault.py
+    - 添加 arxiv_client: Any | None = None 参数（DI 注入）
+    - 添加 -> list[dict] 返回类型
+    - 惰性 import arxiv（函数体内 import，避免 CI 环境报错）
+    - 保留 JSON 文件写入侧效应
+    - 更新 if __name__ == "__main__" 调用
+  - 全量回归测试：92 passed（零回归）
+  - Code Review 发现：缺少 arxiv 依赖声明（requirements.txt）→ 已修复提交 56feeb9
+  - 最终审查：Spec ✅ | Task quality: Approved
+- Specification alignment:
+  - 符合 Phase 6 施工图 Task 24 的全部要求
+  - 覆盖 3 个测试用例：正常返回、JSON 文件保存、空结果
+  - DI 注入模式与项目中 agent.py 的创建保持一致
+- Lessons learned:
+  - 子 Agent 实现了核心功能，但遗漏了 requirements.txt 依赖声明
+  - Code Review 审查了这一点，快速修复后任务达成 Approved
+  - 92 个测试全部通过，零回归
 
 - Timestamp: 2026-07-07 +08:00
 - Triggered Superpowers skills: `executing-plans`, `test-driven-development`
