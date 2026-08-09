@@ -4119,3 +4119,27 @@ git commit -m "feat: add 2d interactive knowledge graph with pyvis (Task 25) [Su
 - Task 23 requires a real Zotero API key for production use; the FakeZotero backend enables unit testing without network.
 - Task 24's `scripts/fetch_vault.py` now supports both CLI usage (`python -m scripts.fetch_vault`) and programmatic API with injected client.
 - Task 25's `pyvis` HTML output can be embedded in Streamlit via `st.components.v1.html()`.
+
+---
+
+## Phase 10: Streamlit Community Cloud 部署加固 (Current)
+
+**Goal:** 确保应用在公网无头 Linux 容器（Streamlit Community Cloud，无 D-Bus keyring 守护进程）上 100% 部署成功且不闪退。
+
+**Architecture:** `core/credentials.py` 为「OS Keyring → 会话级内存回退」双层存储。当 `keyring` 不可用（抛 `Exception`）时，自动降级到 per-session 内存存储（Streamlit 环境下落到 `st.session_state`，否则落到实例字典），保证 `has_credentials()`/`get_all()` 永不抛 `KeyringError` 导致红屏。
+
+### Task 29: Credentials 无头环境降级加固
+
+**Files:**
+- Modify: `core/credentials.py` (wrap all keyring calls; add `_keyring_failed` flag + `_session_store()` fallback)
+- Modify: `requirements.txt` (add `networkx`, `httpx`, `fastapi`, `uvicorn`)
+- Test: `tests/test_credentials.py` (add `ThrowingKeyring` fallback test)
+
+- [x] **Step 1 (RED)**: Add `test_falls_back_to_session_storage_when_keyring_unavailable` — confirmed `KeyringError` propagates from unhardened `save_all`
+- [x] **Step 2 (GREEN)**: Implement `_session_store()` + try/except fallback in `save_all`/`get_all`/`has_credentials`/`clear_all`
+- [x] **Step 3**: Add `networkx`, `httpx`, `fastapi`, `uvicorn` to `requirements.txt`
+- [x] **Step 4**: Restore `pytest.ini` (`testpaths = tests`) to fix root `test_agent.py` collection collision
+- [x] **Step 5**: Run full suite — `98 passed`
+- [x] **Step 6**: Commit
+
+---

@@ -1,7 +1,9 @@
 import json
+
+import keyring
 import pytest
 
-from core.credentials import CredentialStore, MissingCredentialError
+from core.credentials import CredentialStore
 
 
 class FakeKeyring:
@@ -110,3 +112,39 @@ def test_empty_api_key_raises_on_save():
 
     with pytest.raises(ValueError, match="API key must not be empty"):
         store.save_all(api_key="   ", api_base=DEFAULT_BASE, model_name=DEFAULT_MODEL)
+
+
+class ThrowingKeyring:
+    """Simulates a headless Linux container (Streamlit Cloud) with no D-Bus,
+    where every keyring call raises KeyringError."""
+
+    def get_password(self, service, username):
+        raise keyring.errors.KeyringError("no backend available (headless)")
+
+    def set_password(self, service, username, password):
+        raise keyring.errors.KeyringError("no backend available (headless)")
+
+    def delete_password(self, service, username):
+        raise keyring.errors.KeyringError("no backend available (headless)")
+
+
+def test_falls_back_to_session_storage_when_keyring_unavailable():
+    """Cloud-deployment guard: on a headless host without a Keyring backend,
+    CredentialStore must save/get/clear via per-session in-memory storage and
+    never raise, keeping has_credentials()/get_all() fully functional."""
+    store = CredentialStore(keyring_backend=ThrowingKeyring())
+
+    # Save must not crash when the real keyring is unavailable.
+    store.save_all(api_key="sk-cloud", api_base="https://cloud.url/v1", model_name="gpt-4o")
+
+    assert store.has_credentials() is True
+
+    result = store.get_all()
+    assert result["llm_api_key"] == "sk-cloud"
+    assert result["llm_api_base"] == "https://cloud.url/v1"
+    assert result["llm_model_name"] == "gpt-4o"
+
+    store.clear_all()
+
+    assert store.has_credentials() is False
+    assert store.get_all()["llm_api_key"] == ""
