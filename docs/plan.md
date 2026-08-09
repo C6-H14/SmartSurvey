@@ -4161,3 +4161,22 @@ git commit -m "feat: add 2d interactive knowledge graph with pyvis (Task 25) [Su
 - [x] **Step 3**: 缓存返回**渲染后的 HTML 字符串**而非 pyvis Network —— 避免 Network 结构化哈希在裸模式下混淆相似输入，且 HTML 正是 UI 消费的产物。
 - [x] **Step 4**: 全量回归 —— `104 passed`（98 基线 + 6 新增，零回归）
 - [x] **Step 5**: 新增 `run_windows.bat`、更新 `Dockerfile`（3.11-slim / 8501）与 `README.md`（Windows/Docker 文档）并验证 Python 版本检测 one-liner。
+
+### Task 31: 知识图谱前端瑕疵修复 + 部署加固
+
+**Goal:** 修复 Streamlit Cloud 上的两个图谱前端瑕疵（容器路径暴露、PyVis 高度截断），并完善第三方部署（环境脚本 + 文档 + 可行性自检）。
+
+**Files:**
+- Modify: `core/graph.py`（`render_knowledge_graph_html` 内存渲染；`count_paper_nodes`；`build_knowledge_graph_cached` 返回 `(html, count)`）
+- Modify: `main.py`（`GRAPH_COMPONENT_HEIGHT=750`；`_knowledge_graph_status_message` 友好提示无路径）
+- New: `tests/test_graph_render_fixes.py`（5 用例）
+- Modify: `tests/test_caching.py`（适配新 API）
+- Modify: `setup.sh` / `setup.ps1`（Python 3.10+ 校验、Linux venv 模块检测）
+- Modify: `README.md`（前置要求 / 自检 / Streamlit Cloud 部署）
+
+- [x] **Step 1 (RED)**: 新增 tests/test_graph_render_fixes.py —— `ImportError: cannot import name 'render_knowledge_graph_html'`
+- [x] **Step 2 (GREEN)**: 内存渲染 + 友好提示 + 高度 750；更新 test_caching
+- [x] **Step 3**: 全量回归 `109 passed`（104 → 109，+5，零回归）
+- [x] **Step 4**: 部署加固（setup.sh/ps1 版本校验、README 部署文档）
+- [x] **Step 5**: 可行性验证（bash -n / PS one-liner / pip check / pip install --dry-run / fetch_vault --help）
+- [x] **Step 6**: Commit + Push 至 main（Human Owner 授权）

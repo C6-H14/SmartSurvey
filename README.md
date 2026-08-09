@@ -10,9 +10,22 @@ SmartSurvey is an AI4SE non-harness application for evidence-bound academic lite
 - Markdown preview and LaTeX/BibTeX exports.
 - OS keyring API key storage.
 
-## Install
+## 前置要求（Prerequisites）
 
-### 一键安装（推荐）
+| 依赖 | 版本要求 | 说明 |
+|------|----------|------|
+| **Python** | **3.10 及以上** | 安装时勾选 "Add to PATH"（Windows） |
+| 操作系统 | Windows / macOS / Linux | 无特殊依赖 |
+| 内存 | ≥ 4 GB 建议 | LLM 合成阶段较吃内存 |
+
+> 💡 **Linux (Debian/Ubuntu)**：若缺少 `venv` 模块，请先执行
+> `sudo apt-get install -y python3-venv python3-pip`。三个安装脚本（
+> `setup.ps1` / `setup.sh` / `run_windows.bat`）均会**自动校验 Python ≥ 3.10**，
+> 版本过低会直接提示并终止。
+
+## 安装（Install）
+
+### 一键安装（推荐，自动校验 Python 3.10+ 并装好依赖）
 
 **Windows:**
 
@@ -29,9 +42,25 @@ chmod +x setup.sh && ./setup.sh
 ### 手动安装
 
 ```bash
+# Windows
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
+
+# macOS / Linux
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+### 验证安装是否成功（自检）
+
+```bash
+# 检查依赖是否完整且无冲突
+python -m pip check
+
+# 运行测试（应全部通过）
+python -m pytest tests -v
 ```
 
 ## Run（本地运行）
@@ -90,6 +119,22 @@ curl http://localhost:8501/_stcore/health   # 返回 "ok" 即正常
 ```
 
 > ⚠️ 密钥安全：请勿把真实 API Key 写入镜像或 `.env`。生产环境建议通过容器环境变量注入，SmartSurvey 会将其存入会话级内存回退存储。
+
+## Streamlit Community Cloud 部署
+
+本项目已针对 Streamlit Cloud 无头容器做过加固（keyring 会话级降级、图谱内存渲染、不暴露容器路径）。部署步骤：
+
+1. 将代码推送到 GitHub 仓库（本仓库 `main` 分支）。
+2. 在 [share.streamlit.io](https://share.streamlit.io) 登录，点击 **New app**，选择仓库与分支，主入口选择 `main.py`。
+3. 点击 **Deploy**。容器会自动安装 `requirements.txt` 并启动。
+4. 访问分配的 `*.streamlit.app` 地址。
+
+> **如何获取数据文件？** 知识图谱依赖 `data/vault_100_lab_anomaly.json`（已随仓库提供）。若要更新图谱数据，可在本地运行
+> `.venv\Scripts\python -m scripts.fetch_vault` 后把新 JSON 提交到仓库再重新部署。
+
+> **密钥注入（Streamlit Cloud）：** 在应用详情的 **Settings → Secrets** 中配置
+> `OPENAI_API_BASE` / `OPENAI_API_KEY` / `LLM_MODEL_NAME`。无头容器没有桌面 Keyring，
+> SmartSurvey 会自动降级到会话级内存存储，不会因此红屏。
 
 ## Credential Safety
 

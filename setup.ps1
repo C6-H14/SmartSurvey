@@ -15,13 +15,31 @@ Write-Host "║     SmartSurvey Windows 一键安装脚本        ║" -Foregrou
 Write-Host "╚══════════════════════════════════════════════╝" -ForegroundColor Cyan
 Write-Host ""
 
-# ---------- 1. Python 检查 ----------
-$python = Get-Command "python" -ErrorAction SilentlyContinue
+# ---------- 1. Python 3.10+ 检查 ----------
+# 优先使用 py launcher（若存在），否则回退到 PATH 中的 python
+$python = $null
+$pyLauncher = Get-Command "py" -ErrorAction SilentlyContinue
+if ($pyLauncher) {
+    $python = $pyLauncher
+    $pythonInvoke = "py -3"
+} else {
+    $python = Get-Command "python" -ErrorAction SilentlyContinue
+    $pythonInvoke = "python"
+}
 if (-not $python) {
     Write-Host "❌ 未找到 Python，请先安装 Python 3.10+ 并确保其在 PATH 中。" -ForegroundColor Red
     exit 1
 }
 Write-Host "✅ 检测到 Python: $($python.Source)" -ForegroundColor Green
+
+# 校验版本 >= 3.10
+$pyVersion = & $python.Source -c "import sys; print('%d.%d' % sys.version_info[:2])" 2>$null
+$pyOK = & $python.Source -c "import sys; sys.exit(0) if sys.version_info >= (3,10) else sys.exit(1)" 2>$null
+if ($LASTEXITCODE -ne 0 -or -not $pyVersion) {
+    Write-Host "❌ 需要 Python 3.10 或更高版本（当前: $pyVersion）。请升级后重试。" -ForegroundColor Red
+    exit 1
+}
+Write-Host "✅ Python 版本: $pyVersion（满足 3.10+）" -ForegroundColor Green
 
 # ---------- 2. 创建虚拟环境 ----------
 if (-not (Test-Path "$ProjectRoot\.venv")) {

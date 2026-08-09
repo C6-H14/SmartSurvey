@@ -546,3 +546,29 @@
   - Streamlit cache 参数名下划线前缀会排除出缓存键，是高频踩坑点，需在代码中显式注释
   - `st.cache_data` 在裸跑（无 ScriptRunContext）下仍可用内存缓存，且命中时返回反序列化副本（`is` 恒 False），故测试应通过 side-effect 计数而非对象身份判断命中
   - 缓存脆对象（pyvis Network）改为缓存字符串产物（HTML）更稳健
+
+## Task 31 - 知识图谱前端瑕疵修复 + 部署加固（Streamlit Cloud）
+
+- Timestamp: 2026-08-10 +08:00
+- Triggered Superpowers skills: `test-driven-development`
+- Branch: main（Human Owner 授权提交并 Push）
+- Key decisions and actions:
+  - **缺陷1（路径暴露）修复**: 改为**纯内存字符串渲染**
+    - core/graph.py 新增 `render_knowledge_graph_html(graph)`，用 `pyvis.Network.generate_html()` 直接生成 HTML 字符串，**不写盘、不产生容器物理路径**
+    - `build_knowledge_graph_cached` 改为返回 `(html, paper_count)` 元组（单次缓存同时产出 HTML 与文献节点数，供 UI 提示）
+    - main.py: `st.success` 改为友好学术提示 `_knowledge_graph_status_message(n)` —— `"✅ 知识图谱已就绪（含 X 个文献/主题节点）"`，不再输出 `/mount/src/.../knowledge_graph.html`
+    - 新增 `count_paper_nodes(graph)` 统计 paper 组节点数
+  - **缺陷2（高度截断）修复**: main.py 新增常量 `GRAPH_COMPONENT_HEIGHT = 750`，`st.components.v1.html(..., height=GRAPH_COMPONENT_HEIGHT, scrolling=True)`，避免底部节点被挤压成一条线
+  - **TDD**: 新增 tests/test_graph_render_fixes.py（5 用例：内存渲染 / 不泄露磁盘路径 / 友好提示无路径 / 文献节点计数 / 组件高度≥750）。同步更新 tests/test_caching.py 以匹配新 API（monkeypatch 目标从 render_knowledge_graph 改为 render_knowledge_graph_html；`build_knowledge_graph_cached` 返回元组）
+  - 全量回归: `104 → 109 passed`（+5，零回归）
+  - **部署加固（应 Human Owner 要求，供第三方部署）**:
+    - setup.sh: 增加 Python 3.10+ 版本校验 + Python venv 模块缺失检测（Debian/Ubuntu 提示安装 python3-venv）
+    - setup.ps1: 增加 Python 3.10+ 版本校验（py launcher → python 回退）
+    - README.md: 新增「前置要求 / 验证安装（自检）/ Streamlit Community Cloud 部署 / 常见部署提示」
+    - 可行性验证: `bash -n setup.sh` 通过；PS 版本校验 one-liner（exit 0, 3.11）；`pip check` 无冲突；`pip install --dry-run` 完整解析依赖（第三方可全新安装）；`python -m scripts.fetch_vault --help` 正常
+- Specification alignment:
+  - 命中两条前端瑕疵的针对性修复；满足 TDD 红绿循环
+  - 未触碰学术/排版红线
+- Lessons learned:
+  - 内存渲染（generate_html）比写盘+回读更优：既省 IO，又天然杜绝容器路径泄露
+  - 部署可复现性最佳验证 = 全新 venv 的 `pip install --dry-run` 完整解析 + `pip check` 一致
