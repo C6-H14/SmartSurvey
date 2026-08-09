@@ -1,0 +1,1452 @@
+[
+  {
+    "id": "2503.03562v3",
+    "title": "Towards Visual Discrimination and Reasoning of Real-World Physical Dynamics: Physics-Grounded Anomaly Detection",
+    "authors": [
+      "Wenqiao Li",
+      "Yao Gu",
+      "Xintao Chen",
+      "Xiaohao Xu",
+      "Ming Hu",
+      "Xiaonan Huang",
+      "Yingna Wu"
+    ],
+    "year": "2025",
+    "venue": "arXiv preprint",
+    "abstract": "Humans detect real-world object anomalies by perceiving, interacting, and reasoning based on object-conditioned physical knowledge. The long-term goal of Industrial Anomaly Detection (IAD) is to enable machines to autonomously replicate this skill. However, current IAD algorithms are largely developed and tested on static, semantically simple datasets, which diverge from real-world scenarios where physical understanding and reasoning are essential. To bridge this gap, we introduce the Physics Anomaly Detection (Phys-AD) dataset, the first large-scale, real-world, physics-grounded video dataset for industrial anomaly detection. Collected using a real robot arm and motor, Phys-AD provides a diverse set of dynamic, semantically rich scenarios. The dataset includes more than 6400 videos across 22 real-world object categories, interacting with robot arms and motors, and exhibits 47 types of anomalies. Anomaly detection in Phys-AD requires visual reasoning, combining both physical knowledge and video content to determine object abnormality. We benchmark state-of-the-art anomaly detection methods under three settings: unsupervised AD, weakly-supervised AD, and video-understanding AD, highlighting their limitations in handling physics-grounded anomalies. Additionally, we introduce the Physics Anomaly Explanation (PAEval) metric, designed to assess the ability of visual-language foundation models to not only detect anomalies but also provide accurate explanations for their underlying physical causes. Our project is available at https://guyao2023.github.io/Phys-AD/.",
+    "pdf_url": "https://arxiv.org/pdf/2503.03562v3"
+  },
+  {
+    "id": "1708.05211v1",
+    "title": "Energy-based Models for Video Anomaly Detection",
+    "authors": [
+      "Hung Vu",
+      "Dinh Phung",
+      "Tu Dinh Nguyen",
+      "Anthony Trevors",
+      "Svetha Venkatesh"
+    ],
+    "year": "2017",
+    "venue": "arXiv preprint",
+    "abstract": "Automated detection of abnormalities in data has been studied in research area in recent years because of its diverse applications in practice including video surveillance, industrial damage detection and network intrusion detection. However, building an effective anomaly detection system is a non-trivial task since it requires to tackle challenging issues of the shortage of annotated data, inability of defining anomaly objects explicitly and the expensive cost of feature engineering procedure. Unlike existing appoaches which only partially solve these problems, we develop a unique framework to cope the problems above simultaneously. Instead of hanlding with ambiguous definition of anomaly objects, we propose to work with regular patterns whose unlabeled data is abundant and usually easy to collect in practice. This allows our system to be trained completely in an unsupervised procedure and liberate us from the need for costly data annotation. By learning generative model that capture the normality distribution in data, we can isolate abnormal data points that result in low normality scores (high abnormality scores). Moreover, by leverage on the power of generative networks, i.e. energy-based models, we are also able to learn the feature representation automatically rather than replying on hand-crafted features that have been dominating anomaly detection research over many decades. We demonstrate our proposal on the specific application of video anomaly detection and the experimental results indicate that our method performs better than baselines and are comparable with state-of-the-art methods in many benchmark video anomaly detection datasets.",
+    "pdf_url": "https://arxiv.org/pdf/1708.05211v1"
+  },
+  {
+    "id": "2105.12311v1",
+    "title": "Performance Analysis of a Foreground Segmentation Neural Network Model",
+    "authors": [
+      "Joel Tomás Morais",
+      "António Ramires Fernandes",
+      "André Leite Ferreira",
+      "Bruno Faria"
+    ],
+    "year": "2021",
+    "venue": "arXiv preprint",
+    "abstract": "In recent years the interest in segmentation has been growing, being used in a wide range of applications such as fraud detection, anomaly detection in public health and intrusion detection. We present an ablation study of FgSegNet_v2, analysing its three stages: (i) Encoder, (ii) Feature Pooling Module and (iii) Decoder. The result of this study is a proposal of a variation of the aforementioned method that surpasses state of the art results. Three datasets are used for testing: CDNet2014, SBI2015 and CityScapes. In CDNet2014 we got an overall improvement compared to the state of the art, mainly in the LowFrameRate subset. The presented approach is promising as it produces comparable results with the state of the art (SBI2015 and Cityscapes datasets) in very different conditions, such as different lighting conditions.",
+    "pdf_url": "https://arxiv.org/pdf/2105.12311v1"
+  },
+  {
+    "id": "2311.11961v2",
+    "title": "NNG-Mix: Improving Semi-supervised Anomaly Detection with Pseudo-anomaly Generation",
+    "authors": [
+      "Hao Dong",
+      "Gaëtan Frusque",
+      "Yue Zhao",
+      "Eleni Chatzi",
+      "Olga Fink"
+    ],
+    "year": "2023",
+    "venue": "arXiv preprint",
+    "abstract": "Anomaly detection (AD) is essential in identifying rare and often critical events in complex systems, finding applications in fields such as network intrusion detection, financial fraud detection, and fault detection in infrastructure and industrial systems. While AD is typically treated as an unsupervised learning task due to the high cost of label annotation, it is more practical to assume access to a small set of labeled anomaly samples from domain experts, as is the case for semi-supervised anomaly detection. Semi-supervised and supervised approaches can leverage such labeled data, resulting in improved performance. In this paper, rather than proposing a new semi-supervised or supervised approach for AD, we introduce a novel algorithm for generating additional pseudo-anomalies on the basis of the limited labeled anomalies and a large volume of unlabeled data. This serves as an augmentation to facilitate the detection of new anomalies. Our proposed algorithm, named Nearest Neighbor Gaussian Mixup (NNG-Mix), efficiently integrates information from both labeled and unlabeled data to generate pseudo-anomalies. We compare the performance of this novel algorithm with commonly applied augmentation techniques, such as Mixup and Cutout. We evaluate NNG-Mix by training various existing semi-supervised and supervised anomaly detection algorithms on the original training data along with the generated pseudo-anomalies. Through extensive experiments on 57 benchmark datasets in ADBench, reflecting different data types, we demonstrate that NNG-Mix outperforms other data augmentation methods. It yields significant performance improvements compared to the baselines trained exclusively on the original training data. Notably, NNG-Mix yields up to 16.4%, 8.8%, and 8.0% improvements on Classical, CV, and NLP datasets in ADBench. Our source code is available at https://github.com/donghao51/NNG-Mix.",
+    "pdf_url": "https://arxiv.org/pdf/2311.11961v2"
+  },
+  {
+    "id": "1105.6084v2",
+    "title": "RASID: A Robust WLAN Device-free Passive Motion Detection System",
+    "authors": [
+      "Ahmed E. Kosba",
+      "Ahmed Saeed",
+      "Moustafa Youssef"
+    ],
+    "year": "2011",
+    "venue": "arXiv preprint",
+    "abstract": "WLAN Device-free passive DfP indoor localization is an emerging technology enabling the localization of entities that do not carry any devices nor participate actively in the localization process using the already installed wireless infrastructure. This technology is useful for a variety of applications such as intrusion detection, smart homes and border protection. We present the design, implementation and evaluation of RASID, a DfP system for human motion detection. RASID combines different modules for statistical anomaly detection while adapting to changes in the environment to provide accurate, robust, and low-overhead detection of human activities using standard WiFi hardware. Evaluation of the system in two different testbeds shows that it can achieve an accurate detection capability in both environments with an F-measure of at least 0.93. In addition, the high accuracy and low overhead performance are robust to changes in the environment as compared to the current state of the art DfP detection systems. We also relay the lessons learned during building our system and discuss future research directions.",
+    "pdf_url": "https://arxiv.org/pdf/1105.6084v2"
+  },
+  {
+    "id": "1601.01750v3",
+    "title": "Learning to Remove Multipath Distortions in Time-of-Flight Range Images for a Robotic Arm Setup",
+    "authors": [
+      "Kilho Son",
+      "Ming-Yu Liu",
+      "Yuichi Taguchi"
+    ],
+    "year": "2016",
+    "venue": "arXiv preprint",
+    "abstract": "Range images captured by Time-of-Flight (ToF) cameras are corrupted with multipath distortions due to interaction between modulated light signals and scenes. The interaction is often complicated, which makes a model-based solution elusive. We propose a learning-based approach for removing the multipath distortions for a ToF camera in a robotic arm setup. Our approach is based on deep learning. We use the robotic arm to automatically collect a large amount of ToF range images containing various multipath distortions. The training images are automatically labeled by leveraging a high precision structured light sensor available only in the training time. In the test time, we apply the learned model to remove the multipath distortions. This allows our robotic arm setup to enjoy the speed and compact form of the ToF camera without compromising with its range measurement errors. We conduct extensive experimental validations and compare the proposed method to several baseline algorithms. The experiment results show that our method achieves 55% error reduction in range estimation and largely outperforms the baseline algorithms.",
+    "pdf_url": "https://arxiv.org/pdf/1601.01750v3"
+  },
+  {
+    "id": "2306.07601v1",
+    "title": "Intrusion Detection: A Deep Learning Approach",
+    "authors": [
+      "Ishaan Shivhare",
+      "Joy Purohit",
+      "Vinay Jogani",
+      "Samina Attari",
+      "Madhav Chandane"
+    ],
+    "year": "2023",
+    "venue": "arXiv preprint",
+    "abstract": "Network intrusions are a significant problem in all industries today. A critical part of the solution is being able to effectively detect intrusions. With recent advances in artificial intelligence, current research has begun adopting deep learning approaches for intrusion detection. Current approaches for multi-class intrusion detection include the use of a deep neural network. However, it fails to take into account spatial relationships between the data objects and long term dependencies present in the dataset. The paper proposes a novel architecture to combat intrusion detection that has a Convolutional Neural Network (CNN) module, along with a Long Short Term Memory(LSTM) module and with a Support Vector Machine (SVM) classification function. The analysis is followed by a comparison of both conventional machine learning techniques and deep learning methodologies, which highlights areas that could be further explored.",
+    "pdf_url": "https://arxiv.org/pdf/2306.07601v1"
+  },
+  {
+    "id": "0807.2043v1",
+    "title": "Intrusion Detection Using Cost-Sensitive Classification",
+    "authors": [
+      "Aikaterini Mitrokotsa",
+      "Christos Dimitrakakis",
+      "Christos Douligeris"
+    ],
+    "year": "2008",
+    "venue": "arXiv preprint",
+    "abstract": "Intrusion Detection is an invaluable part of computer networks defense. An important consideration is the fact that raising false alarms carries a significantly lower cost than not detecting at- tacks. For this reason, we examine how cost-sensitive classification methods can be used in Intrusion Detection systems. The performance of the approach is evaluated under different experimental conditions, cost matrices and different classification models, in terms of expected cost, as well as detection and false alarm rates. We find that even under unfavourable conditions, cost-sensitive classification can improve performance significantly, if only slightly.",
+    "pdf_url": "https://arxiv.org/pdf/0807.2043v1"
+  },
+  {
+    "id": "2508.14994v3",
+    "title": "A Vision-Based Shared-Control Teleoperation Scheme for Controlling the Robotic Arm of a Four-Legged Robot",
+    "authors": [
+      "Murilo Vinicius da Silva",
+      "Matheus Hipolito Carvalho",
+      "Juliano Negri",
+      "Thiago Segreto",
+      "Gustavo J. G. Lahr",
+      "Ricardo V. Godoy",
+      "Marcelo Becker"
+    ],
+    "year": "2025",
+    "venue": "2025 Latin American Robotics Symposium (LARS)",
+    "abstract": "In hazardous and remote environments, robotic systems perform critical tasks demanding improved safety and efficiency. Among these, quadruped robots with manipulator arms offer mobility and versatility for complex operations. However, teleoperating quadruped robots is challenging due to the lack of integrated obstacle detection and intuitive control methods for the robotic arm, increasing collision risks in confined or dynamically changing workspaces. Teleoperation via joysticks or pads can be non-intuitive and demands a high level of expertise due to its complexity, culminating in a high cognitive load on the operator. To address this challenge, a teleoperation approach that directly maps human arm movements to the robotic manipulator offers a simpler and more accessible solution. This work proposes an intuitive remote control by leveraging a vision-based pose estimation pipeline that utilizes an external camera with a machine learning-based model to detect the operator's wrist position. The system maps these wrist movements into robotic arm commands to control the robot's arm in real-time. A trajectory planner ensures safe teleoperation by detecting and preventing collisions with both obstacles and the robotic arm itself. The system was validated on the real robot, demonstrating robust performance in real-time control. This teleoperation approach provides a cost-effective solution for industrial applications where safety, precision, and ease of use are paramount, ensuring reliable and intuitive robotic control in high-risk environments.",
+    "pdf_url": "https://arxiv.org/pdf/2508.14994v3"
+  },
+  {
+    "id": "1812.04697v1",
+    "title": "Anomaly Generation using Generative Adversarial Networks in Host Based Intrusion Detection",
+    "authors": [
+      "Milad Salem",
+      "Shayan Taheri",
+      "Jiann Shiun Yuan"
+    ],
+    "year": "2018",
+    "venue": "arXiv preprint",
+    "abstract": "Generative adversarial networks have been able to generate striking results in various domains. This generation capability can be general while the networks gain deep understanding regarding the data distribution. In many domains, this data distribution consists of anomalies and normal data, with the anomalies commonly occurring relatively less, creating datasets that are imbalanced. The capabilities that generative adversarial networks offer can be leveraged to examine these anomalies and help alleviate the challenge that imbalanced datasets propose via creating synthetic anomalies. This anomaly generation can be specifically beneficial in domains that have costly data creation processes as well as inherently imbalanced datasets. One of the domains that fits this description is the host-based intrusion detection domain. In this work, ADFA-LD dataset is chosen as the dataset of interest containing system calls of small foot-print next generation attacks. The data is first converted into images, and then a Cycle-GAN is used to create images of anomalous data from images of normal data. The generated data is combined with the original dataset and is used to train a model to detect anomalies. By doing so, it is shown that the classification results are improved, with the AUC rising from 0.55 to 0.71, and the anomaly detection rate rising from 17.07% to 80.49%. The results are also compared to SMOTE, showing the potential presented by generative adversarial networks in anomaly generation.",
+    "pdf_url": "https://arxiv.org/pdf/1812.04697v1"
+  },
+  {
+    "id": "1909.08862v1",
+    "title": "Assembly of randomly placed parts realized by using only one robot arm with a general parallel-jaw gripper",
+    "authors": [
+      "Jie Zhao",
+      "Xin Jiang",
+      "Xiaoman Wang",
+      "Shengfan Wang",
+      "Yunhui Liu"
+    ],
+    "year": "2019",
+    "venue": "arXiv preprint",
+    "abstract": "In industry assembly lines, parts feeding machines are widely employed as the prologue of the whole procedure. They play the role of sorting the parts randomly placed in bins to the state with specified pose. With the help of the parts feeding machines, the subsequent assembly processes by robot arm can always start from the same condition. Thus it is expected that function of parting feeding machine and the robotic assembly can be integrated with one robot arm. This scheme can provide great flexibility and can also contribute to reduce the cost. The difficulties involved in this scheme lie in the fact that in the part feeding phase, the pose of the part after grasping may be not proper for the subsequent assembly. Sometimes it can not even guarantee a stable grasp. In this paper, we proposed a method to integrate parts feeding and assembly within one robot arm. This proposal utilizes a specially designed gripper tip mounted on the jaws of a two-fingered gripper. With the modified gripper, in-hand manipulation of the grasped object is realized, which can ensure the control of the orientation and offset position of the grasped object. The proposal in this paper is verified by a simulated assembly in which a robot arm completed the assembly process including parts picking from bin and a subsequent peg-in-hole assembly.",
+    "pdf_url": "https://arxiv.org/pdf/1909.08862v1"
+  },
+  {
+    "id": "2111.03987v1",
+    "title": "V-MAO: Generative Modeling for Multi-Arm Manipulation of Articulated Objects",
+    "authors": [
+      "Xingyu Liu",
+      "Kris M. Kitani"
+    ],
+    "year": "2021",
+    "venue": "arXiv preprint",
+    "abstract": "Manipulating articulated objects requires multiple robot arms in general. It is challenging to enable multiple robot arms to collaboratively complete manipulation tasks on articulated objects. In this paper, we present $\\textbf{V-MAO}$, a framework for learning multi-arm manipulation of articulated objects. Our framework includes a variational generative model that learns contact point distribution over object rigid parts for each robot arm. The training signal is obtained from interaction with the simulation environment which is enabled by planning and a novel formulation of object-centric control for articulated objects. We deploy our framework in a customized MuJoCo simulation environment and demonstrate that our framework achieves a high success rate on six different objects and two different robots. We also show that generative modeling can effectively learn the contact point distribution on articulated objects.",
+    "pdf_url": "https://arxiv.org/pdf/2111.03987v1"
+  },
+  {
+    "id": "2604.06481v1",
+    "title": "Hybrid ResNet-1D-BiGRU with Multi-Head Attention for Cyberattack Detection in Industrial IoT Environments",
+    "authors": [
+      "Afrah Gueriani",
+      "Hamza Kheddar",
+      "Ahmed Cherif Mazari"
+    ],
+    "year": "2026",
+    "venue": "2025 International Conference on Intelligent Computer Systems, Data Science and Applications (IC2SDA)",
+    "abstract": "This study introduces a hybrid deep learning model for intrusion detection in Industrial IoT (IIoT) systems, combining ResNet-1D, BiGRU, and Multi-Head Attention (MHA) for effective spatial-temporal feature extraction and attention-based feature weighting. To address class imbalance, SMOTE was applied during training on the EdgeHoTset dataset. The model achieved 98.71% accuracy, a loss of 0.0417%, and low inference latency (0.0001 sec /instance), demonstrating strong real-time capability. To assess generalizability, the model was also tested on the CICIoV2024 dataset, where it reached 99.99% accuracy and F1-score, with a loss of 0.0028, 0 % FPR, and 0.00014 sec/instance inference time. Across all metrics and datasets, the proposed model outperformed existing methods, confirming its robustness and effectiveness for real-time IoT intrusion detection.",
+    "pdf_url": "https://arxiv.org/pdf/2604.06481v1"
+  },
+  {
+    "id": "2506.09699v1",
+    "title": "CHIP: A multi-sensor dataset for 6D pose estimation of chairs in industrial settings",
+    "authors": [
+      "Mattia Nardon",
+      "Mikel Mujika Agirre",
+      "Ander González Tomé",
+      "Daniel Sedano Algarabel",
+      "Josep Rueda Collell",
+      "Ana Paola Caro",
+      "Andrea Caraffa",
+      "Fabio Poiesi",
+      "Paul Ian Chippendale",
+      "Davide Boscaini"
+    ],
+    "year": "2025",
+    "venue": "arXiv preprint",
+    "abstract": "Accurate 6D pose estimation of complex objects in 3D environments is essential for effective robotic manipulation. Yet, existing benchmarks fall short in evaluating 6D pose estimation methods under realistic industrial conditions, as most datasets focus on household objects in domestic settings, while the few available industrial datasets are limited to artificial setups with objects placed on tables. To bridge this gap, we introduce CHIP, the first dataset designed for 6D pose estimation of chairs manipulated by a robotic arm in a real-world industrial environment. CHIP includes seven distinct chairs captured using three different RGBD sensing technologies and presents unique challenges, such as distractor objects with fine-grained differences and severe occlusions caused by the robotic arm and human operators. CHIP comprises 77,811 RGBD images annotated with ground-truth 6D poses automatically derived from the robot's kinematics, averaging 11,115 annotations per chair. We benchmark CHIP using three zero-shot 6D pose estimation methods, assessing performance across different sensor types, localization priors, and occlusion levels. Results show substantial room for improvement, highlighting the unique challenges posed by the dataset. CHIP will be publicly released.",
+    "pdf_url": "https://arxiv.org/pdf/2506.09699v1"
+  },
+  {
+    "id": "2307.11085v1",
+    "title": "Representation Learning in Anomaly Detection: Successes, Limits and a Grand Challenge",
+    "authors": [
+      "Yedid Hoshen"
+    ],
+    "year": "2023",
+    "venue": "arXiv preprint",
+    "abstract": "In this perspective paper, we argue that the dominant paradigm in anomaly detection cannot scale indefinitely and will eventually hit fundamental limits. This is due to the a no free lunch principle for anomaly detection. These limitations can be overcome when there are strong tasks priors, as is the case for many industrial tasks. When such priors do not exists, the task is much harder for anomaly detection. We pose two such tasks as grand challenges for anomaly detection: i) scientific discovery by anomaly detection ii) a \"mini-grand\" challenge of detecting the most anomalous image in the ImageNet dataset. We believe new anomaly detection tools and ideas would need to be developed to overcome these challenges.",
+    "pdf_url": "https://arxiv.org/pdf/2307.11085v1"
+  },
+  {
+    "id": "2504.08115v1",
+    "title": "Benchmarking Suite for Synthetic Aperture Radar Imagery Anomaly Detection (SARIAD) Algorithms",
+    "authors": [
+      "Lucian Chauvin",
+      "Somil Gupta",
+      "Angelina Ibarra",
+      "Joshua Peeples"
+    ],
+    "year": "2025",
+    "venue": "arXiv preprint",
+    "abstract": "Anomaly detection is a key research challenge in computer vision and machine learning with applications in many fields from quality control to radar imaging. In radar imaging, specifically synthetic aperture radar (SAR), anomaly detection can be used for the classification, detection, and segmentation of objects of interest. However, there is no method for developing and benchmarking these methods on SAR imagery. To address this issue, we introduce SAR imagery anomaly detection (SARIAD). In conjunction with Anomalib, a deep-learning library for anomaly detection, SARIAD provides a comprehensive suite of algorithms and datasets for assessing and developing anomaly detection approaches on SAR imagery. SARIAD specifically integrates multiple SAR datasets along with tools to effectively apply various anomaly detection algorithms to SAR imagery. Several anomaly detection metrics and visualizations are available. Overall, SARIAD acts as a central package for benchmarking SAR models and datasets to allow for reproducible research in the field of anomaly detection in SAR imagery. This package is publicly available: https://github.com/Advanced-Vision-and-Learning-Lab/SARIAD.",
+    "pdf_url": "https://arxiv.org/pdf/2504.08115v1"
+  },
+  {
+    "id": "2311.02782v3",
+    "title": "Towards Generic Anomaly Detection and Understanding: Large-scale Visual-linguistic Model (GPT-4V) Takes the Lead",
+    "authors": [
+      "Yunkang Cao",
+      "Xiaohao Xu",
+      "Chen Sun",
+      "Xiaonan Huang",
+      "Weiming Shen"
+    ],
+    "year": "2023",
+    "venue": "arXiv preprint",
+    "abstract": "Anomaly detection is a crucial task across different domains and data types. However, existing anomaly detection models are often designed for specific domains and modalities. This study explores the use of GPT-4V(ision), a powerful visual-linguistic model, to address anomaly detection tasks in a generic manner. We investigate the application of GPT-4V in multi-modality, multi-domain anomaly detection tasks, including image, video, point cloud, and time series data, across multiple application areas, such as industrial, medical, logical, video, 3D anomaly detection, and localization tasks. To enhance GPT-4V's performance, we incorporate different kinds of additional cues such as class information, human expertise, and reference images as prompts.Based on our experiments, GPT-4V proves to be highly effective in detecting and explaining global and fine-grained semantic patterns in zero/one-shot anomaly detection. This enables accurate differentiation between normal and abnormal instances. Although we conducted extensive evaluations in this study, there is still room for future evaluation to further exploit GPT-4V's generic anomaly detection capacity from different aspects. These include exploring quantitative metrics, expanding evaluation benchmarks, incorporating multi-round interactions, and incorporating human feedback loops. Nevertheless, GPT-4V exhibits promising performance in generic anomaly detection and understanding, thus opening up a new avenue for anomaly detection.",
+    "pdf_url": "https://arxiv.org/pdf/2311.02782v3"
+  },
+  {
+    "id": "2006.09654v1",
+    "title": "Self-Supervised Representation Learning for Visual Anomaly Detection",
+    "authors": [
+      "Rabia Ali",
+      "Muhammad Umar Karim Khan",
+      "Chong Min Kyung"
+    ],
+    "year": "2020",
+    "venue": "arXiv preprint",
+    "abstract": "Self-supervised learning allows for better utilization of unlabelled data. The feature representation obtained by self-supervision can be used in downstream tasks such as classification, object detection, segmentation, and anomaly detection. While classification, object detection, and segmentation have been investigated with self-supervised learning, anomaly detection needs more attention. We consider the problem of anomaly detection in images and videos, and present a new visual anomaly detection technique for videos. Numerous seminal and state-of-the-art self-supervised methods are evaluated for anomaly detection on a variety of image datasets. The best performing image-based self-supervised representation learning method is then used for video anomaly detection to see the importance of spatial features in visual anomaly detection in videos. We also propose a simple self-supervision approach for learning temporal coherence across video frames without the use of any optical flow information. At its core, our method identifies the frame indices of a jumbled video sequence allowing it to learn the spatiotemporal features of the video. This intuitive approach shows superior performance of visual anomaly detection compared to numerous methods for images and videos on UCF101 and ILSVRC2015 video datasets.",
+    "pdf_url": "https://arxiv.org/pdf/2006.09654v1"
+  },
+  {
+    "id": "2304.04211v1",
+    "title": "AGAD: Adversarial Generative Anomaly Detection",
+    "authors": [
+      "Jian Shi",
+      "Ni Zhang"
+    ],
+    "year": "2023",
+    "venue": "arXiv preprint",
+    "abstract": "Anomaly detection suffered from the lack of anomalies due to the diversity of abnormalities and the difficulties of obtaining large-scale anomaly data. Semi-supervised anomaly detection methods are often used to solely leverage normal data to detect abnormalities that deviated from the learnt normality distributions. Meanwhile, given the fact that limited anomaly data can be obtained with a minor cost in practice, some researches also investigated anomaly detection methods under supervised scenarios with limited anomaly data. In order to address the lack of abnormal data for robust anomaly detection, we propose Adversarial Generative Anomaly Detection (AGAD), a self-contrast-based anomaly detection paradigm that learns to detect anomalies by generating \\textit{contextual adversarial information} from the massive normal examples. Essentially, our method generates pseudo-anomaly data for both supervised and semi-supervised anomaly detection scenarios. Extensive experiments are carried out on multiple benchmark datasets and real-world datasets, the results show significant improvement in both supervised and semi-supervised scenarios. Importantly, our approach is data-efficient that can boost up the detection accuracy with no more than 5% anomalous training data.",
+    "pdf_url": "https://arxiv.org/pdf/2304.04211v1"
+  },
+  {
+    "id": "2204.03141v1",
+    "title": "Adversarial Machine Learning Attacks Against Video Anomaly Detection Systems",
+    "authors": [
+      "Furkan Mumcu",
+      "Keval Doshi",
+      "Yasin Yilmaz"
+    ],
+    "year": "2022",
+    "venue": "arXiv preprint",
+    "abstract": "Anomaly detection in videos is an important computer vision problem with various applications including automated video surveillance. Although adversarial attacks on image understanding models have been heavily investigated, there is not much work on adversarial machine learning targeting video understanding models and no previous work which focuses on video anomaly detection. To this end, we investigate an adversarial machine learning attack against video anomaly detection systems, that can be implemented via an easy-to-perform cyber-attack. Since surveillance cameras are usually connected to the server running the anomaly detection model through a wireless network, they are prone to cyber-attacks targeting the wireless connection. We demonstrate how Wi-Fi deauthentication attack, a notoriously easy-to-perform and effective denial-of-service (DoS) attack, can be utilized to generate adversarial data for video anomaly detection systems. Specifically, we apply several effects caused by the Wi-Fi deauthentication attack on video quality (e.g., slow down, freeze, fast forward, low resolution) to the popular benchmark datasets for video anomaly detection. Our experiments with several state-of-the-art anomaly detection models show that the attackers can significantly undermine the reliability of video anomaly detection systems by causing frequent false alarms and hiding physical anomalies from the surveillance system.",
+    "pdf_url": "https://arxiv.org/pdf/2204.03141v1"
+  },
+  {
+    "id": "2405.11315v1",
+    "title": "MediCLIP: Adapting CLIP for Few-shot Medical Image Anomaly Detection",
+    "authors": [
+      "Ximiao Zhang",
+      "Min Xu",
+      "Dehui Qiu",
+      "Ruixin Yan",
+      "Ning Lang",
+      "Xiuzhuang Zhou"
+    ],
+    "year": "2024",
+    "venue": "arXiv preprint",
+    "abstract": "In the field of medical decision-making, precise anomaly detection in medical imaging plays a pivotal role in aiding clinicians. However, previous work is reliant on large-scale datasets for training anomaly detection models, which increases the development cost. This paper first focuses on the task of medical image anomaly detection in the few-shot setting, which is critically significant for the medical field where data collection and annotation are both very expensive. We propose an innovative approach, MediCLIP, which adapts the CLIP model to few-shot medical image anomaly detection through self-supervised fine-tuning. Although CLIP, as a vision-language model, demonstrates outstanding zero-/fewshot performance on various downstream tasks, it still falls short in the anomaly detection of medical images. To address this, we design a series of medical image anomaly synthesis tasks to simulate common disease patterns in medical imaging, transferring the powerful generalization capabilities of CLIP to the task of medical image anomaly detection. When only few-shot normal medical images are provided, MediCLIP achieves state-of-the-art performance in anomaly detection and location compared to other methods. Extensive experiments on three distinct medical anomaly detection tasks have demonstrated the superiority of our approach. The code is available at https://github.com/cnulab/MediCLIP.",
+    "pdf_url": "https://arxiv.org/pdf/2405.11315v1"
+  },
+  {
+    "id": "2107.09903v1",
+    "title": "Anomaly Detection via Self-organizing Map",
+    "authors": [
+      "Ning Li",
+      "Kaitao Jiang",
+      "Zhiheng Ma",
+      "Xing Wei",
+      "Xiaopeng Hong",
+      "Yihong Gong"
+    ],
+    "year": "2021",
+    "venue": "arXiv preprint",
+    "abstract": "Anomaly detection plays a key role in industrial manufacturing for product quality control. Traditional methods for anomaly detection are rule-based with limited generalization ability. Recent methods based on supervised deep learning are more powerful but require large-scale annotated datasets for training. In practice, abnormal products are rare thus it is very difficult to train a deep model in a fully supervised way. In this paper, we propose a novel unsupervised anomaly detection approach based on Self-organizing Map (SOM). Our method, Self-organizing Map for Anomaly Detection (SOMAD) maintains normal characteristics by using topological memory based on multi-scale features. SOMAD achieves state-of the-art performance on unsupervised anomaly detection and localization on the MVTec dataset.",
+    "pdf_url": "https://arxiv.org/pdf/2107.09903v1"
+  },
+  {
+    "id": "2307.04956v2",
+    "title": "PKU-GoodsAD: A Supermarket Goods Dataset for Unsupervised Anomaly Detection and Segmentation",
+    "authors": [
+      "Jian Zhang",
+      "Runwei Ding",
+      "Miaoju Ban",
+      "Ge Yang"
+    ],
+    "year": "2023",
+    "venue": "IEEE Robotics and Automation Letters, 2024",
+    "abstract": "Visual anomaly detection is essential and commonly used for many tasks in the field of computer vision. Recent anomaly detection datasets mainly focus on industrial automated inspection, medical image analysis and video surveillance. In order to broaden the application and research of anomaly detection in unmanned supermarkets and smart manufacturing, we introduce the supermarket goods anomaly detection (GoodsAD) dataset. It contains 6124 high-resolution images of 484 different appearance goods divided into 6 categories. Each category contains several common different types of anomalies such as deformation, surface damage and opened. Anomalies contain both texture changes and structural changes. It follows the unsupervised setting and only normal (defect-free) images are used for training. Pixel-precise ground truth regions are provided for all anomalies. Moreover, we also conduct a thorough evaluation of current state-of-the-art unsupervised anomaly detection methods. This initial benchmark indicates that some methods which perform well on the industrial anomaly detection dataset (e.g., MVTec AD), show poor performance on our dataset. This is a comprehensive, multi-object dataset for supermarket goods anomaly detection that focuses on real-world applications.",
+    "pdf_url": "https://arxiv.org/pdf/2307.04956v2"
+  },
+  {
+    "id": "2506.08632v2",
+    "title": "RoboSwap: A GAN-driven Video Diffusion Framework For Unsupervised Robot Arm Swapping",
+    "authors": [
+      "Yang Bai",
+      "Liudi Yang",
+      "George Eskandar",
+      "Fengyi Shen",
+      "Dong Chen",
+      "Mohammad Altillawi",
+      "Ziyuan Liu",
+      "Gitta Kutyniok"
+    ],
+    "year": "2025",
+    "venue": "arXiv preprint",
+    "abstract": "Recent advancements in generative models have revolutionized video synthesis and editing. However, the scarcity of diverse, high-quality datasets continues to hinder video-conditioned robotic learning, limiting cross-platform generalization. In this work, we address the challenge of swapping a robotic arm in one video with another: a key step for crossembodiment learning. Unlike previous methods that depend on paired video demonstrations in the same environmental settings, our proposed framework, RoboSwap, operates on unpaired data from diverse environments, alleviating the data collection needs. RoboSwap introduces a novel video editing pipeline integrating both GANs and diffusion models, combining their isolated advantages. Specifically, we segment robotic arms from their backgrounds and train an unpaired GAN model to translate one robotic arm to another. The translated arm is blended with the original video background and refined with a diffusion model to enhance coherence, motion realism and object interaction. The GAN and diffusion stages are trained independently. Our experiments demonstrate that RoboSwap outperforms state-of-the-art video and image editing models on three benchmarks in terms of both structural coherence and motion consistency, thereby offering a robust solution for generating reliable, cross-embodiment data in robotic learning.",
+    "pdf_url": "https://arxiv.org/pdf/2506.08632v2"
+  },
+  {
+    "id": "2310.07716v1",
+    "title": "PAD: A Dataset and Benchmark for Pose-agnostic Anomaly Detection",
+    "authors": [
+      "Qiang Zhou",
+      "Weize Li",
+      "Lihan Jiang",
+      "Guoliang Wang",
+      "Guyue Zhou",
+      "Shanghang Zhang",
+      "Hao Zhao"
+    ],
+    "year": "2023",
+    "venue": "arXiv preprint",
+    "abstract": "Object anomaly detection is an important problem in the field of machine vision and has seen remarkable progress recently. However, two significant challenges hinder its research and application. First, existing datasets lack comprehensive visual information from various pose angles. They usually have an unrealistic assumption that the anomaly-free training dataset is pose-aligned, and the testing samples have the same pose as the training data. However, in practice, anomaly may exist in any regions on a object, the training and query samples may have different poses, calling for the study on pose-agnostic anomaly detection. Second, the absence of a consensus on experimental protocols for pose-agnostic anomaly detection leads to unfair comparisons of different methods, hindering the research on pose-agnostic anomaly detection. To address these issues, we develop Multi-pose Anomaly Detection (MAD) dataset and Pose-agnostic Anomaly Detection (PAD) benchmark, which takes the first step to address the pose-agnostic anomaly detection problem. Specifically, we build MAD using 20 complex-shaped LEGO toys including 4K views with various poses, and high-quality and diverse 3D anomalies in both simulated and real environments. Additionally, we propose a novel method OmniposeAD, trained using MAD, specifically designed for pose-agnostic anomaly detection. Through comprehensive evaluations, we demonstrate the relevance of our dataset and method. Furthermore, we provide an open-source benchmark library, including dataset and baseline methods that cover 8 anomaly detection paradigms, to facilitate future research and application in this domain. Code, data, and models are publicly available at https://github.com/EricLee0224/PAD.",
+    "pdf_url": "https://arxiv.org/pdf/2310.07716v1"
+  },
+  {
+    "id": "2210.10773v1",
+    "title": "Anomaly Detection Requires Better Representations",
+    "authors": [
+      "Tal Reiss",
+      "Niv Cohen",
+      "Eliahu Horwitz",
+      "Ron Abutbul",
+      "Yedid Hoshen"
+    ],
+    "year": "2022",
+    "venue": "arXiv preprint",
+    "abstract": "Anomaly detection seeks to identify unusual phenomena, a central task in science and industry. The task is inherently unsupervised as anomalies are unexpected and unknown during training. Recent advances in self-supervised representation learning have directly driven improvements in anomaly detection. In this position paper, we first explain how self-supervised representations can be easily used to achieve state-of-the-art performance in commonly reported anomaly detection benchmarks. We then argue that tackling the next generation of anomaly detection tasks requires new technical and conceptual improvements in representation learning.",
+    "pdf_url": "https://arxiv.org/pdf/2210.10773v1"
+  },
+  {
+    "id": "2408.03654v1",
+    "title": "Unsupervised Detection of Fetal Brain Anomalies using Denoising Diffusion Models",
+    "authors": [
+      "Markus Ditlev Sjøgren Olsen",
+      "Jakob Ambsdorf",
+      "Manxi Lin",
+      "Caroline Taksøe-Vester",
+      "Morten Bo Søndergaard Svendsen",
+      "Anders Nymark Christensen",
+      "Mads Nielsen",
+      "Martin Grønnebæk Tolsgaard",
+      "Aasa Feragen",
+      "Paraskevas Pegios"
+    ],
+    "year": "2024",
+    "venue": "arXiv preprint",
+    "abstract": "Congenital malformations of the brain are among the most common fetal abnormalities that impact fetal development. Previous anomaly detection methods on ultrasound images are based on supervised learning, rely on manual annotations, and risk missing underrepresented categories. In this work, we frame fetal brain anomaly detection as an unsupervised task using diffusion models. To this end, we employ an inpainting-based Noise Agnostic Anomaly Detection approach that identifies the abnormality using diffusion-reconstructed fetal brain images from multiple noise levels. Our approach only requires normal fetal brain ultrasound images for training, addressing the limited availability of abnormal data. Our experiments on a real-world clinical dataset show the potential of using unsupervised methods for fetal brain anomaly detection. Additionally, we comprehensively evaluate how different noise types affect diffusion models in the fetal anomaly detection domain.",
+    "pdf_url": "https://arxiv.org/pdf/2408.03654v1"
+  },
+  {
+    "id": "2409.00556v1",
+    "title": "FADE: Few-shot/zero-shot Anomaly Detection Engine using Large Vision-Language Model",
+    "authors": [
+      "Yuanwei Li",
+      "Elizaveta Ivanova",
+      "Martins Bruveris"
+    ],
+    "year": "2024",
+    "venue": "arXiv preprint",
+    "abstract": "Automatic image anomaly detection is important for quality inspection in the manufacturing industry. The usual unsupervised anomaly detection approach is to train a model for each object class using a dataset of normal samples. However, a more realistic problem is zero-/few-shot anomaly detection where zero or only a few normal samples are available. This makes the training of object-specific models challenging. Recently, large foundation vision-language models have shown strong zero-shot performance in various downstream tasks. While these models have learned complex relationships between vision and language, they are not specifically designed for the tasks of anomaly detection. In this paper, we propose the Few-shot/zero-shot Anomaly Detection Engine (FADE) which leverages the vision-language CLIP model and adjusts it for the purpose of industrial anomaly detection. Specifically, we improve language-guided anomaly segmentation 1) by adapting CLIP to extract multi-scale image patch embeddings that are better aligned with language and 2) by automatically generating an ensemble of text prompts related to industrial anomaly detection. 3) We use additional vision-based guidance from the query and reference images to further improve both zero-shot and few-shot anomaly detection. On the MVTec-AD (and VisA) dataset, FADE outperforms other state-of-the-art methods in anomaly segmentation with pixel-AUROC of 89.6% (91.5%) in zero-shot and 95.4% (97.5%) in 1-normal-shot. Code is available at https://github.com/BMVC-FADE/BMVC-FADE.",
+    "pdf_url": "https://arxiv.org/pdf/2409.00556v1"
+  },
+  {
+    "id": "2503.11088v1",
+    "title": "Multi-View Industrial Anomaly Detection with Epipolar Constrained Cross-View Fusion",
+    "authors": [
+      "Yifan Liu",
+      "Xun Xu",
+      "Shijie Li",
+      "Jingyi Liao",
+      "Xulei Yang"
+    ],
+    "year": "2025",
+    "venue": "arXiv preprint",
+    "abstract": "Multi-camera systems provide richer contextual information for industrial anomaly detection. However, traditional methods process each view independently, disregarding the complementary information across viewpoints. Existing multi-view anomaly detection approaches typically employ data-driven cross-view attention for feature fusion but fail to leverage the unique geometric properties of multi-camera setups. In this work, we introduce an epipolar geometry-constrained attention module to guide cross-view fusion, ensuring more effective information aggregation. To further enhance the potential of cross-view attention, we propose a pretraining strategy inspired by memory bank-based anomaly detection. This approach encourages normal feature representations to form multiple local clusters and incorporate multi-view aware negative sample synthesis to regularize pretraining. We demonstrate that our epipolar guided multi-view anomaly detection framework outperforms existing methods on the state-of-the-art multi-view anomaly detection dataset.",
+    "pdf_url": "https://arxiv.org/pdf/2503.11088v1"
+  },
+  {
+    "id": "2112.02597v2",
+    "title": "Constrained Adaptive Projection with Pretrained Features for Anomaly Detection",
+    "authors": [
+      "Xingtai Gui",
+      "Di Wu",
+      "Yang Chang",
+      "Shicai Fan"
+    ],
+    "year": "2021",
+    "venue": "arXiv preprint",
+    "abstract": "Anomaly detection aims to separate anomalies from normal samples, and the pretrained network is promising for anomaly detection. However, adapting the pretrained features would be confronted with the risk of pattern collapse when finetuning on one-class training data. In this paper, we propose an anomaly detection framework called constrained adaptive projection with pretrained features (CAP). Combined with pretrained features, a simple linear projection head applied on a specific input and its k most similar pretrained normal representations is designed for feature adaptation, and a reformed self-attention is leveraged to mine the inner-relationship among one-class semantic features. A loss function is proposed to avoid potential pattern collapse. Concretely, it considers the similarity between a specific data and its corresponding adaptive normal representation, and incorporates a constraint term slightly aligning pretrained and adaptive spaces. Our method achieves state-ofthe-art anomaly detection performance on semantic anomaly detection and sensory anomaly detection benchmarks including 96.5% AUROC on CIFAR- 100 dataset, 97.0% AUROC on CIFAR-10 dataset and 89.9% AUROC on MvTec dataset.",
+    "pdf_url": "https://arxiv.org/pdf/2112.02597v2"
+  },
+  {
+    "id": "2211.13968v2",
+    "title": "MIAD: A Maintenance Inspection Dataset for Unsupervised Anomaly Detection",
+    "authors": [
+      "Tianpeng Bao",
+      "Jiadong Chen",
+      "Wei Li",
+      "Xiang Wang",
+      "Jingjing Fei",
+      "Liwei Wu",
+      "Rui Zhao",
+      "Ye Zheng"
+    ],
+    "year": "2022",
+    "venue": "arXiv preprint",
+    "abstract": "Visual anomaly detection plays a crucial role in not only manufacturing inspection to find defects of products during manufacturing processes, but also maintenance inspection to keep equipment in optimum working condition particularly outdoors. Due to the scarcity of the defective samples, unsupervised anomaly detection has attracted great attention in recent years. However, existing datasets for unsupervised anomaly detection are biased towards manufacturing inspection, not considering maintenance inspection which is usually conducted under outdoor uncontrolled environment such as varying camera viewpoints, messy background and degradation of object surface after long-term working. We focus on outdoor maintenance inspection and contribute a comprehensive Maintenance Inspection Anomaly Detection (MIAD) dataset which contains more than 100K high-resolution color images in various outdoor industrial scenarios. This dataset is generated by a 3D graphics software and covers both surface and logical anomalies with pixel-precise ground truth. Extensive evaluations of representative algorithms for unsupervised anomaly detection are conducted, and we expect MIAD and corresponding experimental results can inspire research community in outdoor unsupervised anomaly detection tasks. Worthwhile and related future work can be spawned from our new dataset.",
+    "pdf_url": "https://arxiv.org/pdf/2211.13968v2"
+  },
+  {
+    "id": "2410.11703v1",
+    "title": "Robotic Arm Platform for Multi-View Image Acquisition and 3D Reconstruction in Minimally Invasive Surgery",
+    "authors": [
+      "Alexander Saikia",
+      "Chiara Di Vece",
+      "Sierra Bonilla",
+      "Chloe He",
+      "Morenike Magbagbeola",
+      "Laurent Mennillo",
+      "Tobias Czempiel",
+      "Sophia Bano",
+      "Danail Stoyanov"
+    ],
+    "year": "2024",
+    "venue": "arXiv preprint",
+    "abstract": "Minimally invasive surgery (MIS) offers significant benefits such as reduced recovery time and minimised patient trauma, but poses challenges in visibility and access, making accurate 3D reconstruction a significant tool in surgical planning and navigation. This work introduces a robotic arm platform for efficient multi-view image acquisition and precise 3D reconstruction in MIS settings. We adapted a laparoscope to a robotic arm and captured ex-vivo images of several ovine organs across varying lighting conditions (operating room and laparoscopic) and trajectories (spherical and laparoscopic). We employed recently released learning-based feature matchers combined with COLMAP to produce our reconstructions. The reconstructions were evaluated against high-precision laser scans for quantitative evaluation. Our results show that whilst reconstructions suffer most under realistic MIS lighting and trajectory, many versions of our pipeline achieve close to sub-millimetre accuracy with an average of 1.05 mm Root Mean Squared Error and 0.82 mm Chamfer distance. Our best reconstruction results occur with operating room lighting and spherical trajectories. Our robotic platform provides a tool for controlled, repeatable multi-view data acquisition for 3D generation in MIS environments which we hope leads to new datasets for training learning-based models.",
+    "pdf_url": "https://arxiv.org/pdf/2410.11703v1"
+  },
+  {
+    "id": "2504.11247v1",
+    "title": "Next-Future: Sample-Efficient Policy Learning for Robotic-Arm Tasks",
+    "authors": [
+      "Fikrican Özgür",
+      "René Zurbrügg",
+      "Suryansh Kumar"
+    ],
+    "year": "2025",
+    "venue": "arXiv preprint",
+    "abstract": "Hindsight Experience Replay (HER) is widely regarded as the state-of-the-art algorithm for achieving sample-efficient multi-goal reinforcement learning (RL) in robotic manipulation tasks with binary rewards. HER facilitates learning from failed attempts by replaying trajectories with redefined goals. However, it relies on a heuristic-based replay method that lacks a principled framework. To address this limitation, we introduce a novel replay strategy, \"Next-Future\", which focuses on rewarding single-step transitions. This approach significantly enhances sample efficiency and accuracy in learning multi-goal Markov decision processes (MDPs), particularly under stringent accuracy requirements -- a critical aspect for performing complex and precise robotic-arm tasks. We demonstrate the efficacy of our method by highlighting how single-step learning enables improved value approximation within the multi-goal RL framework. The performance of the proposed replay strategy is evaluated across eight challenging robotic manipulation tasks, using ten random seeds for training. Our results indicate substantial improvements in sample efficiency for seven out of eight tasks and higher success rates in six tasks. Furthermore, real-world experiments validate the practical feasibility of the learned policies, demonstrating the potential of \"Next-Future\" in solving complex robotic-arm tasks.",
+    "pdf_url": "https://arxiv.org/pdf/2504.11247v1"
+  },
+  {
+    "id": "2405.19081v1",
+    "title": "Uniform vs. Lognormal Kinematics in Robots: Perceptual Preferences for Robotic Movements",
+    "authors": [
+      "Jose J. Quintana",
+      "Miguel A. Ferrer",
+      "Moises Diaz",
+      "Jose J. Feo",
+      "Adam Wolniakowski",
+      "Konstantsin Miatliuk"
+    ],
+    "year": "2024",
+    "venue": "Applied Sciences Volume 12 Issue 23 (2022)",
+    "abstract": "Collaborative robots or cobots interact with humans in a common work environment. In cobots, one under investigated but important issue is related to their movement and how it is perceived by humans. This paper tries to analyze whether humans prefer a robot moving in a human or in a robotic fashion. To this end, the present work lays out what differentiates the movement performed by an industrial robotic arm from that performed by a human one. The main difference lies in the fact that the robotic movement has a trapezoidal speed profile, while for the human arm, the speed profile is bell-shaped and during complex movements, it can be considered as a sum of superimposed bell-shaped movements. Based on the lognormality principle, a procedure was developed for a robotic arm to perform human-like movements. Both speed profiles were implemented in two industrial robots, namely, an ABB IRB 120 and a Universal Robot UR3. Three tests were used to study the subjects' preference when seeing both movements and another analyzed the same when interacting with the robot by touching its ends with their fingers.",
+    "pdf_url": "https://arxiv.org/pdf/2405.19081v1"
+  },
+  {
+    "id": "2205.15407v1",
+    "title": "Grid HTM: Hierarchical Temporal Memory for Anomaly Detection in Videos",
+    "authors": [
+      "Vladimir Monakhov",
+      "Vajira Thambawita",
+      "Pål Halvorsen",
+      "Michael A. Riegler"
+    ],
+    "year": "2022",
+    "venue": "arXiv preprint",
+    "abstract": "The interest for video anomaly detection systems has gained traction for the past few years. The current approaches use deep learning to perform anomaly detection in videos, but this approach has multiple problems. For starters, deep learning in general has issues with noise, concept drift, explainability, and training data volumes. Additionally, anomaly detection in itself is a complex task and faces challenges such as unknowness, heterogeneity, and class imbalance. Anomaly detection using deep learning is therefore mainly constrained to generative models such as generative adversarial networks and autoencoders due to their unsupervised nature, but even they suffer from general deep learning issues and are hard to train properly. In this paper, we explore the capabilities of the Hierarchical Temporal Memory (HTM) algorithm to perform anomaly detection in videos, as it has favorable properties such as noise tolerance and online learning which combats concept drift. We introduce a novel version of HTM, namely, Grid HTM, which is an HTM-based architecture specifically for anomaly detection in complex videos such as surveillance footage.",
+    "pdf_url": "https://arxiv.org/pdf/2205.15407v1"
+  },
+  {
+    "id": "2111.01604v1",
+    "title": "A Critical Study on the Recent Deep Learning Based Semi-Supervised Video Anomaly Detection Methods",
+    "authors": [
+      "Mohammad Baradaran",
+      "Robert Bergevin"
+    ],
+    "year": "2021",
+    "venue": "arXiv preprint",
+    "abstract": "Video anomaly detection is one of the hot research topics in computer vision nowadays, as abnormal events contain a high amount of information. Anomalies are one of the main detection targets in surveillance systems, usually needing real-time actions. Regarding the availability of labeled data for training (i.e., there is not enough labeled data for abnormalities), semi-supervised anomaly detection approaches have gained interest recently. This paper introduces the researchers of the field to a new perspective and reviews the recent deep-learning based semi-supervised video anomaly detection approaches, based on a common strategy they use for anomaly detection. Our goal is to help researchers develop more effective video anomaly detection methods. As the selection of a right Deep Neural Network plays an important role for several parts of this task, a quick comparative review on DNNs is prepared first. Unlike previous surveys, DNNs are reviewed from a spatiotemporal feature extraction viewpoint, customized for video anomaly detection. This part of the review can help researchers in this field select suitable networks for different parts of their methods. Moreover, some of the state-of-the-art anomaly detection methods, based on their detection strategy, are critically surveyed. The review provides a novel and deep look at existing methods and results in stating the shortcomings of these approaches, which can be a hint for future works.",
+    "pdf_url": "https://arxiv.org/pdf/2111.01604v1"
+  },
+  {
+    "id": "2303.05463v1",
+    "title": "Understanding the Challenges and Opportunities of Pose-based Anomaly Detection",
+    "authors": [
+      "Ghazal Alinezhad Noghre",
+      "Armin Danesh Pazho",
+      "Vinit Katariya",
+      "Hamed Tabkhi"
+    ],
+    "year": "2023",
+    "venue": "arXiv preprint",
+    "abstract": "Pose-based anomaly detection is a video-analysis technique for detecting anomalous events or behaviors by examining human pose extracted from the video frames. Utilizing pose data alleviates privacy and ethical issues. Also, computation-wise, the complexity of pose-based models is lower than pixel-based approaches. However, it introduces more challenges, such as noisy skeleton data, losing important pixel information, and not having enriched enough features. These problems are exacerbated by a lack of anomaly detection datasets that are good enough representatives of real-world scenarios. In this work, we analyze and quantify the characteristics of two well-known video anomaly datasets to better understand the difficulties of pose-based anomaly detection. We take a step forward, exploring the discriminating power of pose and trajectory for video anomaly detection and their effectiveness based on context. We believe these experiments are beneficial for a better comprehension of pose-based anomaly detection and the datasets currently available. This will aid researchers in tackling the task of anomaly detection with a more lucid perspective, accelerating the development of robust models with better performance.",
+    "pdf_url": "https://arxiv.org/pdf/2303.05463v1"
+  },
+  {
+    "id": "2202.08341v1",
+    "title": "Anomalib: A Deep Learning Library for Anomaly Detection",
+    "authors": [
+      "Samet Akcay",
+      "Dick Ameln",
+      "Ashwin Vaidya",
+      "Barath Lakshmanan",
+      "Nilesh Ahuja",
+      "Utku Genc"
+    ],
+    "year": "2022",
+    "venue": "arXiv preprint",
+    "abstract": "This paper introduces anomalib, a novel library for unsupervised anomaly detection and localization. With reproducibility and modularity in mind, this open-source library provides algorithms from the literature and a set of tools to design custom anomaly detection algorithms via a plug-and-play approach. Anomalib comprises state-of-the-art anomaly detection algorithms that achieve top performance on the benchmarks and that can be used off-the-shelf. In addition, the library provides components to design custom algorithms that could be tailored towards specific needs. Additional tools, including experiment trackers, visualizers, and hyper-parameter optimizers, make it simple to design and implement anomaly detection models. The library also supports OpenVINO model optimization and quantization for real-time deployment. Overall, anomalib is an extensive library for the design, implementation, and deployment of unsupervised anomaly detection models from data to the edge.",
+    "pdf_url": "https://arxiv.org/pdf/2202.08341v1"
+  },
+  {
+    "id": "2104.07268v1",
+    "title": "Weakly Supervised Video Anomaly Detection via Center-guided Discriminative Learning",
+    "authors": [
+      "Boyang Wan",
+      "Yuming Fang",
+      "Xue Xia",
+      "Jiajie Mei"
+    ],
+    "year": "2021",
+    "venue": "arXiv preprint",
+    "abstract": "Anomaly detection in surveillance videos is a challenging task due to the diversity of anomalous video content and duration. In this paper, we consider video anomaly detection as a regression problem with respect to anomaly scores of video clips under weak supervision. Hence, we propose an anomaly detection framework, called Anomaly Regression Net (AR-Net), which only requires video-level labels in training stage. Further, to learn discriminative features for anomaly detection, we design a dynamic multiple-instance learning loss and a center loss for the proposed AR-Net. The former is used to enlarge the inter-class distance between anomalous and normal instances, while the latter is proposed to reduce the intra-class distance of normal instances. Comprehensive experiments are performed on a challenging benchmark: ShanghaiTech. Our method yields a new state-of-the-art result for video anomaly detection on ShanghaiTech dataset",
+    "pdf_url": "https://arxiv.org/pdf/2104.07268v1"
+  },
+  {
+    "id": "2205.11394v1",
+    "title": "Detection of Fights in Videos: A Comparison Study of Anomaly Detection and Action Recognition",
+    "authors": [
+      "Weijun Tan",
+      "Jingfeng Liu"
+    ],
+    "year": "2022",
+    "venue": "arXiv preprint",
+    "abstract": "Detection of fights is an important surveillance application in videos. Most existing methods use supervised binary action recognition. Since frame-level annotations are very hard to get for anomaly detection, weakly supervised learning using multiple instance learning is widely used. This paper explores the detection of fights in videos as one special type of anomaly detection and as binary action recognition. We use the UBI-Fight and NTU-CCTV-Fight datasets for most of the study since they have frame-level annotations. We find that the anomaly detection has similar or even better performance than the action recognition. Furthermore, we study to use anomaly detection as a toolbox to generate training datasets for action recognition in an iterative way conditioned on the performance of the anomaly detection. Experiment results should show that we achieve state-of-the-art performance on three fight detection datasets.",
+    "pdf_url": "https://arxiv.org/pdf/2205.11394v1"
+  },
+  {
+    "id": "2106.08570v1",
+    "title": "Anomaly Detection in Video Sequences: A Benchmark and Computational Model",
+    "authors": [
+      "Boyang Wan",
+      "Wenhui Jiang",
+      "Yuming Fang",
+      "Zhiyuan Luo",
+      "Guanqun Ding"
+    ],
+    "year": "2021",
+    "venue": "arXiv preprint",
+    "abstract": "Anomaly detection has attracted considerable search attention. However, existing anomaly detection databases encounter two major problems. Firstly, they are limited in scale. Secondly, training sets contain only video-level labels indicating the existence of an abnormal event during the full video while lacking annotations of precise time durations. To tackle these problems, we contribute a new Large-scale Anomaly Detection (LAD) database as the benchmark for anomaly detection in video sequences, which is featured in two aspects. 1) It contains 2000 video sequences including normal and abnormal video clips with 14 anomaly categories including crash, fire, violence, etc. with large scene varieties, making it the largest anomaly analysis database to date. 2) It provides the annotation data, including video-level labels (abnormal/normal video, anomaly type) and frame-level labels (abnormal/normal video frame) to facilitate anomaly detection. Leveraging the above benefits from the LAD database, we further formulate anomaly detection as a fully-supervised learning problem and propose a multi-task deep neural network to solve it. We first obtain the local spatiotemporal contextual feature by using an Inflated 3D convolutional (I3D) network. Then we construct a recurrent convolutional neural network fed the local spatiotemporal contextual feature to extract the spatiotemporal contextual feature. With the global spatiotemporal contextual feature, the anomaly type and score can be computed simultaneously by a multi-task neural network. Experimental results show that the proposed method outperforms the state-of-the-art anomaly detection methods on our database and other public databases of anomaly detection. Codes are available at https://github.com/wanboyang/anomaly_detection_LAD2000.",
+    "pdf_url": "https://arxiv.org/pdf/2106.08570v1"
+  },
+  {
+    "id": "2304.03294v3",
+    "title": "What makes a good data augmentation for few-shot unsupervised image anomaly detection?",
+    "authors": [
+      "Lingrui Zhang",
+      "Shuheng Zhang",
+      "Guoyang Xie",
+      "Jiaqi Liu",
+      "Hua Yan",
+      "Jinbao Wang",
+      "Feng Zheng",
+      "Yaochu Jin"
+    ],
+    "year": "2023",
+    "venue": "arXiv preprint",
+    "abstract": "Data augmentation is a promising technique for unsupervised anomaly detection in industrial applications, where the availability of positive samples is often limited due to factors such as commercial competition and sample collection difficulties. In this paper, how to effectively select and apply data augmentation methods for unsupervised anomaly detection is studied. The impact of various data augmentation methods on different anomaly detection algorithms is systematically investigated through experiments. The experimental results show that the performance of different industrial image anomaly detection (termed as IAD) algorithms is not significantly affected by the specific data augmentation method employed and that combining multiple data augmentation methods does not necessarily yield further improvements in the accuracy of anomaly detection, although it can achieve excellent results on specific methods. These findings provide useful guidance on selecting appropriate data augmentation methods for different requirements in IAD.",
+    "pdf_url": "https://arxiv.org/pdf/2304.03294v3"
+  },
+  {
+    "id": "2307.00750v2",
+    "title": "Feasibility of Universal Anomaly Detection without Knowing the Abnormality in Medical Images",
+    "authors": [
+      "Can Cui",
+      "Yaohong Wang",
+      "Shunxing Bao",
+      "Yucheng Tang",
+      "Ruining Deng",
+      "Lucas W. Remedios",
+      "Zuhayr Asad",
+      "Joseph T. Roland",
+      "Ken S. Lau",
+      "Qi Liu",
+      "Lori A. Coburn",
+      "Keith T. Wilson",
+      "Bennett A. Landman",
+      "Yuankai Huo"
+    ],
+    "year": "2023",
+    "venue": "arXiv preprint",
+    "abstract": "Many anomaly detection approaches, especially deep learning methods, have been recently developed to identify abnormal image morphology by only employing normal images during training. Unfortunately, many prior anomaly detection methods were optimized for a specific \"known\" abnormality (e.g., brain tumor, bone fraction, cell types). Moreover, even though only the normal images were used in the training process, the abnormal images were often employed during the validation process (e.g., epoch selection, hyper-parameter tuning), which might leak the supposed ``unknown\" abnormality unintentionally. In this study, we investigated these two essential aspects regarding universal anomaly detection in medical images by (1) comparing various anomaly detection methods across four medical datasets, (2) investigating the inevitable but often neglected issues on how to unbiasedly select the optimal anomaly detection model during the validation phase using only normal images, and (3) proposing a simple decision-level ensemble method to leverage the advantage of different kinds of anomaly detection without knowing the abnormality. The results of our experiments indicate that none of the evaluated methods consistently achieved the best performance across all datasets. Our proposed method enhanced the robustness of performance in general (average AUC 0.956).",
+    "pdf_url": "https://arxiv.org/pdf/2307.00750v2"
+  },
+  {
+    "id": "2403.09303v3",
+    "title": "Rethinking Autoencoders for Medical Anomaly Detection from A Theoretical Perspective",
+    "authors": [
+      "Yu Cai",
+      "Hao Chen",
+      "Kwang-Ting Cheng"
+    ],
+    "year": "2024",
+    "venue": "arXiv preprint",
+    "abstract": "Medical anomaly detection aims to identify abnormal findings using only normal training data, playing a crucial role in health screening and recognizing rare diseases. Reconstruction-based methods, particularly those utilizing autoencoders (AEs), are dominant in this field. They work under the assumption that AEs trained on only normal data cannot reconstruct unseen abnormal regions well, thereby enabling the anomaly detection based on reconstruction errors. However, this assumption does not always hold due to the mismatch between the reconstruction training objective and the anomaly detection task objective, rendering these methods theoretically unsound. This study focuses on providing a theoretical foundation for AE-based reconstruction methods in anomaly detection. By leveraging information theory, we elucidate the principles of these methods and reveal that the key to improving AE in anomaly detection lies in minimizing the information entropy of latent vectors. Experiments on four datasets with two image modalities validate the effectiveness of our theory. To the best of our knowledge, this is the first effort to theoretically clarify the principles and design philosophy of AE for anomaly detection. The code is available at \\url{https://github.com/caiyu6666/AE4AD}.",
+    "pdf_url": "https://arxiv.org/pdf/2403.09303v3"
+  },
+  {
+    "id": "2209.00741v1",
+    "title": "A Low-Cost Multi-Agent System for Physical Security in Smart Buildings",
+    "authors": [
+      "Tiago Fonseca",
+      "Tiago Dias",
+      "João Vitorino",
+      "Luís Lino Ferreira",
+      "Isabel Praça"
+    ],
+    "year": "2022",
+    "venue": "arXiv preprint",
+    "abstract": "Modern organizations face numerous physical security threats, from fire hazards to more intricate concerns regarding surveillance and unauthorized personnel. Conventional standalone fire and intrusion detection solutions must be installed and maintained independently, which leads to high capital and operational costs. Nonetheless, due to recent developments in smart sensors, computer vision techniques, and wireless communication technologies, these solutions can be integrated in a modular and low-cost manner. This work introduces Integrated Physical Security System (IP2S), a multi-agent system capable of coordinating diverse Internet of Things (IoT) sensors and actuators for an efficient mitigation of multiple physical security events. The proposed system was tested in a live case study that combined fire and intrusion detection in an industrial shop floor environment with four different sectors, two surveillance cameras, and a firefighting robot. The experimental results demonstrate that the integration of several events in a single automated system can be advantageous for the security of smart buildings, reducing false alarms and delays.",
+    "pdf_url": "https://arxiv.org/pdf/2209.00741v1"
+  },
+  {
+    "id": "2110.05086v1",
+    "title": "Deep Video Anomaly Detection: Opportunities and Challenges",
+    "authors": [
+      "Jing Ren",
+      "Feng Xia",
+      "Yemeng Liu",
+      "Ivan Lee"
+    ],
+    "year": "2021",
+    "venue": "arXiv preprint",
+    "abstract": "Anomaly detection is a popular and vital task in various research contexts, which has been studied for several decades. To ensure the safety of people's lives and assets, video surveillance has been widely deployed in various public spaces, such as crossroads, elevators, hospitals, banks, and even in private homes. Deep learning has shown its capacity in a number of domains, ranging from acoustics, images, to natural language processing. However, it is non-trivial to devise intelligent video anomaly detection systems cause anomalies significantly differ from each other in different application scenarios. There are numerous advantages if such intelligent systems could be realised in our daily lives, such as saving human resources in a large degree, reducing financial burden on the government, and identifying the anomalous behaviours timely and accurately. Recently, many studies on extending deep learning models for solving anomaly detection problems have emerged, resulting in beneficial advances in deep video anomaly detection techniques. In this paper, we present a comprehensive review of deep learning-based methods to detect the video anomalies from a new perspective. Specifically, we summarise the opportunities and challenges of deep learning models on video anomaly detection tasks, respectively. We put forth several potential future research directions of intelligent video anomaly detection system in various application domains. Moreover, we summarise the characteristics and technical problems in current deep learning methods for video anomaly detection.",
+    "pdf_url": "https://arxiv.org/pdf/2110.05086v1"
+  },
+  {
+    "id": "2408.02181v2",
+    "title": "AssemAI: Interpretable Image-Based Anomaly Detection for Manufacturing Pipelines",
+    "authors": [
+      "Renjith Prasad",
+      "Chathurangi Shyalika",
+      "Ramtin Zand",
+      "Fadi El Kalach",
+      "Revathy Venkataramanan",
+      "Ramy Harik",
+      "Amit Sheth"
+    ],
+    "year": "2024",
+    "venue": "Predictive Models in Engineering Applications special session (MLPMEA) at International Conference on Machine Learning and Applications (ICMLA) 2024",
+    "abstract": "Anomaly detection in manufacturing pipelines remains a critical challenge, intensified by the complexity and variability of industrial environments. This paper introduces AssemAI, an interpretable image-based anomaly detection system tailored for smart manufacturing pipelines. Utilizing a curated image dataset from an industry-focused rocket assembly pipeline, we address the challenge of imbalanced image data and demonstrate the importance of image-based methods in anomaly detection. Our primary contributions include deriving an image dataset, fine-tuning an object detection model YOLO-FF, and implementing a custom anomaly detection model for assembly pipelines. The proposed approach leverages domain knowledge in data preparation, model development and reasoning. We implement several anomaly detection models on the derived image dataset, including a Convolutional Neural Network, Vision Transformer (ViT), and pre-trained versions of these models. Additionally, we incorporate explainability techniques at both user and model levels, utilizing ontology for user-level explanations and SCORE-CAM for in-depth feature and model analysis. Finally, the best-performing anomaly detection model and YOLO-FF are deployed in a real-time setting. Our results include ablation studies on the baselines and a comprehensive evaluation of the proposed system. This work highlights the broader impact of advanced image-based anomaly detection in enhancing the reliability and efficiency of smart manufacturing processes. The image dataset, codes to reproduce the results and additional experiments are available at https://github.com/renjithk4/AssemAI.",
+    "pdf_url": "https://arxiv.org/pdf/2408.02181v2"
+  },
+  {
+    "id": "2206.00432v1",
+    "title": "Evaluating Gaussian Grasp Maps for Generative Grasping Models",
+    "authors": [
+      "William Prew",
+      "Toby P. Breckon",
+      "Magnus Bordewich",
+      "Ulrik Beierholm"
+    ],
+    "year": "2022",
+    "venue": "arXiv preprint",
+    "abstract": "Generalising robotic grasping to previously unseen objects is a key task in general robotic manipulation. The current method for training many antipodal generative grasping models rely on a binary ground truth grasp map generated from the centre thirds of correctly labelled grasp rectangles. However, these binary maps do not accurately reflect the positions in which a robotic arm can correctly grasp a given object. We propose a continuous Gaussian representation of annotated grasps to generate ground truth training data which achieves a higher success rate on a simulated robotic grasping benchmark. Three modern generative grasping networks are trained with either binary or Gaussian grasp maps, along with recent advancements from the robotic grasping literature, such as discretisation of grasp angles into bins and an attentional loss function. Despite negligible difference according to the standard rectangle metric, Gaussian maps better reproduce the training data and therefore improve success rates when tested on the same simulated robot arm by avoiding collisions with the object: achieving 87.94\\% accuracy. Furthermore, the best performing model is shown to operate with a high success rate when transferred to a real robotic arm, at high inference speeds, without the need for transfer learning. The system is then shown to be capable of performing grasps on an antagonistic physical object dataset benchmark.",
+    "pdf_url": "https://arxiv.org/pdf/2206.00432v1"
+  },
+  {
+    "id": "2012.04905v3",
+    "title": "ESAD: End-to-end Deep Semi-supervised Anomaly Detection",
+    "authors": [
+      "Chaoqin Huang",
+      "Fei Ye",
+      "Peisen Zhao",
+      "Ya Zhang",
+      "Yan-Feng Wang",
+      "Qi Tian"
+    ],
+    "year": "2020",
+    "venue": "arXiv preprint",
+    "abstract": "This paper explores semi-supervised anomaly detection, a more practical setting for anomaly detection where a small additional set of labeled samples are provided. We propose a new KL-divergence based objective function for semi-supervised anomaly detection, and show that two factors: the mutual information between the data and latent representations, and the entropy of latent representations, constitute an integral objective function for anomaly detection. To resolve the contradiction in simultaneously optimizing the two factors, we propose a novel encoder-decoder-encoder structure, with the first encoder focusing on optimizing the mutual information and the second encoder focusing on optimizing the entropy. The two encoders are enforced to share similar encoding with a consistent constraint on their latent representations. Extensive experiments have revealed that the proposed method significantly outperforms several state-of-the-arts on multiple benchmark datasets, including medical diagnosis and several classic anomaly detection benchmarks.",
+    "pdf_url": "https://arxiv.org/pdf/2012.04905v3"
+  },
+  {
+    "id": "2210.07548v1",
+    "title": "Reconstructed Student-Teacher and Discriminative Networks for Anomaly Detection",
+    "authors": [
+      "Shinji Yamada",
+      "Satoshi Kamiya",
+      "Kazuhiro Hotta"
+    ],
+    "year": "2022",
+    "venue": "arXiv preprint",
+    "abstract": "Anomaly detection is an important problem in computer vision; however, the scarcity of anomalous samples makes this task difficult. Thus, recent anomaly detection methods have used only normal images with no abnormal areas for training. In this work, a powerful anomaly detection method is proposed based on student-teacher feature pyramid matching (STPM), which consists of a student and teacher network. Generative models are another approach to anomaly detection. They reconstruct normal images from an input and compute the difference between the predicted normal and the input. Unfortunately, STPM does not have the ability to generate normal images. To improve the accuracy of STPM, this work uses a student network, as in generative models, to reconstruct normal features. This improves the accuracy; however, the anomaly maps for normal images are not clean because STPM does not use anomaly images for training, which decreases the accuracy of the image-level anomaly detection. To further improve accuracy, a discriminative network trained with pseudo-anomalies from anomaly maps is used in our method, which consists of two pairs of student-teacher networks and a discriminative network. The method displayed high accuracy on the MVTec anomaly detection dataset.",
+    "pdf_url": "https://arxiv.org/pdf/2210.07548v1"
+  },
+  {
+    "id": "2007.02500v3",
+    "title": "Deep Learning for Anomaly Detection: A Review",
+    "authors": [
+      "Guansong Pang",
+      "Chunhua Shen",
+      "Longbing Cao",
+      "Anton van den Hengel"
+    ],
+    "year": "2020",
+    "venue": "ACM Computing Surveys, 2020",
+    "abstract": "Anomaly detection, a.k.a. outlier detection or novelty detection, has been a lasting yet active research area in various research communities for several decades. There are still some unique problem complexities and challenges that require advanced approaches. In recent years, deep learning enabled anomaly detection, i.e., deep anomaly detection, has emerged as a critical direction. This paper surveys the research of deep anomaly detection with a comprehensive taxonomy, covering advancements in three high-level categories and 11 fine-grained categories of the methods. We review their key intuitions, objective functions, underlying assumptions, advantages and disadvantages, and discuss how they address the aforementioned challenges. We further discuss a set of possible future opportunities and new perspectives on addressing the challenges.",
+    "pdf_url": "https://arxiv.org/pdf/2007.02500v3"
+  },
+  {
+    "id": "2406.12698v1",
+    "title": "Online-Adaptive Anomaly Detection for Defect Identification in Aircraft Assembly",
+    "authors": [
+      "Siddhant Shete",
+      "Dennis Mronga",
+      "Ankita Jadhav",
+      "Frank Kirchner"
+    ],
+    "year": "2024",
+    "venue": "arXiv preprint",
+    "abstract": "Anomaly detection deals with detecting deviations from established patterns within data. It has various applications like autonomous driving, predictive maintenance, and medical diagnosis. To improve anomaly detection accuracy, transfer learning can be applied to large, pre-trained models and adapt them to the specific application context. In this paper, we propose a novel framework for online-adaptive anomaly detection using transfer learning. The approach adapts to different environments by selecting visually similar training images and online fitting a normality model to EfficientNet features extracted from the training subset. Anomaly detection is then performed by computing the Mahalanobis distance between the normality model and the test image features. Different similarity measures (SIFT/FLANN, Cosine) and normality models (MVG, OCSVM) are employed and compared with each other. We evaluate the approach on different anomaly detection benchmarks and data collected in controlled laboratory settings. Experimental results showcase a detection accuracy exceeding 0.975, outperforming the state-of-the-art ET-NET approach.",
+    "pdf_url": "https://arxiv.org/pdf/2406.12698v1"
+  },
+  {
+    "id": "1909.02755v1",
+    "title": "Image anomaly detection with capsule networks and imbalanced datasets",
+    "authors": [
+      "Claudio Piciarelli",
+      "Pankaj Mishra",
+      "Gian Luca Foresti"
+    ],
+    "year": "2019",
+    "venue": "[978-3-030-30641-0, ICIAP 2019, Part I, LNCS 11751, paper approval (489497_1_En, Chapter 23)]",
+    "abstract": "Image anomaly detection consists in finding images with anomalous, unusual patterns with respect to a set of normal data. Anomaly detection can be applied to several fields and has numerous practical applications, e.g. in industrial inspection, medical imaging, security enforcement, etc.. However, anomaly detection techniques often still rely on traditional approaches such as one-class Support Vector Machines, while the topic has not been fully developed yet in the context of modern deep learning approaches. In this paper, we propose an image anomaly detection system based on capsule networks under the assumption that anomalous data are available for training but their amount is scarce.",
+    "pdf_url": "https://arxiv.org/pdf/1909.02755v1"
+  },
+  {
+    "id": "2103.12992v4",
+    "title": "Non-Compression Auto-Encoder for Detecting Road Surface Abnormality via Vehicle Driving Noise",
+    "authors": [
+      "YeongHyeon Park",
+      "JongHee Jung"
+    ],
+    "year": "2021",
+    "venue": "arXiv preprint",
+    "abstract": "Road accident can be triggered by wet road because it decreases skid resistance. To prevent the road accident, detecting road surface abnomality is highly useful. In this paper, we propose the deep learning based cost-effective real-time anomaly detection architecture, naming with non-compression auto-encoder (NCAE). The proposed architecture can reflect forward and backward causality of time series information via convolutional operation. Moreover, the above architecture shows higher anomaly detection performance of published anomaly detection model via experiments. We conclude that NCAE as a cutting-edge model for road surface anomaly detection with 4.20\\% higher AUROC and 2.99 times faster decision than before.",
+    "pdf_url": "https://arxiv.org/pdf/2103.12992v4"
+  },
+  {
+    "id": "2309.13226v3",
+    "title": "Real3D-AD: A Dataset of Point Cloud Anomaly Detection",
+    "authors": [
+      "Jiaqi Liu",
+      "Guoyang Xie",
+      "Ruitao Chen",
+      "Xinpeng Li",
+      "Jinbao Wang",
+      "Yong Liu",
+      "Chengjie Wang",
+      "Feng Zheng"
+    ],
+    "year": "2023",
+    "venue": "arXiv preprint",
+    "abstract": "High-precision point cloud anomaly detection is the gold standard for identifying the defects of advancing machining and precision manufacturing. Despite some methodological advances in this area, the scarcity of datasets and the lack of a systematic benchmark hinder its development. We introduce Real3D-AD, a challenging high-precision point cloud anomaly detection dataset, addressing the limitations in the field. With 1,254 high-resolution 3D items from forty thousand to millions of points for each item, Real3D-AD is the largest dataset for high-precision 3D industrial anomaly detection to date. Real3D-AD surpasses existing 3D anomaly detection datasets available regarding point cloud resolution (0.0010mm-0.0015mm), 360 degree coverage and perfect prototype. Additionally, we present a comprehensive benchmark for Real3D-AD, revealing the absence of baseline methods for high-precision point cloud anomaly detection. To address this, we propose Reg3D-AD, a registration-based 3D anomaly detection method incorporating a novel feature memory bank that preserves local and global representations. Extensive experiments on the Real3D-AD dataset highlight the effectiveness of Reg3D-AD. For reproducibility and accessibility, we provide the Real3D-AD dataset, benchmark source code, and Reg3D-AD on our website:https://github.com/M-3LAB/Real3D-AD.",
+    "pdf_url": "https://arxiv.org/pdf/2309.13226v3"
+  },
+  {
+    "id": "2105.09903v2",
+    "title": "Multi-Perspective Anomaly Detection",
+    "authors": [
+      "Peter Jakob",
+      "Manav Madan",
+      "Tobias Schmid-Schirling",
+      "Abhinav Valada"
+    ],
+    "year": "2021",
+    "venue": "Sensors. 2021; 21(16):5311",
+    "abstract": "Anomaly detection is a critical problem in the manufacturing industry. In many applications, images of objects to be analyzed are captured from multiple perspectives which can be exploited to improve the robustness of anomaly detection. In this work, we build upon the deep support vector data description algorithm and address multi-perspective anomaly detection using three different fusion techniques, i.e., early fusion, late fusion, and late fusion with multiple decoders. We employ different augmentation techniques with a denoising process to deal with scarce one-class data, which further improves the performance (ROC AUC $= 80\\%$). Furthermore, we introduce the dices dataset, which consists of over 2000 grayscale images of falling dices from multiple perspectives, with 5\\% of the images containing rare anomalies (e.g., drill holes, sawing, or scratches). We evaluate our approach on the new dices dataset using images from two different perspectives and also benchmark on the standard MNIST dataset. Extensive experiments demonstrate that our proposed {multi-perspective} approach exceeds the state-of-the-art {single-perspective anomaly detection on both the MNIST and dices datasets}. To the best of our knowledge, this is the first work that focuses on addressing multi-perspective anomaly detection in images by jointly using different perspectives together with one single objective function for anomaly detection.",
+    "pdf_url": "https://arxiv.org/pdf/2105.09903v2"
+  },
+  {
+    "id": "2402.17091v1",
+    "title": "Structural Teacher-Student Normality Learning for Multi-Class Anomaly Detection and Localization",
+    "authors": [
+      "Hanqiu Deng",
+      "Xingyu Li"
+    ],
+    "year": "2024",
+    "venue": "arXiv preprint",
+    "abstract": "Visual anomaly detection is a challenging open-set task aimed at identifying unknown anomalous patterns while modeling normal data. The knowledge distillation paradigm has shown remarkable performance in one-class anomaly detection by leveraging teacher-student network feature comparisons. However, extending this paradigm to multi-class anomaly detection introduces novel scalability challenges. In this study, we address the significant performance degradation observed in previous teacher-student models when applied to multi-class anomaly detection, which we identify as resulting from cross-class interference. To tackle this issue, we introduce a novel approach known as Structural Teacher-Student Normality Learning (SNL): (1) We propose spatial-channel distillation and intra-&inter-affinity distillation techniques to measure structural distance between the teacher and student networks. (2) We introduce a central residual aggregation module (CRAM) to encapsulate the normal representation space of the student network. We evaluate our proposed approach on two anomaly detection datasets, MVTecAD and VisA. Our method surpasses the state-of-the-art distillation-based algorithms by a significant margin of 3.9% and 1.5% on MVTecAD and 1.2% and 2.5% on VisA in the multi-class anomaly detection and localization tasks, respectively. Furthermore, our algorithm outperforms the current state-of-the-art unified models on both MVTecAD and VisA.",
+    "pdf_url": "https://arxiv.org/pdf/2402.17091v1"
+  },
+  {
+    "id": "2211.15527v1",
+    "title": "A Study of Representational Properties of Unsupervised Anomaly Detection in Brain MRI",
+    "authors": [
+      "Ayantika Das",
+      "Arun Palla",
+      "Keerthi Ram",
+      "Mohanasankar Sivaprakasam"
+    ],
+    "year": "2022",
+    "venue": "arXiv preprint",
+    "abstract": "Anomaly detection in MRI is of high clinical value in imaging and diagnosis. Unsupervised methods for anomaly detection provide interesting formulations based on reconstruction or latent embedding, offering a way to observe properties related to factorization. We study four existing modeling methods, and report our empirical observations using simple data science tools, to seek outcomes from the perspective of factorization as it would be most relevant to the task of unsupervised anomaly detection, considering the case of brain structural MRI. Our study indicates that anomaly detection algorithms that exhibit factorization related properties are well capacitated with delineatory capabilities to distinguish between normal and anomaly data. We have validated our observations in multiple anomaly and normal datasets.",
+    "pdf_url": "https://arxiv.org/pdf/2211.15527v1"
+  },
+  {
+    "id": "2301.11514v5",
+    "title": "Deep Industrial Image Anomaly Detection: A Survey",
+    "authors": [
+      "Jiaqi Liu",
+      "Guoyang Xie",
+      "Jinbao Wang",
+      "Shangnian Li",
+      "Chengjie Wang",
+      "Feng Zheng",
+      "Yaochu Jin"
+    ],
+    "year": "2023",
+    "venue": "Machine Intelligence Research vol. 21, no. 1, pp. 104-135, 2024",
+    "abstract": "The recent rapid development of deep learning has laid a milestone in industrial Image Anomaly Detection (IAD). In this paper, we provide a comprehensive review of deep learning-based image anomaly detection techniques, from the perspectives of neural network architectures, levels of supervision, loss functions, metrics and datasets. In addition, we extract the new setting from industrial manufacturing and review the current IAD approaches under our proposed our new setting. Moreover, we highlight several opening challenges for image anomaly detection. The merits and downsides of representative network architectures under varying supervision are discussed. Finally, we summarize the research findings and point out future research directions. More resources are available at https://github.com/M-3LAB/awesome-industrial-anomaly-detection.",
+    "pdf_url": "https://arxiv.org/pdf/2301.11514v5"
+  },
+  {
+    "id": "2408.15113v2",
+    "title": "AnomalousPatchCore: Exploring the Use of Anomalous Samples in Industrial Anomaly Detection",
+    "authors": [
+      "Mykhailo Koshil",
+      "Tilman Wegener",
+      "Detlef Mentrup",
+      "Simone Frintrop",
+      "Christian Wilms"
+    ],
+    "year": "2024",
+    "venue": "arXiv preprint",
+    "abstract": "Visual inspection, or industrial anomaly detection, is one of the most common quality control types in manufacturing. The task is to identify the presence of an anomaly given an image, e.g., a missing component on an image of a circuit board, for subsequent manual inspection. While industrial anomaly detection has seen a surge in recent years, most anomaly detection methods still utilize knowledge only from normal samples, failing to leverage the information from the frequently available anomalous samples. Additionally, they heavily rely on very general feature extractors pre-trained on common image classification datasets. In this paper, we address these shortcomings and propose the new anomaly detection system AnomalousPatchCore~(APC) based on a feature extractor fine-tuned with normal and anomalous in-domain samples and a subsequent memory bank for identifying unusual features. To fine-tune the feature extractor in APC, we propose three auxiliary tasks that address the different aspects of anomaly detection~(classification vs. localization) and mitigate the effect of the imbalance between normal and anomalous samples. Our extensive evaluation on the MVTec dataset shows that APC outperforms state-of-the-art systems in detecting anomalies, which is especially important in industrial anomaly detection given the subsequent manual inspection. In detailed ablation studies, we further investigate the properties of our APC.",
+    "pdf_url": "https://arxiv.org/pdf/2408.15113v2"
+  },
+  {
+    "id": "2305.08509v1",
+    "title": "Component-aware anomaly detection framework for adjustable and logical industrial visual inspection",
+    "authors": [
+      "Tongkun Liu",
+      "Bing Li",
+      "Xiao Du",
+      "Bingke Jiang",
+      "Xiao Jin",
+      "Liuyi Jin",
+      "Zhuo Zhao"
+    ],
+    "year": "2023",
+    "venue": "arXiv preprint",
+    "abstract": "Industrial visual inspection aims at detecting surface defects in products during the manufacturing process. Although existing anomaly detection models have shown great performance on many public benchmarks, their limited adjustability and ability to detect logical anomalies hinder their broader use in real-world settings. To this end, in this paper, we propose a novel component-aware anomaly detection framework (ComAD) which can simultaneously achieve adjustable and logical anomaly detection for industrial scenarios. Specifically, we propose to segment images into multiple components based on a lightweight and nearly training-free unsupervised semantic segmentation model. Then, we design an interpretable logical anomaly detection model through modeling the metrological features of each component and their relationships. Despite its simplicity, our framework achieves state-of-the-art performance on image-level logical anomaly detection. Meanwhile, segmenting a product image into multiple components provides a novel perspective for industrial visual inspection, demonstrating great potential in model customization, noise resistance, and anomaly classification. The code will be available at https://github.com/liutongkun/ComAD.",
+    "pdf_url": "https://arxiv.org/pdf/2305.08509v1"
+  },
+  {
+    "id": "2203.12304v1",
+    "title": "Domain-Generalized Textured Surface Anomaly Detection",
+    "authors": [
+      "Shang-Fu Chen",
+      "Yu-Min Liu",
+      "Chia-Ching Lin",
+      "Trista Pei-Chun Chen",
+      "Yu-Chiang Frank Wang"
+    ],
+    "year": "2022",
+    "venue": "arXiv preprint",
+    "abstract": "Anomaly detection aims to identify abnormal data that deviates from the normal ones, while typically requiring a sufficient amount of normal data to train the model for performing this task. Despite the success of recent anomaly detection methods, performing anomaly detection in an unseen domain remain a challenging task. In this paper, we address the task of domain-generalized textured surface anomaly detection. By observing normal and abnormal surface data across multiple source domains, our model is expected to be generalized to an unseen textured surface of interest, in which only a small number of normal data can be observed during testing. Although with only image-level labels observed in the training data, our patch-based meta-learning model exhibits promising generalization ability: not only can it generalize to unseen image domains, but it can also localize abnormal regions in the query image. Our experiments verify that our model performs favorably against state-of-the-art anomaly detection and domain generalization approaches in various settings.",
+    "pdf_url": "https://arxiv.org/pdf/2203.12304v1"
+  },
+  {
+    "id": "2406.07176v2",
+    "title": "RAD: A Comprehensive Dataset for Benchmarking the Robustness of Image Anomaly Detection",
+    "authors": [
+      "Yuqi Cheng",
+      "Yunkang Cao",
+      "Rui Chen",
+      "Weiming Shen"
+    ],
+    "year": "2024",
+    "venue": "arXiv preprint",
+    "abstract": "Robustness against noisy imaging is crucial for practical image anomaly detection systems. This study introduces a Robust Anomaly Detection (RAD) dataset with free views, uneven illuminations, and blurry collections to systematically evaluate the robustness of current anomaly detection methods. Specifically, RAD aims to identify foreign objects on working platforms as anomalies. The collection process incorporates various sources of imaging noise, such as viewpoint changes, uneven illuminations, and blurry collections, to replicate real-world inspection scenarios. Subsequently, we assess and analyze 11 state-of-the-art unsupervised and zero-shot methods on RAD. Our findings indicate that: 1) Variations in viewpoint, illumination, and blurring affect anomaly detection methods to varying degrees; 2) Methods relying on memory banks and assisted by synthetic anomalies demonstrate stronger robustness; 3) Effectively leveraging the general knowledge of foundational models is a promising avenue for enhancing the robustness of anomaly detection methods. The dataset is available at https://github.com/hustCYQ/RAD-dataset.",
+    "pdf_url": "https://arxiv.org/pdf/2406.07176v2"
+  },
+  {
+    "id": "2506.19234v1",
+    "title": "Quantitative Benchmarking of Anomaly Detection Methods in Digital Pathology",
+    "authors": [
+      "Can Cui",
+      "Xindong Zheng",
+      "Ruining Deng",
+      "Quan Liu",
+      "Tianyuan Yao",
+      "Keith T Wilson",
+      "Lori A Coburn",
+      "Bennett A Landman",
+      "Haichun Yang",
+      "Yaohong Wang",
+      "Yuankai Huo"
+    ],
+    "year": "2025",
+    "venue": "arXiv preprint",
+    "abstract": "Anomaly detection has been widely studied in the context of industrial defect inspection, with numerous methods developed to tackle a range of challenges. In digital pathology, anomaly detection holds significant potential for applications such as rare disease identification, artifact detection, and biomarker discovery. However, the unique characteristics of pathology images, such as their large size, multi-scale structures, stain variability, and repetitive patterns, introduce new challenges that current anomaly detection algorithms struggle to address. In this quantitative study, we benchmark over 20 classical and prevalent anomaly detection methods through extensive experiments. We curated five digital pathology datasets, both real and synthetic, to systematically evaluate these approaches. Our experiments investigate the influence of image scale, anomaly pattern types, and training epoch selection strategies on detection performance. The results provide a detailed comparison of each method's strengths and limitations, establishing a comprehensive benchmark to guide future research in anomaly detection for digital pathology images.",
+    "pdf_url": "https://arxiv.org/pdf/2506.19234v1"
+  },
+  {
+    "id": "2104.06813v1",
+    "title": "Global Information Guided Video Anomaly Detection",
+    "authors": [
+      "Hui Lv",
+      "Chunyan Xu",
+      "Zhen Cui"
+    ],
+    "year": "2021",
+    "venue": "arXiv preprint",
+    "abstract": "Video anomaly detection (VAD) is currently a challenging task due to the complexity of anomaly as well as the lack of labor-intensive temporal annotations. In this paper, we propose an end-to-end Global Information Guided (GIG) anomaly detection framework for anomaly detection using the video-level annotations (i.e., weak labels). We propose to first mine the global pattern cues by leveraging the weak labels in a GIG module. Then we build a spatial reasoning module to measure the relevance between vectors in spatial domain with the global cue vectors, and select the most related feature vectors for temporal anomaly detection. The experimental results on the CityScene challenge demonstrate the effectiveness of our model.",
+    "pdf_url": "https://arxiv.org/pdf/2104.06813v1"
+  },
+  {
+    "id": "2209.09786v1",
+    "title": "An Outlier Exposure Approach to Improve Visual Anomaly Detection Performance for Mobile Robots",
+    "authors": [
+      "Dario Mantegazza",
+      "Alessandro Giusti",
+      "Luca Maria Gambardella",
+      "Jérôme Guzzi"
+    ],
+    "year": "2022",
+    "venue": "IEEE Robotics and Automation Letters Volume 7 Issue 4 (Oct. 2022) 11354-11361",
+    "abstract": "We consider the problem of building visual anomaly detection systems for mobile robots. Standard anomaly detection models are trained using large datasets composed only of non-anomalous data. However, in robotics applications, it is often the case that (potentially very few) examples of anomalies are available. We tackle the problem of exploiting these data to improve the performance of a Real-NVP anomaly detection model, by minimizing, jointly with the Real-NVP loss, an auxiliary outlier exposure margin loss. We perform quantitative experiments on a novel dataset (which we publish as supplementary material) designed for anomaly detection in an indoor patrolling scenario. On a disjoint test set, our approach outperforms alternatives and shows that exposing even a small number of anomalous frames yields significant performance improvements.",
+    "pdf_url": "https://arxiv.org/pdf/2209.09786v1"
+  },
+  {
+    "id": "2307.12540v2",
+    "title": "UniFormaly: Towards Task-Agnostic Unified Framework for Visual Anomaly Detection",
+    "authors": [
+      "Yujin Lee",
+      "Harin Lim",
+      "Seoyoon Jang",
+      "Hyunsoo Yoon"
+    ],
+    "year": "2023",
+    "venue": "arXiv preprint",
+    "abstract": "Visual anomaly detection aims to learn normality from normal images, but existing approaches are fragmented across various tasks: defect detection, semantic anomaly detection, multi-class anomaly detection, and anomaly clustering. This one-task-one-model approach is resource-intensive and incurs high maintenance costs as the number of tasks increases. We present UniFormaly, a universal and powerful anomaly detection framework. We emphasize the necessity of our off-the-shelf approach by pointing out a suboptimal issue in online encoder-based methods. We introduce Back Patch Masking (BPM) and top k-ratio feature matching to achieve unified anomaly detection. BPM eliminates irrelevant background regions using a self-attention map from self-supervised ViTs. This operates in a task-agnostic manner and alleviates memory storage consumption, scaling to tasks with large-scale datasets. Top k-ratio feature matching unifies anomaly levels and tasks by casting anomaly scoring into multiple instance learning. Finally, UniFormaly achieves outstanding results on various tasks and datasets. Codes are available at https://github.com/YoojLee/Uniformaly.",
+    "pdf_url": "https://arxiv.org/pdf/2307.12540v2"
+  },
+  {
+    "id": "2308.13861v1",
+    "title": "Bias in Unsupervised Anomaly Detection in Brain MRI",
+    "authors": [
+      "Cosmin I. Bercea",
+      "Esther Puyol-Antón",
+      "Benedikt Wiestler",
+      "Daniel Rueckert",
+      "Julia A. Schnabel",
+      "Andrew P. King"
+    ],
+    "year": "2023",
+    "venue": "arXiv preprint",
+    "abstract": "Unsupervised anomaly detection methods offer a promising and flexible alternative to supervised approaches, holding the potential to revolutionize medical scan analysis and enhance diagnostic performance.   In the current landscape, it is commonly assumed that differences between a test case and the training distribution are attributed solely to pathological conditions, implying that any disparity indicates an anomaly. However, the presence of other potential sources of distributional shift, including scanner, age, sex, or race, is frequently overlooked. These shifts can significantly impact the accuracy of the anomaly detection task. Prominent instances of such failures have sparked concerns regarding the bias, credibility, and fairness of anomaly detection.   This work presents a novel analysis of biases in unsupervised anomaly detection. By examining potential non-pathological distributional shifts between the training and testing distributions, we shed light on the extent of these biases and their influence on anomaly detection results. Moreover, this study examines the algorithmic limitations that arise due to biases, providing valuable insights into the challenges encountered by anomaly detection algorithms in accurately learning and capturing the entire range of variability present in the normative distribution. Through this analysis, we aim to enhance the understanding of these biases and pave the way for future improvements in the field. Here, we specifically investigate Alzheimer's disease detection from brain MR imaging as a case study, revealing significant biases related to sex, race, and scanner variations that substantially impact the results. These findings align with the broader goal of improving the reliability, fairness, and effectiveness of anomaly detection in medical imaging.",
+    "pdf_url": "https://arxiv.org/pdf/2308.13861v1"
+  },
+  {
+    "id": "2512.23380v1",
+    "title": "A unified framework for detecting point and collective anomalies in operating system logs via collaborative transformers",
+    "authors": [
+      "Mohammad Nasirzadeh",
+      "Jafar Tahmoresnezhad",
+      "Parviz Rashidi-Khazaee"
+    ],
+    "year": "2025",
+    "venue": "Scientific Reports 15, 45698 (2025)",
+    "abstract": "Log anomaly detection is crucial for preserving the security of operating systems. Depending on the source of log data collection, various information is recorded in logs that can be considered log modalities. In light of this intuition, unimodal methods often struggle by ignoring the different modalities of log data. Meanwhile, multimodal methods fail to handle the interactions between these modalities. Applying multimodal sentiment analysis to log anomaly detection, we propose CoLog, a framework that collaboratively encodes logs utilizing various modalities. CoLog utilizes collaborative transformers and multi-head impressed attention to learn interactions among several modalities, ensuring comprehensive anomaly detection. To handle the heterogeneity caused by these interactions, CoLog incorporates a modality adaptation layer, which adapts the representations from different log modalities. This methodology enables CoLog to learn nuanced patterns and dependencies within the data, enhancing its anomaly detection capabilities. Extensive experiments demonstrate CoLog's superiority over existing state-of-the-art methods. Furthermore, in detecting both point and collective anomalies, CoLog achieves a mean precision of 99.63%, a mean recall of 99.59%, and a mean F1 score of 99.61% across seven benchmark datasets for log-based anomaly detection. The comprehensive detection capabilities of CoLog make it highly suitable for cybersecurity, system monitoring, and operational efficiency. CoLog represents a significant advancement in log anomaly detection, providing a sophisticated and effective solution to point and collective anomaly detection through a unified framework and a solution to the complex challenges automatic log data analysis poses. We also provide the implementation of CoLog at https://github.com/NasirzadehMoh/CoLog.",
+    "pdf_url": "https://arxiv.org/pdf/2512.23380v1"
+  },
+  {
+    "id": "2006.08933v1",
+    "title": "Plug-and-Play Anomaly Detection with Expectation Maximization Filtering",
+    "authors": [
+      "Muhammad Umar Karim Khan",
+      "Mishal Fatima",
+      "Chong-Min Kyung"
+    ],
+    "year": "2020",
+    "venue": "arXiv preprint",
+    "abstract": "Anomaly detection in crowds enables early rescue response. A plug-and-play smart camera for crowd surveillance has numerous constraints different from typical anomaly detection: the training data cannot be used iteratively; there are no training labels; and training and classification needs to be performed simultaneously. We tackle all these constraints with our approach in this paper. We propose a Core Anomaly-Detection (CAD) neural network which learns the motion behavior of objects in the scene with an unsupervised method. On average over standard datasets, CAD with a single epoch of training shows a percentage increase in Area Under the Curve (AUC) of 4.66% and 4.9% compared to the best results with convolutional autoencoders and convolutional LSTM-based methods, respectively. With a single epoch of training, our method improves the AUC by 8.03% compared to the convolutional LSTM-based approach. We also propose an Expectation Maximization filter which chooses samples for training the core anomaly-detection network. The overall framework improves the AUC compared to future frame prediction-based approach by 24.87% when crowd anomaly detection is performed on a video stream. We believe our work is the first step towards using deep learning methods with autonomous plug-and-play smart cameras for crowd anomaly detection.",
+    "pdf_url": "https://arxiv.org/pdf/2006.08933v1"
+  },
+  {
+    "id": "2104.13702v1",
+    "title": "PANDA : Perceptually Aware Neural Detection of Anomalies",
+    "authors": [
+      "Jack W. Barker",
+      "Toby P. Breckon"
+    ],
+    "year": "2021",
+    "venue": "arXiv preprint",
+    "abstract": "Semi-supervised methods of anomaly detection have seen substantial advancement in recent years. Of particular interest are applications of such methods to diverse, real-world anomaly detection problems where anomalous variations can vary from the visually obvious to the very subtle. In this work, we propose a novel fine-grained VAE-GAN architecture trained in a semi-supervised manner in order to detect both visually distinct and subtle anomalies. With the use of a residually connected dual-feature extractor, a fine-grained discriminator and a perceptual loss function, we are able to detect subtle, low inter-class (anomaly vs. normal) variant anomalies with greater detection capability and smaller margins of deviation in AUC value during inference compared to prior work whilst also remaining time-efficient during inference. We achieve state of-the-art anomaly detection results when compared extensively with prior semi-supervised approaches across a multitude of anomaly detection benchmark tasks including trivial leave-one out tasks (CIFAR-10 - AUPRCavg: 0.91; MNIST - AUPRCavg: 0.90) in addition to challenging real-world anomaly detection tasks (plant leaf disease - AUC: 0.776; threat item X-ray - AUC: 0.51), video frame-level anomaly detection (UCSDPed1 - AUC: 0.95) and high frequency texture with object anomalous defect detection (MVTEC - AUCavg: 0.83).",
+    "pdf_url": "https://arxiv.org/pdf/2104.13702v1"
+  },
+  {
+    "id": "2104.04289v1",
+    "title": "MLF-SC: Incorporating multi-layer features to sparse coding for anomaly detection",
+    "authors": [
+      "Ryuji Imamura",
+      "Kohei Azuma",
+      "Atsushi Hanamoto",
+      "Atsunori Kanemura"
+    ],
+    "year": "2021",
+    "venue": "arXiv preprint",
+    "abstract": "Anomalies in images occur in various scales from a small hole on a carpet to a large stain. However, anomaly detection based on sparse coding, one of the widely used anomaly detection methods, has an issue in dealing with anomalies that are out of the patch size employed to sparsely represent images. A large anomaly can be considered normal if seen in a small scale, but it is not easy to determine a single scale (patch size) that works well for all images. Then, we propose to incorporate multi-scale features to sparse coding and improve the performance of anomaly detection. The proposed method, multi-layer feature sparse coding (MLF-SC), employs a neural network for feature extraction, and feature maps from intermediate layers of the network are given to sparse coding, whereas the standard sparse-coding-based anomaly detection method directly works on given images. We show that MLF-SC outperforms state-of-the-art anomaly detection methods including those employing deep learning. Our target data are the texture categories of the MVTec Anomaly Detection (MVTec AD) dataset, which is a modern benchmark dataset consisting of images from the real world. Our idea can be a simple and practical option to deal with practical data.",
+    "pdf_url": "https://arxiv.org/pdf/2104.04289v1"
+  },
+  {
+    "id": "2411.08755v1",
+    "title": "Weakly-Supervised Anomaly Detection in Surveillance Videos Based on Two-Stream I3D Convolution Network",
+    "authors": [
+      "Sareh Soltani Nejad",
+      "Anwar Haque"
+    ],
+    "year": "2024",
+    "venue": "arXiv preprint",
+    "abstract": "The widespread implementation of urban surveillance systems has necessitated more sophisticated techniques for anomaly detection to ensure enhanced public safety. This paper presents a significant advancement in the field of anomaly detection through the application of Two-Stream Inflated 3D (I3D) Convolutional Networks. These networks substantially outperform traditional 3D Convolutional Networks (C3D) by more effectively extracting spatial and temporal features from surveillance videos, thus improving the precision of anomaly detection. Our research advances the field by implementing a weakly supervised learning framework based on Multiple Instance Learning (MIL), which uniquely conceptualizes surveillance videos as collections of 'bags' that contain instances (video clips). Each instance is innovatively processed through a ranking mechanism that prioritizes clips based on their potential to display anomalies. This novel strategy not only enhances the accuracy and precision of anomaly detection but also significantly diminishes the dependency on extensive manual annotations. Moreover, through meticulous optimization of model settings, including the choice of optimizer, our approach not only establishes new benchmarks in the performance of anomaly detection systems but also offers a scalable and efficient solution for real-world surveillance applications. This paper contributes significantly to the field of computer vision by delivering a more adaptable, efficient, and context-aware anomaly detection system, which is poised to redefine practices in urban surveillance.",
+    "pdf_url": "https://arxiv.org/pdf/2411.08755v1"
+  },
+  {
+    "id": "2511.12909v1",
+    "title": "CASL: Curvature-Augmented Self-supervised Learning for 3D Anomaly Detection",
+    "authors": [
+      "Yaohua Zha",
+      "Xue Yuerong",
+      "Chunlin Fan",
+      "Yuansong Wang",
+      "Tao Dai",
+      "Ke Chen",
+      "Shu-Tao Xia"
+    ],
+    "year": "2025",
+    "venue": "arXiv preprint",
+    "abstract": "Deep learning-based 3D anomaly detection methods have demonstrated significant potential in industrial manufacturing. However, many approaches are specifically designed for anomaly detection tasks, which limits their generalizability to other 3D understanding tasks. In contrast, self-supervised point cloud models aim for general-purpose representation learning, yet our investigation reveals that these classical models are suboptimal at anomaly detection under the unified fine-tuning paradigm. This motivates us to develop a more generalizable 3D model that can effectively detect anomalies without relying on task-specific designs. Interestingly, we find that using only the curvature of each point as its anomaly score already outperforms several classical self-supervised and dedicated anomaly detection models, highlighting the critical role of curvature in 3D anomaly detection. In this paper, we propose a Curvature-Augmented Self-supervised Learning (CASL) framework based on a reconstruction paradigm. Built upon the classical U-Net architecture, our approach introduces multi-scale curvature prompts to guide the decoder in predicting the spatial coordinates of each point. Without relying on any dedicated anomaly detection mechanisms, it achieves leading detection performance through straightforward anomaly classification fine-tuning. Moreover, the learned representations generalize well to standard 3D understanding tasks such as point cloud classification. The code is available at https://github.com/zyh16143998882/CASL.",
+    "pdf_url": "https://arxiv.org/pdf/2511.12909v1"
+  },
+  {
+    "id": "1508.04887v1",
+    "title": "Multi-criteria Similarity-based Anomaly Detection using Pareto Depth Analysis",
+    "authors": [
+      "Ko-Jen Hsiao",
+      "Kevin S. Xu",
+      "Jeff Calder",
+      "Alfred O. Hero"
+    ],
+    "year": "2015",
+    "venue": "IEEE Transactions on Neural Networks and Learning Systems 27 (2016) 1307-1321",
+    "abstract": "We consider the problem of identifying patterns in a data set that exhibit anomalous behavior, often referred to as anomaly detection. Similarity-based anomaly detection algorithms detect abnormally large amounts of similarity or dissimilarity, e.g.~as measured by nearest neighbor Euclidean distances between a test sample and the training samples. In many application domains there may not exist a single dissimilarity measure that captures all possible anomalous patterns. In such cases, multiple dissimilarity measures can be defined, including non-metric measures, and one can test for anomalies by scalarizing using a non-negative linear combination of them. If the relative importance of the different dissimilarity measures are not known in advance, as in many anomaly detection applications, the anomaly detection algorithm may need to be executed multiple times with different choices of weights in the linear combination. In this paper, we propose a method for similarity-based anomaly detection using a novel multi-criteria dissimilarity measure, the Pareto depth. The proposed Pareto depth analysis (PDA) anomaly detection algorithm uses the concept of Pareto optimality to detect anomalies under multiple criteria without having to run an algorithm multiple times with different choices of weights. The proposed PDA approach is provably better than using linear combinations of the criteria and shows superior performance on experiments with synthetic and real data sets.",
+    "pdf_url": "https://arxiv.org/pdf/1508.04887v1"
+  },
+  {
+    "id": "2210.11068v3",
+    "title": "Frequency of Interest-based Noise Attenuation Method to Improve Anomaly Detection Performance",
+    "authors": [
+      "YeongHyeon Park",
+      "Myung Jin Kim",
+      "Won Seok Park"
+    ],
+    "year": "2022",
+    "venue": "arXiv preprint",
+    "abstract": "Accurately extracting driving events is the way to maximize computational efficiency and anomaly detection performance in the tire frictional nose-based anomaly detection task. This study proposes a concise and highly useful method for improving the precision of the event extraction that is hindered by extra noise such as wind noise, which is difficult to characterize clearly due to its randomness. The core of the proposed method is based on the identification of the road friction sound corresponding to the frequency of interest and removing the opposite characteristics with several frequency filters. Our method enables precision maximization of driving event extraction while improving anomaly detection performance by an average of 8.506%. Therefore, we conclude our method is a practical solution suitable for road surface anomaly detection purposes in outdoor edge computing environments.",
+    "pdf_url": "https://arxiv.org/pdf/2210.11068v3"
+  },
+  {
+    "id": "1505.00523v1",
+    "title": "Modeling Representation of Videos for Anomaly Detection using Deep Learning: A Review",
+    "authors": [
+      "Yong Shean Chong",
+      "Yong Haur Tay"
+    ],
+    "year": "2015",
+    "venue": "arXiv preprint",
+    "abstract": "This review article surveys the current progresses made toward video-based anomaly detection. We address the most fundamental aspect for video anomaly detection, that is, video feature representation. Much research works have been done in finding the right representation to perform anomaly detection in video streams accurately with an acceptable false alarm rate. However, this is very challenging due to large variations in environment and human movement, and high space-time complexity due to huge dimensionality of video data. The weakly supervised nature of deep learning algorithms can help in learning representations from the video data itself instead of manually designing the right feature for specific scenes. In this paper, we would like to review the existing methods of modeling video representations using deep learning techniques for the task of anomaly detection and action recognition.",
+    "pdf_url": "https://arxiv.org/pdf/1505.00523v1"
+  },
+  {
+    "id": "2408.04839v1",
+    "title": "Adversarially Robust Industrial Anomaly Detection Through Diffusion Model",
+    "authors": [
+      "Yuanpu Cao",
+      "Lu Lin",
+      "Jinghui Chen"
+    ],
+    "year": "2024",
+    "venue": "arXiv preprint",
+    "abstract": "Deep learning-based industrial anomaly detection models have achieved remarkably high accuracy on commonly used benchmark datasets. However, the robustness of those models may not be satisfactory due to the existence of adversarial examples, which pose significant threats to the practical deployment of deep anomaly detectors. Recently, it has been shown that diffusion models can be used to purify the adversarial noises and thus build a robust classifier against adversarial attacks. Unfortunately, we found that naively applying this strategy in anomaly detection (i.e., placing a purifier before an anomaly detector) will suffer from a high anomaly miss rate since the purifying process can easily remove both the anomaly signal and the adversarial perturbations, causing the later anomaly detector failed to detect anomalies. To tackle this issue, we explore the possibility of performing anomaly detection and adversarial purification simultaneously. We propose a simple yet effective adversarially robust anomaly detection method, \\textit{AdvRAD}, that allows the diffusion model to act both as an anomaly detector and adversarial purifier. We also extend our proposed method for certified robustness to $l_2$ norm bounded perturbations. Through extensive experiments, we show that our proposed method exhibits outstanding (certified) adversarial robustness while also maintaining equally strong anomaly detection performance on par with the state-of-the-art methods on industrial anomaly detection benchmark datasets.",
+    "pdf_url": "https://arxiv.org/pdf/2408.04839v1"
+  },
+  {
+    "id": "1901.08292v1",
+    "title": "Anomaly Detection in Road Traffic Using Visual Surveillance: A Survey",
+    "authors": [
+      "Santhosh Kelathodi Kumaran",
+      "Debi Prosad Dogra",
+      "Partha Pratim Roy"
+    ],
+    "year": "2019",
+    "venue": "ACM Computing Surveys (2020), 6(53):Article 119, 2020",
+    "abstract": "Computer vision has evolved in the last decade as a key technology for numerous applications replacing human supervision. In this paper, we present a survey on relevant visual surveillance related researches for anomaly detection in public places, focusing primarily on roads. Firstly, we revisit the surveys done in the last 10 years in this field. Since the underlying building block of a typical anomaly detection is learning, we emphasize more on learning methods applied on video scenes. We then summarize the important contributions made during last six years on anomaly detection primarily focusing on features, underlying techniques, applied scenarios and types of anomalies using single static camera. Finally, we discuss the challenges in the computer vision related anomaly detection techniques and some of the important future possibilities.",
+    "pdf_url": "https://arxiv.org/pdf/1901.08292v1"
+  },
+  {
+    "id": "2109.13157v1",
+    "title": "Visual Anomaly Detection for Images: A Survey",
+    "authors": [
+      "Jie Yang",
+      "Ruijie Xu",
+      "Zhiquan Qi",
+      "Yong Shi"
+    ],
+    "year": "2021",
+    "venue": "arXiv preprint",
+    "abstract": "Visual anomaly detection is an important and challenging problem in the field of machine learning and computer vision. This problem has attracted a considerable amount of attention in relevant research communities. Especially in recent years, the development of deep learning has sparked an increasing interest in the visual anomaly detection problem and brought a great variety of novel methods. In this paper, we provide a comprehensive survey of the classical and deep learning-based approaches for visual anomaly detection in the literature. We group the relevant approaches in view of their underlying principles and discuss their assumptions, advantages, and disadvantages carefully. We aim to help the researchers to understand the common principles of visual anomaly detection approaches and identify promising research directions in this field.",
+    "pdf_url": "https://arxiv.org/pdf/2109.13157v1"
+  },
+  {
+    "id": "2503.14910v1",
+    "title": "Robust Distribution Alignment for Industrial Anomaly Detection under Distribution Shift",
+    "authors": [
+      "Jingyi Liao",
+      "Xun Xu",
+      "Yongyi Su",
+      "Rong-Cheng Tu",
+      "Yifan Liu",
+      "Dacheng Tao",
+      "Xulei Yang"
+    ],
+    "year": "2025",
+    "venue": "arXiv preprint",
+    "abstract": "Anomaly detection plays a crucial role in quality control for industrial applications. However, ensuring robustness under unseen domain shifts such as lighting variations or sensor drift remains a significant challenge. Existing methods attempt to address domain shifts by training generalizable models but often rely on prior knowledge of target distributions and can hardly generalise to backbones designed for other data modalities. To overcome these limitations, we build upon memory-bank-based anomaly detection methods, optimizing a robust Sinkhorn distance on limited target training data to enhance generalization to unseen target domains. We evaluate the effectiveness on both 2D and 3D anomaly detection benchmarks with simulated distribution shifts. Our proposed method demonstrates superior results compared with state-of-the-art anomaly detection and domain adaptation methods.",
+    "pdf_url": "https://arxiv.org/pdf/2503.14910v1"
+  },
+  {
+    "id": "2406.06370v2",
+    "title": "UMAD: Unsupervised Mask-Level Anomaly Detection for Autonomous Driving",
+    "authors": [
+      "Daniel Bogdoll",
+      "Noël Ollick",
+      "Tim Joseph",
+      "Svetlana Pavlitska",
+      "J. Marius Zöllner"
+    ],
+    "year": "2024",
+    "venue": "arXiv preprint",
+    "abstract": "Dealing with atypical traffic scenarios remains a challenging task in autonomous driving. However, most anomaly detection approaches cannot be trained on raw sensor data but require exposure to outlier data and powerful semantic segmentation models trained in a supervised fashion. This limits the representation of normality to labeled data, which does not scale well. In this work, we revisit unsupervised anomaly detection and present UMAD, leveraging generative world models and unsupervised image segmentation. Our method outperforms state-of-the-art unsupervised anomaly detection.",
+    "pdf_url": "https://arxiv.org/pdf/2406.06370v2"
+  },
+  {
+    "id": "2101.11451v1",
+    "title": "Controlling by Showing: i-Mimic: A Video-based Method to Control Robotic Arms",
+    "authors": [
+      "Debarati B. Chakraborty",
+      "Mukesh Sharma",
+      "Bhaskar Vijay"
+    ],
+    "year": "2021",
+    "venue": "arXiv preprint",
+    "abstract": "A novel concept of vision-based intelligent control of robotic arms is developed here in this work. This work enables the controlling of robotic arms motion only with visual inputs, that is, controlling by showing the videos of correct movements. This work can broadly be sub-divided into two segments. The first part of this work is to develop an unsupervised vision-based method to control robotic arm in 2-D plane, and the second one is with deep CNN in the same task in 3-D plane. The first method is unsupervised, where our aim is to perform mimicking of human arm motion in real-time by a manipulator. We developed a network, namely the vision-to-motion optical network (DON), where the input should be a video stream containing hand movements of human, the the output would be out the velocity and torque information of the hand movements shown in the videos. The output information of the DON is then fed to the robotic arm by enabling it to generate motion according to the real hand videos. The method has been tested with both live-stream video feed as well as on recorded video obtained from a monocular camera even by intelligently predicting the trajectory of human hand hand when it gets occluded. This is why the mimicry of the arm incorporates some intelligence to it and becomes intelligent mimic (i-mimic). Alongside the unsupervised method another method has also been developed deploying the deep neural network technique with CNN (Convolutional Neural Network) to perform the mimicking, where labelled datasets are used for training. The same dataset, as used in the unsupervised DON-based method, is used in the deep CNN method, after manual annotations. Both the proposed methods are validated with off-line as well as with on-line video datasets in real-time. The entire methodology is validated with real-time 1-link and simulated n-link manipulators alongwith suitable comparisons.",
+    "pdf_url": "https://arxiv.org/pdf/2101.11451v1"
+  },
+  {
+    "id": "2303.00601v2",
+    "title": "Multimodal Industrial Anomaly Detection via Hybrid Fusion",
+    "authors": [
+      "Yue Wang",
+      "Jinlong Peng",
+      "Jiangning Zhang",
+      "Ran Yi",
+      "Yabiao Wang",
+      "Chengjie Wang"
+    ],
+    "year": "2023",
+    "venue": "arXiv preprint",
+    "abstract": "2D-based Industrial Anomaly Detection has been widely discussed, however, multimodal industrial anomaly detection based on 3D point clouds and RGB images still has many untouched fields. Existing multimodal industrial anomaly detection methods directly concatenate the multimodal features, which leads to a strong disturbance between features and harms the detection performance. In this paper, we propose Multi-3D-Memory (M3DM), a novel multimodal anomaly detection method with hybrid fusion scheme: firstly, we design an unsupervised feature fusion with patch-wise contrastive learning to encourage the interaction of different modal features; secondly, we use a decision layer fusion with multiple memory banks to avoid loss of information and additional novelty classifiers to make the final decision. We further propose a point feature alignment operation to better align the point cloud and RGB features. Extensive experiments show that our multimodal industrial anomaly detection model outperforms the state-of-the-art (SOTA) methods on both detection and segmentation precision on MVTec-3D AD dataset. Code is available at https://github.com/nomewang/M3DM.",
+    "pdf_url": "https://arxiv.org/pdf/2303.00601v2"
+  },
+  {
+    "id": "2301.00114v4",
+    "title": "Skeletal Video Anomaly Detection using Deep Learning: Survey, Challenges and Future Directions",
+    "authors": [
+      "Pratik K. Mishra",
+      "Alex Mihailidis",
+      "Shehroz S. Khan"
+    ],
+    "year": "2022",
+    "venue": "arXiv preprint",
+    "abstract": "The existing methods for video anomaly detection mostly utilize videos containing identifiable facial and appearance-based features. The use of videos with identifiable faces raises privacy concerns, especially when used in a hospital or community-based setting. Appearance-based features can also be sensitive to pixel-based noise, straining the anomaly detection methods to model the changes in the background and making it difficult to focus on the actions of humans in the foreground. Structural information in the form of skeletons describing the human motion in the videos is privacy-protecting and can overcome some of the problems posed by appearance-based features. In this paper, we present a survey of privacy-protecting deep learning anomaly detection methods using skeletons extracted from videos. We present a novel taxonomy of algorithms based on the various learning approaches. We conclude that skeleton-based approaches for anomaly detection can be a plausible privacy-protecting alternative for video anomaly detection. Lastly, we identify major open research questions and provide guidelines to address them.",
+    "pdf_url": "https://arxiv.org/pdf/2301.00114v4"
+  },
+  {
+    "id": "2503.18325v1",
+    "title": "Towards Training-free Anomaly Detection with Vision and Language Foundation Models",
+    "authors": [
+      "Jinjin Zhang",
+      "Guodong Wang",
+      "Yizhou Jin",
+      "Di Huang"
+    ],
+    "year": "2025",
+    "venue": "arXiv preprint",
+    "abstract": "Anomaly detection is valuable for real-world applications, such as industrial quality inspection. However, most approaches focus on detecting local structural anomalies while neglecting compositional anomalies incorporating logical constraints. In this paper, we introduce LogSAD, a novel multi-modal framework that requires no training for both Logical and Structural Anomaly Detection. First, we propose a match-of-thought architecture that employs advanced large multi-modal models (i.e. GPT-4V) to generate matching proposals, formulating interests and compositional rules of thought for anomaly detection. Second, we elaborate on multi-granularity anomaly detection, consisting of patch tokens, sets of interests, and composition matching with vision and language foundation models. Subsequently, we present a calibration module to align anomaly scores from different detectors, followed by integration strategies for the final decision. Consequently, our approach addresses both logical and structural anomaly detection within a unified framework and achieves state-of-the-art results without the need for training, even when compared to supervised approaches, highlighting its robustness and effectiveness. Code is available at https://github.com/zhang0jhon/LogSAD.",
+    "pdf_url": "https://arxiv.org/pdf/2503.18325v1"
+  },
+  {
+    "id": "2507.19076v1",
+    "title": "SP-Mamba: Spatial-Perception State Space Model for Unsupervised Medical Anomaly Detection",
+    "authors": [
+      "Rui Pan",
+      "Ruiying Lu"
+    ],
+    "year": "2025",
+    "venue": "arXiv preprint",
+    "abstract": "Radiography imaging protocols target on specific anatomical regions, resulting in highly consistent images with recurrent structural patterns across patients. Recent advances in medical anomaly detection have demonstrated the effectiveness of CNN- and transformer-based approaches. However, CNNs exhibit limitations in capturing long-range dependencies, while transformers suffer from quadratic computational complexity. In contrast, Mamba-based models, leveraging superior long-range modeling, structural feature extraction, and linear computational efficiency, have emerged as a promising alternative. To capitalize on the inherent structural regularity of medical images, this study introduces SP-Mamba, a spatial-perception Mamba framework for unsupervised medical anomaly detection. The window-sliding prototype learning and Circular-Hilbert scanning-based Mamba are introduced to better exploit consistent anatomical patterns and leverage spatial information for medical anomaly detection. Furthermore, we excavate the concentration and contrast characteristics of anomaly maps for improving anomaly detection. Extensive experiments on three diverse medical anomaly detection benchmarks confirm the proposed method's state-of-the-art performance, validating its efficacy and robustness. The code is available at https://github.com/Ray-RuiPan/SP-Mamba.",
+    "pdf_url": "https://arxiv.org/pdf/2507.19076v1"
+  },
+  {
+    "id": "2512.20432v1",
+    "title": "High Dimensional Data Decomposition for Anomaly Detection of Textured Images",
+    "authors": [
+      "Ji Song",
+      "Xing Wang",
+      "Jianguo Wu",
+      "Xiaowei Yue"
+    ],
+    "year": "2025",
+    "venue": "arXiv preprint",
+    "abstract": "In the realm of diverse high-dimensional data, images play a significant role across various processes of manufacturing systems where efficient image anomaly detection has emerged as a core technology of utmost importance. However, when applied to textured defect images, conventional anomaly detection methods have limitations including non-negligible misidentification, low robustness, and excessive reliance on large-scale and structured datasets. This paper proposes a texture basis integrated smooth decomposition (TBSD) approach, which is targeted at efficient anomaly detection in textured images with smooth backgrounds and sparse anomalies. Mathematical formulation of quasi-periodicity and its theoretical properties are investigated for image texture estimation. TBSD method consists of two principal processes: the first process learns the texture basis functions to effectively extract quasi-periodic texture patterns; the subsequent anomaly detection process utilizes that texture basis as prior knowledge to prevent texture misidentification and capture potential anomalies with high accuracy.The proposed method surpasses benchmarks with less misidentification, smaller training dataset requirement, and superior anomaly detection performance on both simulation and real-world datasets.",
+    "pdf_url": "https://arxiv.org/pdf/2512.20432v1"
+  },
+  {
+    "id": "2409.18642v1",
+    "title": "Enhanced Convolution Neural Network with Optimized Pooling and Hyperparameter Tuning for Network Intrusion Detection",
+    "authors": [
+      "Ayush Kumar Sharma",
+      "Sourav Patel",
+      "Supriya Bharat Wakchaure",
+      "Abirami S"
+    ],
+    "year": "2024",
+    "venue": "arXiv preprint",
+    "abstract": "Network Intrusion Detection Systems (NIDS) are essential for protecting computer networks from malicious activities, including Denial of Service (DoS), Probing, User-to-Root (U2R), and Remote-to-Local (R2L) attacks. Without effective NIDS, networks are vulnerable to significant security breaches and data loss. Machine learning techniques provide a promising approach to enhance NIDS by automating threat detection and improving accuracy. In this research, we propose an Enhanced Convolutional Neural Network (EnCNN) for NIDS and evaluate its performance using the KDDCUP'99 dataset. Our methodology includes comprehensive data preprocessing, exploratory data analysis (EDA), and feature engineering. We compare EnCNN with various machine learning algorithms, including Logistic Regression, Decision Trees, Support Vector Machines (SVM), and ensemble methods like Random Forest, AdaBoost, and Voting Ensemble. The results show that EnCNN significantly improves detection accuracy, with a notable 10% increase over state-of-art approaches. This demonstrates the effectiveness of EnCNN in real-time network intrusion detection, offering a robust solution for identifying and mitigating security threats, and enhancing overall network resilience.",
+    "pdf_url": "https://arxiv.org/pdf/2409.18642v1"
+  },
+  {
+    "id": "2107.02778v2",
+    "title": "Anomaly Detection using Edge Computing in Video Surveillance System: Review",
+    "authors": [
+      "Devashree R. Patrikar",
+      "Mayur Rajram Parate"
+    ],
+    "year": "2021",
+    "venue": "arXiv preprint",
+    "abstract": "The current concept of Smart Cities influences urban planners and researchers to provide modern, secured and sustainable infrastructure and give a decent quality of life to its residents. To fulfill this need video surveillance cameras have been deployed to enhance the safety and well-being of the citizens. Despite technical developments in modern science, abnormal event detection in surveillance video systems is challenging and requires exhaustive human efforts. In this paper, we surveyed various methodologies developed to detect anomalies in intelligent video surveillance. Firstly, we revisit the surveys on anomaly detection in the last decade. We then present a systematic categorization of methodologies developed for ease of understanding. Considering the notion of anomaly depends on context, we identify different objects-of-interest and publicly available datasets in anomaly detection. Since anomaly detection is considered a time-critical application of computer vision, our emphasis is on anomaly detection using edge devices and approaches explicitly designed for them. Further, we discuss the challenges and opportunities involved in anomaly detection at the edge.",
+    "pdf_url": "https://arxiv.org/pdf/2107.02778v2"
+  },
+  {
+    "id": "2106.03844v2",
+    "title": "Mean-Shifted Contrastive Loss for Anomaly Detection",
+    "authors": [
+      "Tal Reiss",
+      "Yedid Hoshen"
+    ],
+    "year": "2021",
+    "venue": "arXiv preprint",
+    "abstract": "Deep anomaly detection methods learn representations that separate between normal and anomalous images. Although self-supervised representation learning is commonly used, small dataset sizes limit its effectiveness. It was previously shown that utilizing external, generic datasets (e.g. ImageNet classification) can significantly improve anomaly detection performance. One approach is outlier exposure, which fails when the external datasets do not resemble the anomalies. We take the approach of transferring representations pre-trained on external datasets for anomaly detection. Anomaly detection performance can be significantly improved by fine-tuning the pre-trained representations on the normal training images. In this paper, we first demonstrate and analyze that contrastive learning, the most popular self-supervised learning paradigm cannot be naively applied to pre-trained features. The reason is that pre-trained feature initialization causes poor conditioning for standard contrastive objectives, resulting in bad optimization dynamics. Based on our analysis, we provide a modified contrastive objective, the Mean-Shifted Contrastive Loss. Our method is highly effective and achieves a new state-of-the-art anomaly detection performance including $98.6\\%$ ROC-AUC on the CIFAR-10 dataset.",
+    "pdf_url": "https://arxiv.org/pdf/2106.03844v2"
+  },
+  {
+    "id": "2305.15652v1",
+    "title": "Towards Total Online Unsupervised Anomaly Detection and Localization in Industrial Vision",
+    "authors": [
+      "Han Gao",
+      "Huiyuan Luo",
+      "Fei Shen",
+      "Zhengtao Zhang"
+    ],
+    "year": "2023",
+    "venue": "arXiv preprint",
+    "abstract": "Although existing image anomaly detection methods yield impressive results, they are mostly an offline learning paradigm that requires excessive data pre-collection, limiting their adaptability in industrial scenarios with online streaming data. Online learning-based image anomaly detection methods are more compatible with industrial online streaming data but are rarely noticed. For the first time, this paper presents a fully online learning image anomaly detection method, namely LeMO, learning memory for online image anomaly detection. LeMO leverages learnable memory initialized with orthogonal random noise, eliminating the need for excessive data in memory initialization and circumventing the inefficiencies of offline data collection. Moreover, a contrastive learning-based loss function for anomaly detection is designed to enable online joint optimization of memory and image target-oriented features. The presented method is simple and highly effective. Extensive experiments demonstrate the superior performance of LeMO in the online setting. Additionally, in the offline setting, LeMO is also competitive with the current state-of-the-art methods and achieves excellent performance in few-shot scenarios.",
+    "pdf_url": "https://arxiv.org/pdf/2305.15652v1"
+  },
+  {
+    "id": "2204.04151v1",
+    "title": "A Video Anomaly Detection Framework based on Appearance-Motion Semantics Representation Consistency",
+    "authors": [
+      "Xiangyu Huang",
+      "Caidan Zhao",
+      "Yilin Wang",
+      "Zhiqiang Wu"
+    ],
+    "year": "2022",
+    "venue": "arXiv preprint",
+    "abstract": "Video anomaly detection refers to the identification of events that deviate from the expected behavior. Due to the lack of anomalous samples in training, video anomaly detection becomes a very challenging task. Existing methods almost follow a reconstruction or future frame prediction mode. However, these methods ignore the consistency between appearance and motion information of samples, which limits their anomaly detection performance. Anomalies only occur in the moving foreground of surveillance videos, so the semantics expressed by video frame sequences and optical flow without background information in anomaly detection should be highly consistent and significant for anomaly detection. Based on this idea, we propose Appearance-Motion Semantics Representation Consistency (AMSRC), a framework that uses normal data's appearance and motion semantic representation consistency to handle anomaly detection. Firstly, we design a two-stream encoder to encode the appearance and motion information representations of normal samples and introduce constraints to further enhance the consistency of the feature semantics between appearance and motion information of normal samples so that abnormal samples with low consistency appearance and motion feature representation can be identified. Moreover, the lower consistency of appearance and motion features of anomalous samples can be used to generate predicted frames with larger reconstruction error, which makes anomalies easier to spot. Experimental results demonstrate the effectiveness of the proposed method.",
+    "pdf_url": "https://arxiv.org/pdf/2204.04151v1"
+  },
+  {
+    "id": "2107.09204v1",
+    "title": "A Comparison of Supervised and Unsupervised Deep Learning Methods for Anomaly Detection in Images",
+    "authors": [
+      "Vincent Wilmet",
+      "Sauraj Verma",
+      "Tabea Redl",
+      "Håkon Sandaker",
+      "Zhenning Li"
+    ],
+    "year": "2021",
+    "venue": "arXiv preprint",
+    "abstract": "Anomaly detection in images plays a significant role for many applications across all industries, such as disease diagnosis in healthcare or quality assurance in manufacturing. Manual inspection of images, when extended over a monotonously repetitive period of time is very time consuming and can lead to anomalies being overlooked.Artificial neural networks have proven themselves very successful on simple, repetitive tasks, in some cases even outperforming humans. Therefore, in this paper we investigate different methods of deep learning, including supervised and unsupervised learning, for anomaly detection applied to a quality assurance use case. We utilize the MVTec anomaly dataset and develop three different models, a CNN for supervised anomaly detection, KD-CAE for autoencoder anomaly detection, NI-CAE for noise induced anomaly detection and a DCGAN for generating reconstructed images. By experiments, we found that KD-CAE performs better on the anomaly datasets compared to CNN and NI-CAE, with NI-CAE performing the best on the Transistor dataset. We also implemented a DCGAN for the creation of new training data but due to computational limitation and lack of extrapolating the mechanics of AnoGAN, we restricted ourselves just to the generation of GAN based images. We conclude that unsupervised methods are more powerful for anomaly detection in images, especially in a setting where only a small amount of anomalous data is available, or the data is unlabeled.",
+    "pdf_url": "https://arxiv.org/pdf/2107.09204v1"
+  },
+  {
+    "id": "2511.07429v1",
+    "title": "Knowledge-Guided Textual Reasoning for Explainable Video Anomaly Detection via LLMs",
+    "authors": [
+      "Hari Lee"
+    ],
+    "year": "2025",
+    "venue": "arXiv preprint",
+    "abstract": "We introduce Text-based Explainable Video Anomaly Detection (TbVAD), a language-driven framework for weakly supervised video anomaly detection that performs anomaly detection and explanation entirely within the textual domain. Unlike conventional WSVAD models that rely on explicit visual features, TbVAD represents video semantics through language, enabling interpretable and knowledge-grounded reasoning. The framework operates in three stages: (1) transforming video content into fine-grained captions using a vision-language model, (2) constructing structured knowledge by organizing the captions into four semantic slots (action, object, context, environment), and (3) generating slot-wise explanations that reveal which semantic factors contribute most to the anomaly decision. We evaluate TbVAD on two public benchmarks, UCF-Crime and XD-Violence, demonstrating that textual knowledge reasoning provides interpretable and reliable anomaly detection for real-world surveillance scenarios.",
+    "pdf_url": "https://arxiv.org/pdf/2511.07429v1"
+  },
+  {
+    "id": "2506.14513v1",
+    "title": "GAMORA: A Gesture Articulated Meta Operative Robotic Arm for Hazardous Material Handling in Containment-Level Environments",
+    "authors": [
+      "Farha Abdul Wasay",
+      "Mohammed Abdul Rahman",
+      "Hania Ghouse"
+    ],
+    "year": "2025",
+    "venue": "arXiv preprint",
+    "abstract": "The convergence of robotics and virtual reality (VR) has enabled safer and more efficient workflows in high-risk laboratory settings, particularly virology labs. As biohazard complexity increases, minimizing direct human exposure while maintaining precision becomes essential. We propose GAMORA (Gesture Articulated Meta Operative Robotic Arm), a novel VR-guided robotic system that enables remote execution of hazardous tasks using natural hand gestures. Unlike existing scripted automation or traditional teleoperation, GAMORA integrates the Oculus Quest 2, NVIDIA Jetson Nano, and Robot Operating System (ROS) to provide real-time immersive control, digital twin simulation, and inverse kinematics-based articulation. The system supports VR-based training and simulation while executing precision tasks in physical environments via a 3D-printed robotic arm. Inverse kinematics ensure accurate manipulation for delicate operations such as specimen handling and pipetting. The pipeline includes Unity-based 3D environment construction, real-time motion planning, and hardware-in-the-loop testing. GAMORA achieved a mean positional discrepancy of 2.2 mm (improved from 4 mm), pipetting accuracy within 0.2 mL, and repeatability of 1.2 mm across 50 trials. Integrated object detection via YOLOv8 enhances spatial awareness, while energy-efficient operation (50% reduced power output) ensures sustainable deployment. The system's digital-physical feedback loop enables safe, precise, and repeatable automation of high-risk lab tasks. GAMORA offers a scalable, immersive solution for robotic control and biosafety in biomedical research environments.",
+    "pdf_url": "https://arxiv.org/pdf/2506.14513v1"
+  },
+  {
+    "id": "2308.02184v1",
+    "title": "Synthetic outlier generation for anomaly detection in autonomous driving",
+    "authors": [
+      "Martin Bikandi",
+      "Gorka Velez",
+      "Naiara Aginako",
+      "Itziar Irigoien"
+    ],
+    "year": "2023",
+    "venue": "arXiv preprint",
+    "abstract": "Anomaly detection, or outlier detection, is a crucial task in various domains to identify instances that significantly deviate from established patterns or the majority of data. In the context of autonomous driving, the identification of anomalies is particularly important to prevent safety-critical incidents, as deep learning models often exhibit overconfidence in anomalous or outlier samples. In this study, we explore different strategies for training an image semantic segmentation model with an anomaly detection module. By introducing modifications to the training stage of the state-of-the-art DenseHybrid model, we achieve significant performance improvements in anomaly detection. Moreover, we propose a simplified detector that achieves comparable results to our modified DenseHybrid approach, while also surpassing the performance of the original DenseHybrid model. These findings demonstrate the efficacy of our proposed strategies for enhancing anomaly detection in the context of autonomous driving.",
+    "pdf_url": "https://arxiv.org/pdf/2308.02184v1"
+  },
+  {
+    "id": "2311.01851v1",
+    "title": "Holistic Representation Learning for Multitask Trajectory Anomaly Detection",
+    "authors": [
+      "Alexandros Stergiou",
+      "Brent De Weerdt",
+      "Nikos Deligiannis"
+    ],
+    "year": "2023",
+    "venue": "arXiv preprint",
+    "abstract": "Video anomaly detection deals with the recognition of abnormal events in videos. Apart from the visual signal, video anomaly detection has also been addressed with the use of skeleton sequences. We propose a holistic representation of skeleton trajectories to learn expected motions across segments at different times. Our approach uses multitask learning to reconstruct any continuous unobserved temporal segment of the trajectory allowing the extrapolation of past or future segments and the interpolation of in-between segments. We use an end-to-end attention-based encoder-decoder. We encode temporally occluded trajectories, jointly learn latent representations of the occluded segments, and reconstruct trajectories based on expected motions across different temporal segments. Extensive experiments on three trajectory-based video anomaly detection datasets show the advantages and effectiveness of our approach with state-of-the-art results on anomaly detection in skeleton trajectories.",
+    "pdf_url": "https://arxiv.org/pdf/2311.01851v1"
+  },
+  {
+    "id": "2311.14506v2",
+    "title": "Multi-Class Anomaly Detection based on Regularized Discriminative Coupled hypersphere-based Feature Adaptation",
+    "authors": [
+      "Mehdi Rafiei",
+      "Alexandros Iosifidis"
+    ],
+    "year": "2023",
+    "venue": "arXiv preprint",
+    "abstract": "In anomaly detection, identification of anomalies across diverse product categories is a complex task. This paper introduces a new model by including class discriminative properties obtained by a modified Regularized Discriminative Variational Auto-Encoder (RD-VAE) in the feature extraction process of Coupled-hypersphere-based Feature Adaptation (CFA). By doing so, the proposed Regularized Discriminative Coupled-hypersphere-based Feature Adaptation (RD-CFA), forms a solution for multi-class anomaly detection. By using the discriminative power of RD-VAE to capture intricate class distributions, combined with CFA's robust anomaly detection capability, the proposed method excels in discerning anomalies across various classes. Extensive evaluations on multi-class anomaly detection and localization using the MVTec AD and BeanTech AD datasets showcase the effectiveness of RD-CFA compared to eight leading contemporary methods.",
+    "pdf_url": "https://arxiv.org/pdf/2311.14506v2"
+  },
+  {
+    "id": "2508.15256v2",
+    "title": "Normal and Abnormal Pathology Knowledge-Augmented Vision-Language Model for Anomaly Detection in Pathology Images",
+    "authors": [
+      "Jinsol Song",
+      "Jiamu Wang",
+      "Anh Tien Nguyen",
+      "Keunho Byeon",
+      "Sangjeong Ahn",
+      "Sung Hak Lee",
+      "Jin Tae Kwak"
+    ],
+    "year": "2025",
+    "venue": "arXiv preprint",
+    "abstract": "Anomaly detection in computational pathology aims to identify rare and scarce anomalies where disease-related data are often limited or missing. Existing anomaly detection methods, primarily designed for industrial settings, face limitations in pathology due to computational constraints, diverse tissue structures, and lack of interpretability. To address these challenges, we propose Ano-NAViLa, a Normal and Abnormal pathology knowledge-augmented Vision-Language model for Anomaly detection in pathology images. Ano-NAViLa is built on a pre-trained vision-language model with a lightweight trainable MLP. By incorporating both normal and abnormal pathology knowledge, Ano-NAViLa enhances accuracy and robustness to variability in pathology images and provides interpretability through image-text associations. Evaluated on two lymph node datasets from different organs, Ano-NAViLa achieves the state-of-the-art performance in anomaly detection and localization, outperforming competing models.",
+    "pdf_url": "https://arxiv.org/pdf/2508.15256v2"
+  }
+]
