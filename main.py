@@ -2,11 +2,16 @@ import streamlit as st
 
 from core.agent import create_extraction_fn
 from core.credentials import CredentialStore, DEFAULT_API_BASE, DEFAULT_MODEL_NAME
-from core.graph import build_knowledge_graph, render_knowledge_graph
+from core.graph import count_paper_nodes
 from core.models import ParsedPaper
 from core.pdf_parser import parse_pdf_bytes
 from core.pipeline import extract_with_self_healing, generate_artifacts, generate_llm_artifacts
 from core.schema import domain_fields_for_topic
+
+# Height (px) of the embedded PyVis iframe. 750px is tall enough that the
+# bottom nodes of the graph are not squeezed into a single line, while still
+# allowing vertical scrolling for large graphs.
+GRAPH_COMPONENT_HEIGHT = 750
 
 
 def run_app() -> None:
@@ -162,7 +167,6 @@ def _is_reference_page(page_text: str) -> bool:
 
 def _render_knowledge_graph_tab() -> None:
     """Render a 2D interactive knowledge graph from vault data in the Streamlit UI."""
-    import json
     import os
 
     vault_path = os.path.join("data", "vault_100_lab_anomaly.json")
@@ -172,8 +176,9 @@ def _render_knowledge_graph_tab() -> None:
         return
 
     with st.expander("🔍 文献知识图谱", expanded=False):
-        with open(vault_path, encoding="utf-8") as f:
-            vault_data = json.load(f)
+        # Lazy: the vault file is only read once the expander is opened, and
+        # the expensive build/render below only runs after the button click.
+        vault_data = _load_vault_json_cached(vault_path)
 
         if not vault_data:
             st.warning("⚠️ vault 数据为空，无法生成知识图谱。")
@@ -183,12 +188,50 @@ def _render_knowledge_graph_tab() -> None:
 
         if st.button("🔍 生成文献知识图谱"):
             with st.spinner("正在构建知识图谱..."):
-                graph = build_knowledge_graph(vault_data)
-                html_path = render_knowledge_graph(graph)
-                with open(html_path, encoding="utf-8") as f:
-                    html_content = f.read()
-            st.components.v1.html(html_content, height=650, scrolling=True)
-            st.success(f"✅ 知识图谱已生成: {html_path}")
+                html_content, paper_count = _get_graph_html_cached(vault_data)
+            # Tall enough that the bottom nodes are not squeezed into a line.
+            st.components.v1.html(
+                html_content, height=GRAPH_COMPONENT_HEIGHT, scrolling=True
+            )
+            st.success(_knowledge_graph_status_message(paper_count))
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def _load_vault_json_cached(vault_path: str) -> list:
+    """Read the JSON document library once and serve further calls from cache."""
+    import json
+
+    with open(vault_path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _get_graph_html_cached(vault_data: tuple) -> tuple[str, int]:
+    """Lazily build + render the knowledge graph in memory and return its HTML.
+
+    Delegates to :func:`core.graph.build_knowledge_graph_cached`, which owns the
+    ``st.cache_data(ttl=3600)`` wrapper. Deferred until the user clicks the
+    generate button; subsequent requests for the same vault data return the
+    cached HTML without recomputing the graph or re-rendering the HTML.
+
+    Returns
+    -------
+    (html, paper_count)
+        The in-memory HTML string and the number of paper/literature nodes.
+    """
+    from core.graph import build_knowledge_graph_cached
+
+    return build_knowledge_graph_cached(vault_data)
+
+
+def _knowledge_graph_status_message(n_nodes: int) -> str:
+    """Friendly academic success message — no physical file path is leaked.
+
+    Parameters
+    ----------
+    n_nodes : int
+        Number of paper/literature ("文献/主题") nodes in the graph.
+    """
+    return f"✅ 知识图谱已就绪（含 {n_nodes} 个文献/主题节点）"
 
 
 if __name__ == "__main__":

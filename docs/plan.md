@@ -4143,3 +4143,21 @@ git commit -m "feat: add 2d interactive knowledge graph with pyvis (Task 25) [Su
 - [x] **Step 6**: Commit
 
 ---
+
+### Task 30: Streamlit 性能优化（缓存改造）+ Windows/Docker 分发
+
+**Goal:** 为 Streamlit Cloud 部署做性能优化（缓存图谱生成与 JSON 文档库读取、PyVis 懒加载），并提供 Windows 一键分发脚本与 Docker 打包配置。
+
+**Files:**
+- Modify: `core/graph.py` (add `build_knowledge_graph_cached` + lazy module-level `st.cache_data(ttl=3600)`; `clear_graph_cache()`)
+- Modify: `main.py` (add `_load_vault_json_cached` + `_get_graph_html_cached` lazy gate; delegate to core cached builder)
+- New: `tests/test_caching.py` (6 tests covering cache-hit / clear-miss / distinguish / disk-no-reread / lazy render)
+- New: `run_windows.bat` (Python 3.10+ 检测, `.venv`, `chcp 65001`, 依赖安装, `streamlit run main.py`)
+- Modify: `Dockerfile` (base → `python:3.11-slim`; EXPOSE 8501; healthcheck; `--server.headless=true`)
+- Modify: `README.md` (新增「本地运行 / Windows 分发 / Docker 部署」说明)
+
+- [x] **Step 1 (RED)**: 编写 tests/test_caching.py —— 首次运行观察到 `ImportError: cannot import name 'build_knowledge_graph_cached'`
+- [x] **Step 2 (GREEN)**: 实现 core/graph.py 缓存 + main.py 懒加载。**关键排错**: Streamlit 对「以下划线开头的参数」不纳入缓存键（unguarded），导致不同 vault 数据被合并到同一缓存槽（验证: `_data` 参数两次调用仅 1 次底层执行；改为 `vault_key` 后正确区分）。
+- [x] **Step 3**: 缓存返回**渲染后的 HTML 字符串**而非 pyvis Network —— 避免 Network 结构化哈希在裸模式下混淆相似输入，且 HTML 正是 UI 消费的产物。
+- [x] **Step 4**: 全量回归 —— `104 passed`（98 基线 + 6 新增，零回归）
+- [x] **Step 5**: 新增 `run_windows.bat`、更新 `Dockerfile`（3.11-slim / 8501）与 `README.md`（Windows/Docker 文档）并验证 Python 版本检测 one-liner。

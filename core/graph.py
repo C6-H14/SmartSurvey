@@ -110,6 +110,67 @@ def build_knowledge_graph(vault_data: list[dict]) -> "Network":
     return graph
 
 
+# Lazily-created singleton so the st.cache_data instance is stable and its
+# ``.clear()`` remains reachable (Streamlit keys caches by function + args, so
+# a per-call closure would leak cache slots across calls/tests).
+_CACHED_HTML = None
+
+
+def _get_cached_html_builder(ttl: int = 3600):
+    """Return the module-level cached graph-HTML builder (created on first use).
+
+    The expensive Lazy-Load step in the UI is *build + render to HTML*, so we
+    cache the rendered HTML string rather than the raw :class:`Network`. A
+    Network is structurally hashed by Streamlit in a way that can conflate
+    distinct vault inputs (verified: id/title-only differences collide), whereas
+    a plain HTML string hashes reliably and is exactly what the UI consumes.
+    """
+    global _CACHED_HTML
+    if _CACHED_HTML is None:
+        import streamlit as st
+
+        @st.cache_data(ttl=ttl, show_spinner=False)
+        def _cached_html(vault_key: tuple) -> tuple:
+            # NOTE: args must NOT start with '_' — Streamlit treats underscore-
+            # prefixed params as *unguarded* and excludes them from the cache
+            # key, which would collapse all vaults into one cache slot.
+            graph = build_knowledge_graph(list(vault_key))
+            # In-memory rendering: no file is written, so no container path is
+            # ever surfaced (fixes the Streamlit Cloud path-exposure flaw).
+            html = render_knowledge_graph_html(graph)
+            paper_count = sum(1 for n in graph.nodes if n.get("group") == "paper")
+            return html, paper_count
+
+        _CACHED_HTML = _cached_html
+    return _CACHED_HTML
+
+
+def build_knowledge_graph_cached(vault_data: list[dict]) -> tuple[str, int]:
+    """Streamlit-cached, in-memory build+render of the knowledge graph.
+
+    Wraps :func:`build_knowledge_graph` + :func:`render_knowledge_graph_html`
+    with ``st.cache_data(ttl=3600)`` so repeated calls with identical vault data
+    hit the in-memory cache instead of recomputing the network or re-rendering
+    the HTML (the expensive Lazy-Load step in the UI). The result is a pure
+    in-memory HTML string — no file is written to disk, so no container physical
+    path can leak into the UI. Streamlit is imported lazily to keep this module
+    importable outside a running Streamlit app (CLI, tests).
+
+    Returns
+    -------
+    (html, paper_count)
+        The rendered graph HTML content and the number of paper/literature
+        ("文献/主题") nodes (canonical source for the UI status message).
+    """
+    return _get_cached_html_builder()(tuple(vault_data))
+
+
+def clear_graph_cache() -> None:
+    """Drop the cached graph HTML so the next call recomputes and re-renders."""
+    cached = _get_cached_html_builder()
+    cached.clear()
+
+
 def render_knowledge_graph(graph: "Network", output_dir: str = "data") -> str:
     """Render a pyvis Network to an HTML file and return the absolute path.
 
@@ -129,3 +190,43 @@ def render_knowledge_graph(graph: "Network", output_dir: str = "data") -> str:
     html_path = os.path.join(output_dir, "knowledge_graph.html")
     graph.save_graph(html_path)
     return os.path.abspath(html_path)
+
+
+def render_knowledge_graph_html(graph: "Network") -> str:
+    """Render a pyvis Network to an HTML string entirely in memory.
+
+    Uses :meth:`pyvis.network.Network.generate_html` so no file is written and
+    no physical container path is produced. This is the Streamlit-safe path: the
+    returned string can be embedded directly via ``st.components.v1.html``
+    without leaking a ``/mount/src/.../knowledge_graph.html`` path to the UI.
+
+    Parameters
+    ----------
+    graph : pyvis.network.Network
+        The graph to render.
+
+    Returns
+    -------
+    str
+        The full HTML document as a string.
+    """
+    return graph.generate_html()
+
+
+def count_paper_nodes(graph: "Network") -> int:
+    """Count the paper/literature nodes in a knowledge graph.
+
+    The builder tags paper nodes with ``group="paper"``; this returns how many
+    such "文献/主题" nodes are present (used for the friendly status message).
+
+    Parameters
+    ----------
+    graph : pyvis.network.Network
+        The populating graph.
+
+    Returns
+    -------
+    int
+        Number of paper/literature nodes.
+    """
+    return sum(1 for n in graph.nodes if n.get("group") == "paper")

@@ -515,3 +515,34 @@
   - `_keyring_failed` 短路标志避免每次 `get_all()`/`has_credentials()` 重复触发异常，降低降级路径开销。
   - 同名测试模块散落根目录会与 `tests/` 内的版本在 collection 阶段相撞（import file mismatch）；`testpaths = tests` 是最小且稳固的修复。
 - Commit: `fd44522`
+
+## Task 30 - Streamlit 性能优化（缓存改造）+ Windows/Docker 分发
+
+- Timestamp: 2026-08-09 +08:00
+- Triggered Superpowers skills: `test-driven-development`
+- Branch: main（Subagent 执行，待 Human Owner 确认是否切分支提交）
+- Key decisions and actions:
+  - **RED**: 编写 tests/test_caching.py（6 个用例）
+    - 图谱构建缓存命中 / 清缓存后重建 / 不同输入不共用缓存槽
+    - JSON 文档库读取不重复读磁盘（monkeypatch builtins.open 计数）
+    - PyVis HTML 懒加载（延迟到按钮触发）+ 二次请求命中缓存
+    - 首次运行观察 `ImportError: cannot import name 'build_knowledge_graph_cached'`（RED）
+  - **GREEN**: 实现缓存
+    - core/graph.py: `build_knowledge_graph_cached` 用**模块级单例**承载 `@st.cache_data(ttl=3600)`（惰性 import streamlit，保持 core 可独立导入）；新增 `clear_graph_cache()`
+    - main.py: `_load_vault_json_cached`（缓存 vault JSON）+ `_get_graph_html_cached`（懒加载，委托 core 缓存构建器）
+  - **关键排错（Lessons learned）**:
+    - Streamlit `@st.cache_data` 对「参数名以下划线开头」的参数视为 *unguarded*，**不纳入缓存键** → 不同 vault 数据被合并到同一缓存槽（实测 `_data` 参数两次不同输入仅 1 次底层执行，且返回错误数据）
+    - 修复: 缓存函数参数改名为 `vault_key` / `output_dir`（无下划线前缀），并加注释说明红线
+    - 缓存产物选择**渲染后的 HTML 字符串**而非 pyvis Network：Network 结构化哈希在裸模式下易混淆相似输入，HTML 才是 UI 真正消费的产物
+  - 全量回归: `104 passed`（98 基线 + 6 新增，零回归）
+  - Phase 2 分发配置
+    - run_windows.bat: 检测 Python 3.10+（py launcher → PATH 回退）、`chcp 65001` 防乱码、创建/复用 .venv、装依赖、启动 `streamlit run main.py`；已单独验证内嵌 Python one-liner（版本检测 exit 0 / 打印 3.11）
+    - Dockerfile: base → `python:3.11-slim`，EXPOSE 8501，添加 healthcheck + `--server.headless=true`
+    - README.md: 新增「本地运行 / Windows 分发 / Docker 部署」三节说明
+- Specification alignment:
+  - 符合用户两阶段要求：Phase 1 缓存改造（TDD 红绿）与 Phase 2 分发配置
+  - 未触碰学术/排版红线（pipeline 证据校验、_build_preamble、tabularx、re.sub \*\* 清洗均无改动）
+- Lessons learned:
+  - Streamlit cache 参数名下划线前缀会排除出缓存键，是高频踩坑点，需在代码中显式注释
+  - `st.cache_data` 在裸跑（无 ScriptRunContext）下仍可用内存缓存，且命中时返回反序列化副本（`is` 恒 False），故测试应通过 side-effect 计数而非对象身份判断命中
+  - 缓存脆对象（pyvis Network）改为缓存字符串产物（HTML）更稳健
