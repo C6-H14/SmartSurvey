@@ -486,3 +486,32 @@
   - `json.loads` parses JSON arrays as Python lists, so `str()` on a list gives `"['A', 'B']"` — terrible for BibTeX
   - The `_normalize_authors` check must distinguish between "already has ` and `" and "has `, ` but no ` and `" to avoid double-processing
   - Missing authors should remain `"missing"` to maintain backward compatibility with existing tests
+## Task 29 — Streamlit Cloud 无头环境凭据降级加固
+
+- Timestamp: 2026-08-09 +08:00
+- Branch: `task35` (new branch for this task)
+- Triggered Superpowers skills: `test-driven-development`
+- Key prompt and configuration:
+  - 目标：确保应用在 Streamlit Community Cloud（公网无头 Linux 容器，无 D-Bus keyring 守护进程）上 100% 部署成功且不闪退。
+  - 三个子需求：(1) `core/credentials.py` 将所有 keyring 调用包进 try/except，异常时降级到会话级内存存储（内部字典或 `st.session_state`），且 `has_credentials()`/`get_all()` 永不抛 `KeyringError` 导致红屏；(2) `requirements.txt` 补齐全部依赖；(3) `tests/test_credentials.py` 新增 keyring 抛 `KeyringError` 时的降级测试。
+- Key decisions and actions:
+  - **RED phase**: 新增 `ThrowingKeyring` 替身与 `test_falls_back_to_session_storage_when_keyring_unavailable` —— 未加固的 `save_all` 抛 `KeyringError: no backend available (headless)`，符合预期（1 failed, 7 passed）。
+  - **GREEN phase**: 重写 `CredentialStore`，引入 `_keyring_failed` 短路标志与 `_session_store()`：优先写真 keyring，抛异常时置 `_keyring_failed=True` 并降级到会话存储（Streamlit 环境用 `st.session_state.credential_store`，否则用实例字典 `self._memory`）。四个方法 `save_all`/`get_all`/`has_credentials`/`clear_all` 均带降级语义。
+  - **会话隔离依据**: `main.py` 每次 Streamlit rerun 都会 `CredentialStore()` 新建实例，per-instance 内存天然做到 per-user/session 隔离，符合用户「内部字典或 st.session_state」的授权。
+  - **requirements.txt**: 新增 `networkx`、`httpx`、`fastapi`、`uvicorn` 四个缺失依赖，防止云上 `ModuleNotFoundError`。
+  - **pytest.ini**: 恢复 `testpaths = tests`（此前 `9e996b3` 添加后被后续 merge 回卷丢失），修复根目录遗留 `test_agent.py` 与 `tests/test_agent.py` 的同名模块收集冲突（import file mismatch）。
+  - 全量测试：`98 passed`，零回归。
+- Files changed:
+  - `core/credentials.py` — 双层存储降级（keyring → session 内存）
+  - `tests/test_credentials.py` — 新增 `ThrowingKeyring` + 降级测试
+  - `requirements.txt` — 补齐 4 个依赖
+  - `pytest.ini` — 恢复 `testpaths = tests`
+  - `docs/PLAN.md` — 追加 Phase 10 Task 29 章节
+  - `data/logs/Agent_log2.md` — 本日志
+- Specification alignment:
+  - SPEC 凭证存储章节：公开云无头环境不可用 OS keyring，须声明式降级且明确隔离，不静默写明文文件
+- Lessons learned:
+  - keyring 在无 D-Bus 的 Linux 容器里抛的不是 404 而是 `KeyringError`，必须在每个调用点兜底，而非只在初始化时探测一次。
+  - `_keyring_failed` 短路标志避免每次 `get_all()`/`has_credentials()` 重复触发异常，降低降级路径开销。
+  - 同名测试模块散落根目录会与 `tests/` 内的版本在 collection 阶段相撞（import file mismatch）；`testpaths = tests` 是最小且稳固的修复。
+- Commit: `fd44522`
