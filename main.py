@@ -1,3 +1,4 @@
+import openai
 import streamlit as st
 
 from core.agent import create_extraction_fn
@@ -13,6 +14,22 @@ from core.schema import domain_fields_for_topic
 # allowing vertical scrolling for large graphs.
 GRAPH_COMPONENT_HEIGHT = 750
 
+# API node presets surfaced in the sidebar. Selecting one auto-fills the
+# Base URL + recommended model name in the credential inputs, so a user whose
+# current gateway is unreachable can switch to another node in one click.
+API_NODE_PRESETS: dict[str, dict[str, str]] = {
+    "默认中转网关": {"base": "https://njusehub.info/v1", "model": "deepseek-v4-flash"},
+    "DeepSeek 官方": {"base": "https://api.deepseek.com/v1", "model": "deepseek-chat"},
+    "硅基流动 SiliconFlow": {"base": "https://api.siliconflow.cn/v1", "model": "deepseek-chat"},
+    "自定义 Base URL": {"base": "", "model": ""},
+}
+
+# Friendly guidance shown when the LLM connection times out after all retries.
+APITIMEOUT_ERROR_MESSAGE = (
+    "❌ API 连接超时：当前网络无法连通 API 节点。请在左侧侧边栏切换 API 节点"
+    "（建议切换为 DeepSeek 官方或 SiliconFlow 节点）或检查网络连接。"
+)
+
 
 def run_app() -> None:
     st.set_page_config(page_title="SmartSurvey", layout="wide")
@@ -25,9 +42,38 @@ def run_app() -> None:
         creds = credential_store.get_all()
         status = "Configured" if credential_store.has_credentials() else "Missing"
         st.write(f"Credential status: {status}")
+
+        # ---- API node preset dropdown (auto-fills Base URL + model) ----
+        # Initialise the API base / model session keys from stored credentials so
+        # a returning session opens on its configured node instead of empty.
+        if "api_base_input" not in st.session_state:
+            st.session_state["api_base_input"] = creds["llm_api_base"] or ""
+        if "model_name_input" not in st.session_state:
+            st.session_state["model_name_input"] = creds["llm_model_name"] or ""
+
+        def _on_api_node_change() -> None:
+            preset = API_NODE_PRESETS[st.session_state["api_node_preset"]]
+            st.session_state["api_base_input"] = preset["base"]
+            st.session_state["model_name_input"] = preset["model"]
+
+        current_base = st.session_state["api_base_input"]
+        default_preset = next(
+            (name for name, cfg in API_NODE_PRESETS.items()
+             if cfg["base"] and cfg["base"] == current_base),
+            "自定义 Base URL",
+        )
+        st.selectbox(
+            "API 节点预设（网络不可达时切换）",
+            list(API_NODE_PRESETS.keys()),
+            index=list(API_NODE_PRESETS.keys()).index(default_preset),
+            key="api_node_preset",
+            on_change=_on_api_node_change,
+        )
+        st.caption("切换预设会自动填充下方的 Base URL 与推荐模型名称。")
+
         api_key = st.text_input("API Key", type="password", placeholder="Enter API key")
-        api_base = st.text_input("API Base", placeholder=DEFAULT_API_BASE, value=creds["llm_api_base"] or "")
-        model_name = st.text_input("Model Name", placeholder=DEFAULT_MODEL_NAME, value=creds["llm_model_name"] or "")
+        api_base = st.text_input("API Base", placeholder=DEFAULT_API_BASE, key="api_base_input")
+        model_name = st.text_input("Model Name", placeholder=DEFAULT_MODEL_NAME, key="model_name_input")
         if st.button("Save Credentials") and api_key:
             credential_store.save_all(api_key, api_base or DEFAULT_API_BASE, model_name or DEFAULT_MODEL_NAME)
             st.success("Credentials saved to OS keyring.")
@@ -73,60 +119,66 @@ def run_app() -> None:
                 def _streamlit_on_retry(attempt, max_retries, wait, message, error):
                     st.warning(f"⚠️ {message}")
 
-                extraction_fn = create_extraction_fn(
-                    credential_store=credential_store,
-                    on_retry=_streamlit_on_retry,
-                )
-                progress_bar = st.progress(0)
-                status_text = st.empty()
-
-                def _streamlit_progress_callback(current_idx, total_papers, state, detail):
-                    prog = (current_idx + 1) / total_papers if total_papers > 0 else 0
-                    progress_bar.progress(prog)
-                    status_text.text(f"**{state}**: {detail}")
-
-                domain_fields = domain_fields_for_topic(topic)
-                all_rows: list = []
-                all_warnings: list = []
-
-                for idx, paper in enumerate(parsed):
-                    if paper.error:
-                        continue
-                    _streamlit_progress_callback(idx, len(parsed), "parsing", paper.file_name)
-                    merged_context, page_text_by_number = _get_merged_core_pages(paper)
-                    rows, warnings = extract_with_self_healing(
-                        merged_context=merged_context,
-                        page_text_by_number=page_text_by_number,
-                        topic=topic,
-                        domain_fields=domain_fields,
-                        extraction_fn=extraction_fn,
-                        progress_callback=_streamlit_progress_callback,
-                        max_retries=3,
+                try:
+                    extraction_fn = create_extraction_fn(
+                        credential_store=credential_store,
+                        on_retry=_streamlit_on_retry,
                     )
-                    all_rows.extend(rows)
-                    all_warnings.extend(warnings)
+                    progress_bar = st.progress(0)
+                    status_text = st.empty()
 
-                # Zero-Drop: all rows pass through
-                accepted = all_rows
-                blocked = all_warnings
-                # Use LLM synthesis if we have accepted rows and extraction_fn
-                if accepted:
-                    with st.spinner("Generating full-text manuscript with LLM..."):
-                        artifacts = generate_llm_artifacts(
-                            topic, accepted, extraction_fn, blocked,
-                            word_count_target=word_count_target,
+                    def _streamlit_progress_callback(current_idx, total_papers, state, detail):
+                        prog = (current_idx + 1) / total_papers if total_papers > 0 else 0
+                        progress_bar.progress(prog)
+                        status_text.text(f"**{state}**: {detail}")
+
+                    domain_fields = domain_fields_for_topic(topic)
+                    all_rows: list = []
+                    all_warnings: list = []
+
+                    for idx, paper in enumerate(parsed):
+                        if paper.error:
+                            continue
+                        _streamlit_progress_callback(idx, len(parsed), "parsing", paper.file_name)
+                        merged_context, page_text_by_number = _get_merged_core_pages(paper)
+                        rows, warnings = extract_with_self_healing(
+                            merged_context=merged_context,
+                            page_text_by_number=page_text_by_number,
+                            topic=topic,
+                            domain_fields=domain_fields,
+                            extraction_fn=extraction_fn,
                             progress_callback=_streamlit_progress_callback,
-                            on_retry=_streamlit_on_retry,
+                            max_retries=3,
                         )
+                        all_rows.extend(rows)
+                        all_warnings.extend(warnings)
+
+                    # Zero-Drop: all rows pass through
+                    accepted = all_rows
+                    blocked = all_warnings
+                    # Use LLM synthesis if we have accepted rows and extraction_fn
+                    if accepted:
+                        with st.spinner("Generating full-text manuscript with LLM..."):
+                            artifacts = generate_llm_artifacts(
+                                topic, accepted, extraction_fn, blocked,
+                                word_count_target=word_count_target,
+                                progress_callback=_streamlit_progress_callback,
+                                on_retry=_streamlit_on_retry,
+                            )
+                    else:
+                        artifacts = generate_artifacts(
+                            topic, accepted, blocked,
+                            progress_callback=_streamlit_progress_callback,
+                        )
+                except openai.APITimeoutError:
+                    # After all internal retries the gateway is still unreachable —
+                    # surface a friendly hint instead of a red-screen stack trace.
+                    st.error(APITIMEOUT_ERROR_MESSAGE)
                 else:
-                    artifacts = generate_artifacts(
-                        topic, accepted, blocked,
-                        progress_callback=_streamlit_progress_callback,
-                    )
-                st.markdown(artifacts.markdown_preview)
-                st.download_button("Download survey_draft.tex", artifacts.survey_tex, "survey_draft.tex")
-                st.download_button("Download matrix_table.tex", artifacts.matrix_table_tex, "matrix_table.tex")
-                st.download_button("Download references.bib", artifacts.references_bib, "references.bib")
+                    st.markdown(artifacts.markdown_preview)
+                    st.download_button("Download survey_draft.tex", artifacts.survey_tex, "survey_draft.tex")
+                    st.download_button("Download matrix_table.tex", artifacts.matrix_table_tex, "matrix_table.tex")
+                    st.download_button("Download references.bib", artifacts.references_bib, "references.bib")
 
     _render_knowledge_graph_tab()
 

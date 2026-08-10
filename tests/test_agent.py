@@ -22,6 +22,11 @@ def _make_api_connection_error() -> openai.APIConnectionError:
     return openai.APIConnectionError(message="Connection error: [Errno 111] Connection refused", request=req)
 
 
+def _make_api_timeout_error() -> openai.APITimeoutError:
+    req = httpx.Request("POST", "http://example.com/v1/chat/completions")
+    return openai.APITimeoutError(request=req)
+
+
 def test_agent_uses_keyring_credentials():
     """Keyring values take priority over environment variables."""
     store = CredentialStore(keyring_backend=FakeKeyring())
@@ -43,7 +48,7 @@ def test_agent_uses_keyring_credentials():
                 openai_api_base="https://keyring.url/v1",
                 temperature=0.2,
                 max_retries=2,
-                timeout=180.0,
+                timeout=120.0,
             )
     finally:
         del os.environ["OPENAI_API_KEY"]
@@ -67,7 +72,7 @@ def test_agent_falls_back_to_env_vars():
                 openai_api_base="https://env.url/v1",
                 temperature=0.2,
                 max_retries=2,
-                timeout=180.0,
+                timeout=120.0,
             )
     finally:
         del os.environ["OPENAI_API_KEY"]
@@ -87,7 +92,7 @@ def test_agent_falls_back_to_defaults():
             openai_api_base=DEFAULT_API_BASE,
             temperature=0.2,
             max_retries=2,
-            timeout=180.0,
+            timeout=120.0,
         )
 
 
@@ -108,10 +113,10 @@ def test_agent_injects_credentials_to_chatopenai():
             openai_api_base="https://agent.url/v1",
             temperature=0.2,
             max_retries=2,
-            timeout=180.0,
+            timeout=120.0,
         )
 
-# ---- Gateway-transient retry (InternalServerError / APIConnectionError) ----
+# ---- Gateway-transient retry (InternalServerError / APIConnectionError / APITimeoutError) ----
 
 class _FakeAgent:
     """Minimal fake agent whose .invoke can raise transient errors then succeed."""
@@ -144,9 +149,9 @@ def test_invoke_llm_with_retry_recovers_from_internal_server_error():
     assert result == "OK"
     assert fake.call_count == 3  # initial + 2 retries
     assert len(retries) == 2
-    # durations are 2s then 4s (exponential)
-    assert mock_sleep.call_args_list[0][0][0] == 2
-    assert mock_sleep.call_args_list[1][0][0] == 4
+    # durations are 3s then 6s (exponential)
+    assert mock_sleep.call_args_list[0][0][0] == 3
+    assert mock_sleep.call_args_list[1][0][0] == 6
     # friendly message present
     assert "API 网关抖动" in retries[0][2] or "重试" in retries[0][2]
 
@@ -158,6 +163,34 @@ def test_invoke_llm_with_retry_recovers_from_api_connection_error():
         result = invoke_llm_with_retry(fake, ["msg"])
     assert result == "OK"
     assert fake.call_count == 2  # initial + 1 retry
+
+
+def test_invoke_llm_with_retry_recovers_from_api_timeout_error():
+    """Transient APITimeoutError must be retried and recover."""
+    fake = _FakeAgent(side_effect=[_make_api_timeout_error(), None])
+    retries = []
+    with patch("core.agent.time.sleep") as mock_sleep:
+        result = invoke_llm_with_retry(
+            fake, ["msg"],
+            on_retry=lambda attempt, max_retries, wait, message, error: retries.append(message),
+        )
+    assert result == "OK"
+    assert fake.call_count == 2  # initial + 1 retry
+    assert len(retries) == 1
+    assert "重试" in retries[0]
+    assert mock_sleep.call_args_list[0][0][0] == 3  # first wait is 3s
+
+
+def test_invoke_llm_with_retry_raises_api_timeout_after_exhausting_retries():
+    """APITimeoutError re-raised after retries are exhausted."""
+    fake = _FakeAgent(side_effect=[_make_api_timeout_error()] * 4)
+    with patch("core.agent.time.sleep"):
+        try:
+            invoke_llm_with_retry(fake, ["msg"])
+            assert False, "expected APITimeoutError to be raised"
+        except openai.APITimeoutError:
+            pass
+    assert fake.call_count == 4  # initial + 3 retries
 
 
 def test_invoke_llm_with_retry_raises_after_exhausting_retries():
@@ -177,9 +210,9 @@ def test_invoke_llm_with_retry_raises_after_exhausting_retries():
             pass
     assert fake.call_count == 4  # initial + 3 retries
     assert len(retries) == 3
-    # durations 2, 4, 8; attempts 1, 2, 3
+    # durations 3, 6, 12; attempts 1, 2, 3
     sleeps = [c[0][0] for c in mock_sleep.call_args_list]
-    assert sleeps == [2, 4, 8]
+    assert sleeps == [3, 6, 12]
     assert [a for a, _ in retries] == [1, 2, 3]
 
 

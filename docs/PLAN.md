@@ -4180,3 +4180,18 @@ git commit -m "feat: add 2d interactive knowledge graph with pyvis (Task 25) [Su
 - [x] **Step 4**: 部署加固（setup.sh/ps1 版本校验、README 部署文档）
 - [x] **Step 5**: 可行性验证（bash -n / PS one-liner / pip check / pip install --dry-run / fetch_vault --help）
 - [x] **Step 6**: Commit + Push 至 main（Human Owner 授权）
+
+### Task 32: LLM 客户端超时加固 + API 节点切换 + 超时友好提示
+
+**Goal:** 解决部署环境下的 `openai.APITimeoutError: Request timed out`（API 中转网关不可达/超时）。
+
+**Files:**
+- Modify: `core/agent.py`（`ChatOpenAI(timeout=120.0)`；`gateway_retry` 捕获 APITimeoutError；退避间隔 3s/6s/12s）
+- Modify: `main.py`（Sidebar API 节点预设下拉框：默认中转网关 / DeepSeek 官方 / 硅基流动 / 自定义；切换自动填充 Base URL+模型；`APITIMEOUT_ERROR_MESSAGE` 友好 `st.error`）
+- Modify: `tests/test_agent.py`（timeout 断言 120.0；等待 3/6/12；新增 2 个 APITimeoutError 用例）
+- Modify: `tests/test_e2e_smoke.py`（新增 APITimeoutError 链内恢复用例 + 预设/提示内容断言，+2）
+
+- [x] **Step 1 (RED)**: 新增 APITimeoutError 重试用例，观察到构造函数签名差异 `APITimeoutError(request=...)`
+- [x] **Step 2 (GREEN)**: `core/agent.py` 超时 120s + 捕获 APITimeoutError（3/6/12s）；`main.py` 预设下拉框 + 超时 `st.error`；`tests/` 全绿
+- [x] **Step 3**: 全量回归 `126 passed`（124 → 126，含 test_e2e_smoke，零回归）
+- [x] **Step 4**: Commit + Push 至 origin main

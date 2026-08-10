@@ -208,3 +208,51 @@ def test_full_run_app_chain_with_on_retry_and_agent():
     # every retrieval went through invoke; no transient error -> no warnings
     assert warned == []
     assert mocked.agent.invoke.call_count >= 1
+
+
+def test_e2e_transient_api_timeout_invokes_on_retry_and_recovers():
+    """A transient APITimeoutError triggers the on_retry hook and recovers in chain."""
+    from unittest.mock import Mock as _Mock
+
+    agent = _Mock()
+    msg = _Mock()
+    msg.content = VALID_LATEX
+
+    def invoke_that_times_out_once(messages):
+        if invoke_that_times_out_once.calls == 0:
+            invoke_that_times_out_once.calls += 1
+            req = __import__("httpx").Request("POST", "http://x/v1")
+            raise openai.APITimeoutError(request=req)
+        # Subsequent calls succeed.
+        return msg
+
+    invoke_that_times_out_once.calls = 0
+    agent.invoke.side_effect = invoke_that_times_out_once
+    retry_messages: list[str] = []
+    with patch("core.agent.get_llm_agent", return_value=agent), patch("core.agent.time.sleep"):
+        extraction_fn = create_extraction_fn(
+            on_retry=lambda a, m, w, msg, e: retry_messages.append(msg)
+        )
+        artifacts = generate_llm_artifacts(
+            "anomaly detection", [_make_row()], extraction_fn, [],
+            word_count_target=1000,
+            on_retry=lambda a, m, w, msg, e: retry_messages.append(msg),
+        )
+    assert artifacts.survey_tex
+    assert retry_messages, "expected at least one on_retry warning for timeout"
+    assert any("重试" in m for m in retry_messages)
+
+
+def test_main_api_node_presets_and_timeout_guidance():
+    """Sidebar presets cover the common nodes + custom, and a friendly timeout hint exists."""
+    import main as client
+
+    names = set(client.API_NODE_PRESETS.keys())
+    assert {"默认中转网关", "DeepSeek 官方", "硅基流动 SiliconFlow", "自定义 Base URL"} <= names
+    assert client.API_NODE_PRESETS["默认中转网关"]["base"] == "https://njusehub.info/v1"
+    assert client.API_NODE_PRESETS["DeepSeek 官方"]["base"] == "https://api.deepseek.com/v1"
+    assert client.API_NODE_PRESETS["硅基流动 SiliconFlow"]["base"] == "https://api.siliconflow.cn/v1"
+    assert client.API_NODE_PRESETS["DeepSeek 官方"]["model"] == "deepseek-chat"
+    assert "切换 API 节点" in client.APITIMEOUT_ERROR_MESSAGE
+    assert "DeepSeek 官方" in client.APITIMEOUT_ERROR_MESSAGE
+    assert "SiliconFlow" in client.APITIMEOUT_ERROR_MESSAGE

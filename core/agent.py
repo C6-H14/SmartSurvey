@@ -16,9 +16,10 @@ def gateway_retry(
 ) -> str:
     """Call ``fn`` with exponential backoff on transient API-gateway errors.
 
-    Retries only when the call raises ``openai.InternalServerError`` or
-    ``openai.APIConnectionError`` (e.g. Envoy upstream connection failures from
-    an API relay gateway). Waits 2s / 4s / 8s between attempts.
+    Retries when the call raises ``openai.InternalServerError``,
+    ``openai.APIConnectionError`` or ``openai.APITimeoutError`` (e.g. Envoy
+    upstream connection failures or request timeouts from an API relay gateway).
+    Waits 3s / 6s / 12s between attempts.
 
     Args:
         fn: Zero-arg callable wrapping an LLM request (``agent.invoke`` or an
@@ -33,16 +34,20 @@ def gateway_retry(
         The successful return value of ``fn``.
 
     Raises:
-        The last ``openai.InternalServerError`` / ``openai.APIConnectionError``
-        once ``max_retries`` are exhausted.
+        The last ``openai.InternalServerError`` / ``openai.APIConnectionError`` /
+        ``openai.APITimeoutError`` once ``max_retries`` are exhausted.
     """
     for attempt in range(max_retries + 1):
         try:
             return fn()
-        except (openai.InternalServerError, openai.APIConnectionError) as e:
+        except (
+            openai.InternalServerError,
+            openai.APIConnectionError,
+            openai.APITimeoutError,
+        ) as e:
             if attempt >= max_retries:
                 raise
-            wait = 2 ** (attempt + 1)  # 2, 4, 8 seconds
+            wait = 3 * (2 ** attempt)  # 3, 6, 12 seconds
             message = (
                 f"API 网关抖动中，正在尝试第 {attempt + 1}/{max_retries} 次重试"
                 f"（{type(e).__name__}），{wait:.0f}s 后重试..."
@@ -87,7 +92,7 @@ def get_llm_agent(temperature: float = 0.2, credential_store: CredentialStore | 
         openai_api_base=api_base,
         temperature=temperature,
         max_retries=2,
-        timeout=180.0,
+        timeout=120.0,
     )
 
 
@@ -118,8 +123,9 @@ def create_extraction_fn(
         A callable matching the ExtractionFn contract:
             (prompt: str) -> str
         The returned string is the raw LLM response content. Transient
-        ``openai.InternalServerError`` / ``openai.APIConnectionError`` are retried
-        internally with exponential backoff (2s/4s/8s, 3 retries).
+        ``openai.InternalServerError`` / ``openai.APIConnectionError`` /
+        ``openai.APITimeoutError`` are retried internally with exponential
+        backoff (3s/6s/12s, 3 retries).
     """
     # NOTE: ``kwargs`` is intentionally unused — it exists solely so that a caller
     # passing a now-obsolete/extra keyword argument (e.g. an older UI layer calling
