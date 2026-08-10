@@ -10,6 +10,39 @@ SmartSurvey is an AI4SE non-harness application for evidence-bound academic lite
 - Markdown preview and LaTeX/BibTeX exports.
 - OS keyring API key storage.
 
+## 目录结构（Directory Structure）
+
+```text
+SmartSurvey/
+├── main.py                  # Streamlit 应用入口（UI 编排 + 凭据录入）
+├── core/                    # 核心业务模块（职责分离，各自可单测）
+│   ├── models.py            # 领域数据模型（dataclass）
+│   ├── pdf_parser.py        # PDF 解析（PyMuPDF + 章节识别 + 兜底页码切片）
+│   ├── extractor.py         # 学术矩阵提取 + 自愈重试
+│   ├── evidence.py          # 证据归一化与 containment 校验
+│   ├── schema.py            # 通用/领域 schema 生成
+│   ├── credentials.py       # OS keyring 凭据存储（主后端，无头环境降级）
+│   ├── synthesis.py         # LLM 综述合成 + LaTeX 校验 + 自愈编译
+│   ├── templates.py         # LaTeX/BibTeX 模板与导言区（SSOT）
+│   ├── graph.py             # PyVis 2D 知识图谱
+│   ├── pipeline.py          # 批处理流水线（解析→提取→审查→生成）
+│   └── agent.py             # LLM adapter（OpenAI 兼容，三级凭据回退）
+├── tests/                   # pytest 测试（test_evidence / pipeline / schema / credentials / graph ...）
+├── scripts/                 # CLI：fetch_vault.py（ArXiv 收割）、run_extraction.py、sandbox 工具
+├── data/
+│   ├── logs/                # Agent_log*.md 工程日志 + agent_run.log
+│   ├── input_pdfs/          # 待解析 PDF（.gitignore，不入库）
+│   ├── output_docs/         # 生成产物（.gitignore，不入库）
+│   └── vault_100_lab_anomaly.json   # 知识图谱文献库（随仓库提供）
+├── lib/                     # 前端静态资源（vis.js 知识图谱渲染等）
+├── Dockerfile               # 容器分发（python:3.11-slim）
+├── .gitlab-ci.yml           # CI（unit-test job，push 自动跑测试）
+├── setup.sh / setup.ps1     # 一键安装脚本（macOS/Linux / Windows）
+├── run_windows.bat          # Windows 一键启动脚本（cmd.exe）
+├── requirements.txt         # Python 依赖
+└── .env                     # 仅开发兼容源（见 Credential Safety）
+```
+
 ## 前置要求（Prerequisites）
 
 | 依赖 | 版本要求 | 说明 |
@@ -138,10 +171,24 @@ curl http://localhost:8501/_stcore/health   # 返回 "ok" 即正常
 
 ## Credential Safety
 
-SmartSurvey stores the LLM API key in the operating system keyring. The full key is never displayed in the UI, logs, exported files, Docker images, or committed source files.
+SmartSurvey stores the LLM API key in the **operating system keyring** (primary backend, via `core/credentials.py`). The full key is never displayed in the UI, logs, exported files, Docker images, or committed source files.
 
-For development compatibility, `.env` may still supply `OPENAI_API_BASE` and `LLM_MODEL_NAME` only. Do not put real API keys in `.env` or Git.
+Key handling guarantees:
+
+- **Never hardcoded** into source and **never committed** to Git (checked before each commit).
+- **Never written** to logs, terminal history, or plaintext config files.
+- **Never echoed in full** — the UI only shows a `Configured / Missing` status; API-key input uses a masked password field.
+- **Update / Clear** supported: `save_all()` overwrites on the same key; `clear_all()` removes it.
+- **Headless fallback**: in containers / cloud (no OS keyring), SmartSurvey transparently degrades to session-memory storage.
+
+> ⚠️ **`.env` 明文风险警告**: The `.env` file is **plaintext** and, when present, is loaded by the process at runtime. It is **gitignored** so it is never committed — but **any key written to `.env` exists in plaintext and is visible to the process environment**. `.env` is therefore supported **only as a development compatibility source** for `OPENAI_API_BASE` and `LLM_MODEL_NAME`. **Do NOT put a real `OPENAI_API_KEY` into `.env`** — use the keyring via the in-app credential form, or a secret store (env var injection / Secrets manager) for deployed environments.
 
 ## Known Limits
 
 The first version does not automatically download papers, reconstruct perfect PDF paragraphs, or guarantee zero-edit LaTeX compilation in every Overleaf template.
+
+Platform / distribution limits:
+
+- **Docker image excludes `data/`** by design (`.dockerignore`). The knowledge-graph module reads `data/vault_100_lab_anomaly.json`, so **graph rendering is unavailable inside the container** unless that file is volume-mounted. Other features (parse / extract / synthesize / export) work normally.
+- **Headless keyring**: containers and Streamlit Cloud have no OS keyring; they degrade to session-memory storage and require keys injected via environment variables / Secrets (not the local keyring).
+- **`.env` is dev-only**: see Credential Safety — real keys must use the keyring or a secret store, not `.env`.

@@ -331,6 +331,31 @@ API Key 是项目核心安全考核点。系统不得要求用户把真实 API K
 - 将用户 API Key 打包进 Docker 镜像。
 - 在公网部署时使用开发者自己的固定 Key 替所有用户调用。
 
+### 9.3 凭据威胁模型与对策
+
+**受保护资产（Assets）**
+- LLM API Key（当前供应商密钥、可付费计费）、API 地址与模型名（非机密但属配置）。
+
+**攻击面与可信边界（Trust boundary）**
+- 本地桌面会话（受信）：用户本人操作，OS 钥匙串为受信存储。
+- 无头容器 / 流式云端（低可信）：无桌面钥匙串服务（无 D-Bus），会话内存仅存活于单次进程生命周期。
+- 仓库与镜像（弱信任前提）：任何进入 git 历史或 Docker 镜像的数据视为已泄露。
+
+**威胁与对策矩阵**
+
+| 威胁 | 场景 | 对策 | 对应实现 |
+|------|------|------|----------|
+| Key 硬编码 / 被提交 | 开发者把 key 写进源码并 commit | 提交前自查；key 仅存钥匙串，不入库 | `core/credentials.py` 主后端 = keyring；`README` 提交前自查；`.gitignore` 排除 `.env` |
+| Key 明文落盘（.env/日志/导出） | 用户把 key 写进 `.env`，或程序把 key 打日志 | `.env` 仅作非机密的 api_base/model_name 开发兼容源；UI 用掩码密码框；日志不漏 key；导出文件不含 key | `CredentialStore` 不回显；UI `type="password"`；导出剔除 key 字段 |
+| Key 回显 / 泄露显示 | UI、报错、日志中打印完整 key | 仅显示 `Configured/Missing` 布尔状态，绝不打印完整 key | `has_credentials()` 状态；`get_all()` 不落日志 |
+| 无头环境 Key 持久化 | 容器/云端无钥匙串导致红屏或降级到明文文件 | 降级到**会话内存**（非明文文件），由外部注入环境变量/Secrets | `main.py` 会话级回退存储；Streamlit Secrets |
+| 多用户固定 Key 滥用 | 公网部署用开发者固定 key 替所有用户调用 | 拒绝固定 key 共享；每用户独立录入/会话存储 | §10.2 会话/用户级加密存储 |
+
+**残余风险与缓解**
+- `.env` 明文 key：仅限开发兼容，正式采用钥匙串/密钥管理；用户被引导使用钥匙串录入。
+- 无头会话内存 key 制期间（进程重启即失）：可接受，因云端部署改用 Secrets 注入。
+- keyring 依赖的 OS 服务不可用时的降级路径必须是**会话内存**而非明文文件（§9.1）。
+
 ## 10. Docker 与公网部署规约
 
 ### 10.1 Dockerfile
@@ -399,6 +424,30 @@ Dockerfile 应满足：
 5. 导出可复制到 Overleaf 的中文 LaTeX 全文手稿和三线表。
 6. 使用 keyring 完成本地 API Key 的录入、读取、更新和清除。
 7. Docker 部署方案不泄露用户 Key，并说明公网部署时的用户级 Key 配置方式。
+
+---
+
+## 13A. 技术选型与理由
+
+- **语言 / 框架：Python 3.10+ + Streamlit**。理由：学术文献处理生态成熟（PyMuPDF、arxiv、networkx），Streamlit 可在数小时内产出可交互的 WebUI 与进度状态，且单文件 `main.py` 易于做无头/容器部署；团队（单人学生）最熟悉 Python，交付效率优先。
+- **PDF 解析：PyMuPDF（fitz）**。理由：纯 Python、无外部依赖、支持按页切片与文本抽取，适合"核心章节识别 + 兜底页码切片"的混合解析策略（§5）。
+- **LLM 适配：langchain-openai（OpenAI 兼容 Chat 适配器）**。理由：将 LLM 调用抽象为 adapter 边界，便于单元测试时以 mock/stub 替换真实 key；默认模型 `deepseek-v4-flash`、默认 API 基址 `https://njusehub.info/v1`（OpenAI 兼容端点，见 `core/credentials.py` 的 `DEFAULT_API_BASE` / `DEFAULT_MODEL_NAME`），可通过 `OPENAI_API_BASE` / `LLM_MODEL_NAME` 切换任意兼容供应商。
+- **凭据存储：keyring（OS 钥匙串）**。理由：满足"key 不硬编码、不入库、不落明文文件"的安全红线（§3.1）；keyring 背后是操作系统级密钥管理，比明文 `.env` 安全得多；无头环境降级到会话内存（非明文文件）。
+- **知识图谱：pyvis + networkx**。理由：轻量、无浏览器端额外依赖，可导出独立 HTML 供 `st.components` 嵌入（Task 25）。
+- **分发 / 部署：Docker 镜像 + Windows `.bat` + Streamlit Community Cloud**。理由：覆盖 desktop（`.bat` / setup 脚本）、容器（Docker）、无头云（Streamlit Cloud）三类目标形态；每类都明确 key 的安全配置路径（§10 与 README）。
+- **CI：GitLab CI**，含 `unit-test` job，push 自动跑 `pytest tests`。
+- **前端说明**：本应用为 Streamlit 组件化 UI（非独立前端框架），未采用独立设计系统/UI skill；界面以 Streamlit 内建控件与 `st.components` 呈现（§15、§20.6），符合 B 类"纯后端 / 纯 CLI 可豁免"语境下的实用取舍（清单 §3.6 为"强烈推荐"而非强制）。
+
+## 13B. 风险与未决问题
+
+| 风险 / 未决 | 影响 | 缓解 / 状态 |
+|-------------|------|-------------|
+| LLM 供应商可用性 | 默认基址 `njusehub.info` 若下线，合成功能不可用 | 供应商经 `OPENAI_API_BASE` / `LLM_MODEL_NAME` 可替换；合成路径含模板兜底与自愈（§17、§23）。
+| 物理 XeLaTeX 编译不可用 | 目标机无 `xelatex`（容器/CI），自愈编译退化为静态校验 | `compile_with_xelatex()` 对无 `xelatex` 返回空错误列表，回退静态校验（`core/synthesis.py`）。
+| 容器内知识图谱数据缺失 | Docker 镜像不打包 `data/vault_*.json`，容器内图谱无法加载 | README 已声明限制；可改挂载卷或镜像内置数据（未决：是否将图谱数据打进镜像，涉及镜像体积权衡）。
+| Task 23 Zotero 集成 | 尚未实现（已延期至 backlog，见 commit 40e7565） | 明确标注为"延期未实现"，不属于本期交付范围；需要时按 Phase 6 设计（`core/zotero.py` + `pyzotero`）补齐。
+| 多用户公网 key 隔离 | 多用户共享同一定 key 会形成越权调用 | §10.2 明确拒绝固定 key 共享，采用会话/用户级加密存储（未决：正式多租户方案的选型）。
+| 中文 LaTeX 版面 | Overleaf 模板差异可能导致需手动微调 | §8.5 说明"不保证零修改编译"，作为已声明的已知限制接受。
 
 ---
 
