@@ -1,94 +1,96 @@
 @echo off
 rem ============================================================================
-rem  SmartSurvey - Windows 一键启动脚本 (Streamlit App)
+rem  SmartSurvey - Windows one-click launcher (Streamlit App)
 rem
-rem  用途: 自动检测 Python 3.10+、创建/复用 .venv、安装依赖并启动应用。
-rem  用法: 双击本文件，或在 cmd 中执行 run_windows.bat
-rem  说明: chcp 65001 将控制台切换为 UTF-8 编码，杜绝中文/英文混排乱码。
+rem  Purpose: Detect Python 3.10+, create/reuse .venv, install deps, launch app.
+rem  Usage:   Double-click this file, or run run_windows.bat from cmd.
+rem  Note:    All console text is kept ASCII-only. UTF-8 multibyte characters in
+rem           a batch file cause cmd.exe to misalign command parsing byte-by-byte
+rem           (e.g. swallowing the 'e' of 'echo', or mangling 'python').
 rem ============================================================================
 
-rem 切换控制台编码为 UTF-8，杜绝终端乱码
+rem Switch console code page to UTF-8 to prevent mojibake
 chcp 65001 >nul
 title SmartSurvey - Streamlit Launcher
 
 echo.
 echo  ============================================
-echo   SmartSurvey - Windows 一键启动脚本
+echo   SmartSurvey - Windows one-click launcher
 echo  ============================================
 echo.
 
-rem ---------------- 0. 定位项目根目录 ----------------
+rem ---------------- 0. Locate project root ----------------
 set "PROJECT_ROOT=%~dp0"
 pushd "%PROJECT_ROOT%"
 
-rem ---------------- 1. 定位 Python 解释器 ----------------
+rem ---------------- 1. Locate Python interpreter ----------------
 set "PY_CMD="
 
-rem 优先使用 py launcher（若存在）
+rem Prefer the py launcher if available
 where py >nul 2>nul
 if %errorlevel%==0 set "PY_CMD=py -3"
 
-rem 否则回退到 PATH 中的 python
+rem Fall back to python on PATH
 if not defined PY_CMD (
     where python >nul 2>nul
     if %errorlevel%==0 set "PY_CMD=python"
 )
 
 if not defined PY_CMD (
-    echo [X] 未找到 Python。请先安装 Python 3.10+（https://python.org），并勾选 "Add to PATH"。
+    echo [X] Python not found. Install Python 3.10+ (https://python.org) and check "Add to PATH".
     goto :end
 )
-echo [OK] 使用 Python 解释器: %PY_CMD%
+echo [OK] Using Python interpreter: %PY_CMD%
 
-rem ---------------- 2. 校验 Python 版本 >= 3.10 ----------------
+rem ---------------- 2. Check Python version >= 3.10 ----------------
 %PY_CMD% -c "import sys; sys.exit(0) if sys.version_info >= (3, 10) else sys.exit(1)" >nul 2>nul
 if errorlevel 1 (
-    echo [X] 需要 Python 3.10 或更高版本，当前版本过低。请升级后重试。
+    echo [X] Requires Python 3.10 or newer. Please upgrade and retry.
     goto :end
 )
 
 for /f "delims=" %%v in ('%PY_CMD% -c "import sys; print('%d.%d' %% sys.version_info[:2])"') do set "PY_VERSION=%%v"
-echo [OK] Python 版本: %PY_VERSION% (满足 3.10+)
+echo [OK] Python version: %PY_VERSION% (satisfies 3.10+)
 
-rem ---------------- 3. 创建 / 复用虚拟环境 .venv ----------------
+rem ---------------- 3. Create / reuse virtual env .venv ----------------
 if not exist ".venv\Scripts\python.exe" (
-    echo [..] 正在创建虚拟环境 .venv ...
+    echo [..] Creating virtual env .venv ...
     %PY_CMD% -m venv .venv
     if errorlevel 1 goto :venv_fail
-    echo [OK] 虚拟环境 .venv 已创建
+    echo [OK] Virtual env .venv created
 ) else (
-    echo [OK] 虚拟环境 .venv 已存在，跳过创建
+    echo [OK] Virtual env .venv exists, skipping creation
 )
 
-rem ---------------- 4. 激活虚拟环境并安装依赖 ----------------
+rem ---------------- 4. Install dependencies ----------------
 set "VENV_PYTHON=%PROJECT_ROOT%.venv\Scripts\python.exe"
 if not exist "%VENV_PYTHON%" goto :venv_fail
 
-echo [..] 安装 requirements.txt 依赖（首次运行需等待）...
+echo [..] Installing requirements.txt dependencies (first run may take a while)...
 "%VENV_PYTHON%" -m pip install --upgrade pip -q
 "%VENV_PYTHON%" -m pip install -r requirements.txt
 if errorlevel 1 goto :pip_fail
-echo [OK] 依赖安装完成
+echo [OK] Dependencies installed
 
-rem ---------------- 5. 确保 data 目录存在 ----------------
+rem ---------------- 5. Ensure data directories exist ----------------
 if not exist "data\logs"         mkdir "data\logs"
 if not exist "data\input_pdfs"   mkdir "data\input_pdfs"
 if not exist "data\output_docs"  mkdir "data\output_docs"
 
-rem ---------------- 6. 启动 Streamlit 应用 ----------------
+rem ---------------- 6. Launch Streamlit app ----------------
 echo.
-echo  [..] 启动 SmartSurvey (http://localhost:8501) ...
-echo  按 Ctrl+C 可停止应用。
+echo  [..] Starting SmartSurvey (http://localhost:8501) ...
+echo  Press Ctrl+C to stop the app.
 echo.
-"%VENV_PYTHON%" -m streamlit run main.py
+python -m streamlit run main.py
 goto :end
 
 :venv_fail
-echo [X] 虚拟环境创建失败，请检查 Python 安装。
+echo [X] Failed to create virtual env. Check your Python installation.
 goto :end
 
 :pip_fail
-echo [X] 依赖安装失败，请检查网络或 requirements.txt。
+echo [X] Failed to install dependencies. Check network or requirements.txt.
 goto :end
 
 :end
