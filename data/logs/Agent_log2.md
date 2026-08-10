@@ -572,3 +572,12 @@
 - Lessons learned:
   - 内存渲染（generate_html）比写盘+回读更优：既省 IO，又天然杜绝容器路径泄露
   - 部署可复现性最佳验证 = 全新 venv 的 `pip install --dry-run` 完整解析 + `pip check` 一致
+
+## Hotfix — run_windows.bat UTF-8 byte-truncation
+- **Context:** `run_windows.bat` under Windows cmd.exe triggered UTF-8 byte truncation: cmd.exe reads batch files using the default code page byte-by-byte, and UTF-8 multibyte (Chinese) characters swallowed the following ASCII command char — turning `echo` into `cho` ('cho' is not recognized) and mangling `python`.
+- **Fix:**
+  - Converted ALL text in `run_windows.bat` (console `echo` + `rem` comments) to pure ASCII English → zero non-ASCII bytes (verified `grep -cP '[^\x00-\x7F]'` = 0), eliminating the root cause.
+  - Launch command set to `python -m streamlit run main.py`.
+- **Verification:** No UTF-8 BOM (first bytes `40 65 63 68` = `@ech`); 0 non-ASCII bytes; line 85 = `python -m streamlit run main.py`.
+- **Lessons learned:** Never put UTF-8 multibyte chars (Chinese/emoji) in a .bat file before/inside command lines — keep the entire file ASCII-only; `chcp 65001` alone does not protect command-line parsing because cmd.exe reads the file with the active code page incrementally.
+- **Commit:** `51d44fb` — "fix: ASCII-only run_windows.bat to avoid cmd.exe UTF-8 byte truncation [Subagent: Sonnet] [Manual: None]"
