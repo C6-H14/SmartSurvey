@@ -601,3 +601,11 @@
 - **验证：** 端到端模拟——extraction_fn 3 次调用（2 次失败 + 1 次成功）、2 次 warning 钩子触发、友好消息文案精确为 `API 网关抖动中，正在尝试第 X/3 次重试...`（2s/4s/8s）。
 - **Lessons learned:** 瞬时的上游网关错误应区分于稳定 4xx/5xx；把重试收敛到一个可注入钩子的共享 helper（`gateway_retry`）比各处手写 try/except 更可测、可复用；重试期间给用户可见的 `st.warning` 而不是静默重试，能显著降低"看起来卡死"的困惑。
 - **Commit:** `9a7ee12` — "fix: retry openai.InternalServerError/APIConnectionError with exponential backoff [Subagent: Sonnet] [Manual: None]"
+
+## Hotfix — Anaconda-safe run_windows.bat + create_extraction_fn agent DI
+- **Fix 1 (run_windows.bat):** Anaconda 环境会把隐式 `python` 占用为 `e:\Anaconda3\python.exe`（无项目 streamlit）→ `No module named streamlit`。将启动命令从 `python -m streamlit run main.py` 改为显式 venv 解释器 `"%VENV_PYTHON%" -m streamlit run main.py`（依赖安装早已用 `%VENV_PYTHON%`）。文件保持纯 ASCII + CRLF。实机 native cmd 验证：到达 http://localhost:8501，无报错。
+- **Fix 2 (core/agent.py):** `create_extraction_fn(agent=None, credential_store=None, on_retry=None, **kwargs)`——新增 `agent` 依赖注入缝（测试/调用方可注入预建 agent）；**保留 credential_store**（未按 spec 字面删掉），因 main.py 与 scripts/run_extraction.py 依赖它走 keyring 凭据路径，删除会造成功能性回归。跨模块 audit 确认 agent/on_retry 在 agent→synthesis→pipeline 一致透传。
+- **Smoke test:** 扩展 tests/test_e2e_smoke.py 增 2 例（agent DI 缝 + 完整 run_app 链 create_extraction_fn(on_retry=...) → generate_llm_artifacts → render_survey_tex_with_llm）。
+- **验证:** pytest 全量 **122 passed**（120→122 新增 2）。bat native 运行确认 venv 启动生效。
+- **Lessons learned:** ① Windows 装有 Anaconda/conda 时绝不可用隐式 `python` 启动 venv 应用——必须显式 `%VENV_PYTHON%`；② 用户给的签名示例若省略了仍在被调用的参数（credential_store），不能照字面删，否则引入隐性回归——应保留并在提交说明里给出理由。
+- **Commit:** `745a255` — "fix: Anaconda-safe bat venv launch + agent DI seam in create_extraction_fn [Subagent: Sonnet] [Manual: None]"
