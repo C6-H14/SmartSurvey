@@ -589,3 +589,15 @@
 - **Verification（实机运行，native cmd.exe）：** 无 BOM；非 ASCII 字节 = 0；CRLF = 98；脚本端到端跑通——`[OK] Python version: 3.14`、依赖装好、Streamlit 成功启动于 http://localhost:8501，无 parse 错误、无 TypeError。
 - **Lessons learned:** ① .bat 文件须全 ASCII + CRLF，`chcp 65001` 保护不了命令解析；② `if ( ... )` 块内禁止字面括号（如需可 `^(` `^)` 转义或去掉）；③ `for /f` 内的 Python 一行式避免 `%` 格式符，用 `sep=`。
 - **Commit:** `51d44fb`（ASCII 修复）+ 后续（CRLF / 括号 / 版本号修复）—— 最终合入 `main`。
+
+## Hotfix — openai.InternalServerError / APIConnectionError 网关重试
+- **Context:** API 中转网关返回 `openai.InternalServerError`（Envoy upstream connection failure，瞬时抖动）与 `openai.APIConnectionError`。langchain 自带 `max_retries=2` 对该类瞬时服务端错误恢复不可靠，且 synthesis 路径（`render_survey_tex_with_llm` / `_multi_stage`）完全没有重试，直接抛错中断。
+- **Fix:**
+  - 新增共享 `core/agent.gateway_retry(fn, max_retries=3, on_retry=None)`：仅捕获 `openai.InternalServerError` / `openai.APIConnectionError`，指数退避 2s/4s/8s，重试前打印友好日志或调用 `on_retry` 钩子；耗尽后 re-raise。
+  - `agent.invoke` 处：`invoke_llm_with_retry()` 封装；`create_extraction_fn(credential_store, on_retry=None)` 内部对每次 invoke 重试。
+  - synthesis 两处 `extraction_fn(prompt)` 调用（single-pass 与 multi-stage）都用 `gateway_retry` 包裹，并透传 `on_retry` 参数；`core/pipeline.generate_llm_artifacts` 透传 `on_retry`。
+  - main.py 传入 `_streamlit_on_retry` → `st.warning("⚠️ API 网关抖动中，正在尝试第 X/3 次重试...")`。
+- **TDD:** 新增 6 测试（`tests/test_agent.py` 4 个：InternalServerError 恢复、APIConnectionError 恢复、3 次耗尽 re-raise、非瞬时错误不重试；`tests/test_synthesis.py` 2 个：single-pass 与 multi-stage 网关抖动恢复 + on_retry 触发）。全量 `pytest` 从 109 → **115 passed**。
+- **验证：** 端到端模拟——extraction_fn 3 次调用（2 次失败 + 1 次成功）、2 次 warning 钩子触发、友好消息文案精确为 `API 网关抖动中，正在尝试第 X/3 次重试...`（2s/4s/8s）。
+- **Lessons learned:** 瞬时的上游网关错误应区分于稳定 4xx/5xx；把重试收敛到一个可注入钩子的共享 helper（`gateway_retry`）比各处手写 try/except 更可测、可复用；重试期间给用户可见的 `st.warning` 而不是静默重试，能显著降低"看起来卡死"的困惑。
+- **Commit:** `9a7ee12` — "fix: retry openai.InternalServerError/APIConnectionError with exponential backoff [Subagent: Sonnet] [Manual: None]"
