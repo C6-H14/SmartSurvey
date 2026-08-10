@@ -609,3 +609,19 @@
 - **验证:** pytest 全量 **122 passed**（120→122 新增 2）。bat native 运行确认 venv 启动生效。
 - **Lessons learned:** ① Windows 装有 Anaconda/conda 时绝不可用隐式 `python` 启动 venv 应用——必须显式 `%VENV_PYTHON%`；② 用户给的签名示例若省略了仍在被调用的参数（credential_store），不能照字面删，否则引入隐性回归——应保留并在提交说明里给出理由。
 - **Commit:** `745a255` — "fix: Anaconda-safe bat venv launch + agent DI seam in create_extraction_fn [Subagent: Sonnet] [Manual: None]"
+
+## Task 32 — LLM 客户端超时加固 + API 节点切换 + 超时友好提示
+
+- **时间戳**: 2026-08-10
+- **Skills**: superpowers:systematic-debugging, superpowers:test-driven-development
+- **需求**: 部署时 `openai.APITimeoutError: Request timed out`（网关不可达/超时）。
+- **核心决策**:
+  1. `core/agent.py` 的 `ChatOpenAI` 显式 `timeout=120.0`（长文本 JSON 生成留足响应时间）。
+  2. `gateway_retry` 将 `openai.APITimeoutError` 纳入重试捕获，退避按需求改为 3s/6s/12s（`3 * 2**attempt`）。
+  3. `main.py` Sidebar 新增「API 节点预设」下拉框（默认中转网关 / DeepSeek 官方 / 硅基流动 / 自定义），`on_change` 回调自动回填 Base URL + 推荐模型到 `session_state` 键；首次初始化从 keyring 凭据回填。
+  4. `main.py` 用 `try/except openai.APITimeoutError` + `else` 包裹整条 LLM 生成链，重试耗尽后以 `st.error(APITIMEOUT_ERROR_MESSAGE)` 呈现友好提示，替代红屏 StackTrace。
+- **Lessons learned**: `openai.APITimeoutError.__init__` 只接受 `request=` 参数（与 `APIConnectionError` 的 `message=` 签名不同），构造测试异常时需用 `APITimeoutError(request=req)`；已据实证修正测试夹具。
+- **验证**: 全量 `pytest` 126 passed（含 test_e2e_smoke），零回归。
+- **Commit**: `8417932`
+
+---
