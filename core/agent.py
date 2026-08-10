@@ -94,6 +94,7 @@ def get_llm_agent(temperature: float = 0.2, credential_store: CredentialStore | 
 def create_extraction_fn(
     credential_store: CredentialStore | None = None,
     on_retry: Callable[[int, int, float, str, BaseException], None] | None = None,
+    **kwargs: object,
 ) -> Callable[[str], str]:
     """Create an extraction_fn that wires agent.py with real LLM calls.
 
@@ -102,6 +103,10 @@ def create_extraction_fn(
         on_retry: Optional hook invoked before each gateway-transient retry so the
             UI can surface a friendly warning (e.g. ``st.warning``). When ``None``
             a friendly line is printed to the console.
+        **kwargs: Reserved for forward/backward compatibility. Unrecognized keyword
+            arguments are silently accepted so an older or newer caller that passes
+            an extra kwarg never crashes with ``TypeError``. (This guards against
+            signature drift between a deployed instance and this source.)
 
     Returns:
         A callable matching the ExtractionFn contract:
@@ -110,6 +115,12 @@ def create_extraction_fn(
         ``openai.InternalServerError`` / ``openai.APIConnectionError`` are retried
         internally with exponential backoff (2s/4s/8s, 3 retries).
     """
+    # NOTE: ``kwargs`` is intentionally unused — it exists solely so that a caller
+    # passing a now-obsolete/extra keyword argument (e.g. an older UI layer calling
+    # ``create_extraction_fn(..., on_retry=...)`` against a newer signature, or a
+    # newer caller passing a not-yet-supported option) degrades gracefully instead of
+    # raising ``TypeError: unexpected keyword argument`` at runtime.
+    _ = kwargs
     agent = get_llm_agent(credential_store=credential_store)
 
     def extraction_fn(prompt: str) -> str:
