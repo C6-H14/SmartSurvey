@@ -1,4 +1,13 @@
-from core.synthesis import build_synthesis_prompt, render_survey_tex_with_llm, validate_latex_syntax, SECTION_TEMPLATES
+import openai
+from unittest.mock import patch
+
+from core.synthesis import (
+    build_synthesis_prompt,
+    render_survey_tex_with_llm,
+    render_survey_tex_multi_stage,
+    validate_latex_syntax,
+    SECTION_TEMPLATES,
+)
 
 
 def test_synthesis_prompt_has_math_constraint():
@@ -508,3 +517,71 @@ def test_compile_with_xelatex_importable():
     from core.synthesis import compile_with_xelatex
     assert callable(compile_with_xelatex)
 
+
+
+# ---- Gateway-transient retry at synthesis LLM-call sites ----
+
+def _make_internal_server_error():
+    import httpx
+    req = httpx.Request("POST", "http://example.com/v1/chat/completions")
+    resp = httpx.Response(500, request=req)
+    return openai.InternalServerError(
+        "Internal Server Error: upstream connect error", response=resp, body=None
+    )
+
+
+class FlakyGatewayExtractor:
+    """Raises InternalServerError for the first N calls, then returns valid LaTeX."""
+
+    def __init__(self, fail_calls: int):
+        self.fail_calls = fail_calls
+        self.call_count = 0
+        self.warnings: list[str] = []
+
+    def __call__(self, prompt: str) -> str:
+        self.call_count += 1
+        if self.call_count <= self.fail_calls:
+            raise _make_internal_server_error()
+        return (
+            r"\section{Abstract and Introduction}Gateway recovered."
+            r"\section{Conclusion}Done."
+        )
+
+
+def _capture_warning(on_retry_holder: list):
+    def hook(attempt, max_retries, wait, message, error):
+        on_retry_holder.append((attempt, max_retries, wait, message))
+    return hook
+
+
+def test_render_survey_recovers_from_gateway_error():
+    """Single-pass synthesis must retry transient gateway errors and recover."""
+    extractor = FlakyGatewayExtractor(fail_calls=2)
+    holder = []
+    with patch("core.agent.time.sleep"):
+        result = render_survey_tex_with_llm(
+            topic="t", rows=[], extraction_fn=extractor,
+            on_retry=_capture_warning(holder),
+        )
+    assert extractor.call_count == 3  # initial + 2 retries
+    assert r"\documentclass{ctexart}" in result
+    assert "recovered" in result
+    # warning hook was invoked with the friendly message
+    assert len(holder) == 2
+    assert "API 网关抖动" in holder[0][3]
+
+
+def test_render_survey_multi_stage_recovers_from_gateway_error():
+    """Multi-stage synthesis must retry transient gateway errors and recover."""
+    extractor = FlakyGatewayExtractor(fail_calls=1)
+    holder = []
+    with patch("core.agent.time.sleep"):
+        result = render_survey_tex_multi_stage(
+            topic="t", rows=[], extraction_fn=extractor,
+            on_retry=_capture_warning(holder),
+        )
+    # 6 sections; the first call fails once then recovers
+    assert extractor.call_count == 7  # 6 sections + 1 retry on first section
+    assert r"\end{document}" in result
+    assert len(holder) == 1
+    assert "重试" in holder[0][3]

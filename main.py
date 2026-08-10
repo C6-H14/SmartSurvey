@@ -70,7 +70,13 @@ def run_app() -> None:
             elif not credential_store.has_credentials():
                 st.error("Credentials are required. Please configure them in the sidebar.")
             else:
-                extraction_fn = create_extraction_fn(credential_store=credential_store)
+                def _streamlit_on_retry(attempt, max_retries, wait, message, error):
+                    st.warning(f"⚠️ {message}")
+
+                extraction_fn = create_extraction_fn(
+                    credential_store=credential_store,
+                    on_retry=_streamlit_on_retry,
+                )
                 progress_bar = st.progress(0)
                 status_text = st.empty()
 
@@ -110,6 +116,7 @@ def run_app() -> None:
                             topic, accepted, extraction_fn, blocked,
                             word_count_target=word_count_target,
                             progress_callback=_streamlit_progress_callback,
+                            on_retry=_streamlit_on_retry,
                         )
                 else:
                     artifacts = generate_artifacts(

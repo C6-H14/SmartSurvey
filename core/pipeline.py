@@ -68,11 +68,17 @@ def generate_llm_artifacts(
     blocked_warnings: list[str],
     word_count_target: int = 3000,
     progress_callback: Callable[[int, int, str, str], None] | None = None,
+    on_retry: Callable[[int, int, float, str, BaseException], None] | None = None,
 ) -> GeneratedArtifacts:
     """Generate artifacts with LLM-driven LaTeX synthesis.
 
     Dispatches to single-pass or multi-stage synthesis based on word_count_target.
     Falls back to template-based generation if synthesis produces empty output.
+
+    Args:
+        on_retry: Optional hook invoked before each gateway-transient retry so the
+            UI can surface a friendly warning (e.g. ``st.warning``). When ``None``
+            a friendly line is printed to the console.
     """
     # Dispatch: multi-stage for large word counts
     if word_count_target > 8000:
@@ -81,12 +87,14 @@ def generate_llm_artifacts(
             topic, rows, extraction_fn,
             word_count_target=word_count_target,
             progress_callback=progress_callback,
+            on_retry=on_retry,
         )
     else:
         survey_tex = render_survey_tex_with_llm(
             topic, rows, extraction_fn,
             word_count_target=word_count_target,
             progress_callback=progress_callback,
+            on_retry=on_retry,
         )
 
     # Fallback: if synthesis produced empty or broken output, use template
