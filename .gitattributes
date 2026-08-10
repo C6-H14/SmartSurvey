@@ -1,0 +1,6 @@
+# Batch files must keep CRLF line endings — cmd.exe mis-parses LF-only .bat files
+# (causes "X was unexpected at this time" / byte-truncation symptoms).
+*.bat text eol=crlf
+
+# Keep JSON/text as-is where applicable
+*.json text eol=lf

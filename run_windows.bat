@@ -37,7 +37,7 @@ if not defined PY_CMD (
 )
 
 if not defined PY_CMD (
-    echo [X] Python not found. Install Python 3.10+ (https://python.org) and check "Add to PATH".
+    echo [X] Python not found. Install Python 3.10+ from https://python.org and select "Add to PATH".
     goto :end
 )
 echo [OK] Using Python interpreter: %PY_CMD%
@@ -49,7 +49,7 @@ if errorlevel 1 (
     goto :end
 )
 
-for /f "delims=" %%v in ('%PY_CMD% -c "import sys; print('%d.%d' %% sys.version_info[:2])"') do set "PY_VERSION=%%v"
+for /f "delims=" %%v in ('%PY_CMD% -c "import sys; print(sys.version_info[0], sys.version_info[1], sep='.')"') do set "PY_VERSION=%%v"
 echo [OK] Python version: %PY_VERSION% (satisfies 3.10+)
 
 rem ---------------- 3. Create / reuse virtual env .venv ----------------
@@ -96,4 +96,4 @@ goto :end
 :end
 popd
 echo.
-pause
+pause

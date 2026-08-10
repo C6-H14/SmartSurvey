@@ -573,11 +573,19 @@
   - 内存渲染（generate_html）比写盘+回读更优：既省 IO，又天然杜绝容器路径泄露
   - 部署可复现性最佳验证 = 全新 venv 的 `pip install --dry-run` 完整解析 + `pip check` 一致
 
-## Hotfix — run_windows.bat UTF-8 byte-truncation
-- **Context:** `run_windows.bat` under Windows cmd.exe triggered UTF-8 byte truncation: cmd.exe reads batch files using the default code page byte-by-byte, and UTF-8 multibyte (Chinese) characters swallowed the following ASCII command char — turning `echo` into `cho` ('cho' is not recognized) and mangling `python`.
+## Hotfix — run_windows.bat 修复（UTF-8 截断 + 3 个运行时 Bug）
+- **Context:** `run_windows.bat` 在 Windows cmd.exe 下触发 UTF-8 字节截断：cmd.exe 按默认代码页逐字节读取批处理文件，UTF-8 多字节（中文）字符连带吞掉随后的 ASCII 命令字符——`echo` 变成 `cho`（'cho' 不是内部命令），并破坏 `python` 单词。
+- **根因（共 4 个，均在实机验证中发现）：**
+  1. **UTF-8 多字节字节截断**：批处理文件含中文，cmd.exe 逐字节解析错位。
+  2. **LF-only 行尾**：cmd.exe 要求批处理文件 CRLF，否则报 `and was unexpected at this time.` 解析错。
+  3. **if 块内字面括号**：第 40 行 `echo ... (https://python.org) and check ...` 位于 `if not defined PY_CMD ( ... )` 块内，字面 `(` 使 cmd.exe 误配对块尾 `)`，导致 `and was unexpected at this time.`（此 Bug 原被 UTF-8 Bug 掩盖）。
+  4. **版本号 `%d` 格式冲突**：第 52 行 `for /f ... print('%d.%d' %% ...)` 与批处理 `%%` 转义冲突，Python 抛 `TypeError`，`Python version:` 为空。
 - **Fix:**
-  - Converted ALL text in `run_windows.bat` (console `echo` + `rem` comments) to pure ASCII English → zero non-ASCII bytes (verified `grep -cP '[^\x00-\x7F]'` = 0), eliminating the root cause.
-  - Launch command set to `python -m streamlit run main.py`.
-- **Verification:** No UTF-8 BOM (first bytes `40 65 63 68` = `@ech`); 0 non-ASCII bytes; line 85 = `python -m streamlit run main.py`.
-- **Lessons learned:** Never put UTF-8 multibyte chars (Chinese/emoji) in a .bat file before/inside command lines — keep the entire file ASCII-only; `chcp 65001` alone does not protect command-line parsing because cmd.exe reads the file with the active code page incrementally.
-- **Commit:** `51d44fb` — "fix: ASCII-only run_windows.bat to avoid cmd.exe UTF-8 byte truncation [Subagent: Sonnet] [Manual: None]"
+  - 全文转为纯 ASCII 英文（`echo` + `rem` 注释），非 ASCII 字节归零。
+  - 行尾统一 CRLF（98 对 CRLF，0 bare-LF，无 BOM）。
+  - 第 40 行去掉 if 块内括号：`Install Python 3.10+ from https://python.org and select "Add to PATH".`
+  - 第 52 行改用 `sep='.'` 避免 `%`：`print(sys.version_info[0], sys.version_info[1], sep='.')`。
+  - 启动命令设为 `python -m streamlit run main.py`（第 85 行）。
+- **Verification（实机运行，native cmd.exe）：** 无 BOM；非 ASCII 字节 = 0；CRLF = 98；脚本端到端跑通——`[OK] Python version: 3.14`、依赖装好、Streamlit 成功启动于 http://localhost:8501，无 parse 错误、无 TypeError。
+- **Lessons learned:** ① .bat 文件须全 ASCII + CRLF，`chcp 65001` 保护不了命令解析；② `if ( ... )` 块内禁止字面括号（如需可 `^(` `^)` 转义或去掉）；③ `for /f` 内的 Python 一行式避免 `%` 格式符，用 `sep=`。
+- **Commit:** `51d44fb`（ASCII 修复）+ 后续（CRLF / 括号 / 版本号修复）—— 最终合入 `main`。
