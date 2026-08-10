@@ -92,6 +92,7 @@ def get_llm_agent(temperature: float = 0.2, credential_store: CredentialStore | 
 
 
 def create_extraction_fn(
+    agent: object | None = None,
     credential_store: CredentialStore | None = None,
     on_retry: Callable[[int, int, float, str, BaseException], None] | None = None,
     **kwargs: object,
@@ -99,7 +100,12 @@ def create_extraction_fn(
     """Create an extraction_fn that wires agent.py with real LLM calls.
 
     Args:
-        credential_store: Optional credential store; falls back to environment.
+        agent: Optional, already-built LLM agent (dependency injection / test seam).
+            Must expose an ``invoke(messages) -> response`` method whose response
+            has a ``.content`` attribute. When ``None`` a real agent is built via
+            ``get_llm_agent(credential_store=credential_store)``.
+        credential_store: Optional credential store used to build the agent when
+            ``agent`` is not supplied; falls back to environment.
         on_retry: Optional hook invoked before each gateway-transient retry so the
             UI can surface a friendly warning (e.g. ``st.warning``). When ``None``
             a friendly line is printed to the console.
@@ -121,7 +127,8 @@ def create_extraction_fn(
     # newer caller passing a not-yet-supported option) degrades gracefully instead of
     # raising ``TypeError: unexpected keyword argument`` at runtime.
     _ = kwargs
-    agent = get_llm_agent(credential_store=credential_store)
+    if agent is None:
+        agent = get_llm_agent(credential_store=credential_store)
 
     def extraction_fn(prompt: str) -> str:
         response = invoke_llm_with_retry(

@@ -170,3 +170,41 @@ def test_create_extraction_fn_tolerates_extra_kwargs():
             future_flag=True,                  # must NOT raise
         )
     assert callable(extraction_fn)
+
+# ---- New `agent=` DI seam + full run_app-style chain ----
+
+def test_create_extraction_fn_accepts_injected_agent():
+    """The new ``agent=`` dependency-injection seam must work end to end."""
+    mocked = _MockedLLM()  # .agent has invoke() -> fake AIMessage
+    with patch("core.agent.time.sleep"):
+        extraction_fn = create_extraction_fn(agent=mocked.agent, on_retry=None)
+        artifacts = generate_llm_artifacts(
+            "anomaly detection", [_make_row()], extraction_fn, [],
+            word_count_target=1000,
+            on_retry=None,
+        )
+    assert artifacts.survey_tex
+    assert r"\documentclass{ctexart}" in artifacts.survey_tex
+    mocked.agent.invoke.assert_called()
+
+
+def test_full_run_app_chain_with_on_retry_and_agent():
+    """Mimics main.run_app(): agent + on_retry at create, on_retry at artifacts."""
+    mocked = _MockedLLM()
+    warned: list[str] = []
+
+    def hook(attempt, max_retries, wait, message, error):
+        warned.append(message)
+
+    with patch("core.agent.time.sleep"):
+        extraction_fn = create_extraction_fn(agent=mocked.agent, on_retry=hook)
+        artifacts = generate_llm_artifacts(
+            "robotics review", [_make_row()], extraction_fn, [],
+            word_count_target=1000,
+            progress_callback=lambda *_: None,
+            on_retry=hook,
+        )
+    assert artifacts.survey_tex
+    # every retrieval went through invoke; no transient error -> no warnings
+    assert warned == []
+    assert mocked.agent.invoke.call_count >= 1
