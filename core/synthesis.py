@@ -21,6 +21,36 @@ def _strip_evidence_page_leaks(text: str) -> str:
     return re.sub(r'\(evidence_page=\d+\)', '', text)
 
 
+def _strip_orphan_english_sections(latex_source: str) -> str:
+    """Strip orphan English \\section{{...}} headers that appear immediately before
+    a Chinese \\section{{...}} header with equivalent semantics.
+
+    The LLM sometimes generates both an English section title (e.g.
+    ``\\section{{Systematic Review and Deep Critique}}'') followed by a Chinese
+    translation (``\\section{{系统评述与深度批判}}''). This function detects
+    such duplicates and removes the English version.
+
+    Detection strategy:
+    1. Find any ``\\section{{<English>}}'' followed (within 5 non-empty lines)
+       by ``\\section{{<Chinese>}}'' where <English> contains primarily ASCII
+       and <Chinese> contains CJK characters.
+    2. Remove the English \\section line entirely.
+
+    Args:
+        latex_source: Full LaTeX source.
+
+    Returns:
+        Cleaned LaTeX source with orphan English section headers removed.
+    """
+    # Pattern: matches \section{...} where content is primarily ASCII (English)
+    # followed by whitespace/newlines and then \section{...} with CJK content
+    english_section_re = re.compile(
+        r'(\\section\{[^}]*[A-Za-z]{4,}[^}]*\})\s*\n\s*\n+'
+        r'(?=\\section\{[^}]*[一-鿿][^}]*\})'
+    )
+    return english_section_re.sub('', latex_source)
+
+
 def validate_latex_syntax(latex_source: str) -> list[str]:
     """Validate LaTeX syntax with zero-dependency stack scanning.
 
@@ -231,14 +261,14 @@ def build_synthesis_prompt(
         f"Replace any English paper title with a Chinese-translated label like "
         f"`[3] 基于动态人体工程与自适应决策的人机协作框架`. "
         f"NEVER output unbreakable long English titles that overflow the A4 page margin.\n"
-        f"4. Then include EXACTLY these six sections:\n"
-        f"   \\section{{Abstract and Introduction}}\n"
-        f"   \\section{{Technical Taxonomy}}\n"
-        f"   \\section{{Systematic Review and Deep Critique}}\n"
-        f"   \\section{{Academic Comparison Matrix}}\n"
-        f"   \\section{{Research Gaps and Future Work}}\n"
-        f"   \\section{{Conclusion}}\n"
-        f"5. The \\section{{Academic Comparison Matrix}} must use \\begin{{description}} environment. "
+        f"4. Then include EXACTLY these six sections (CHINESE-ONLY \\section{{}} headers):\n"
+        f"   \\section{{摘要与引言}}\n"
+        f"   \\section{{技术分类体系}}\n"
+        f"   \\section{{系统评述与深度批判}}\n"
+        f"   \\section{{学术对比矩阵}}\n"
+        f"   \\section{{研究缺口与未来工作}}\n"
+        f"   \\section{{结论}}\n"
+        f"5. The \\section{{学术对比矩阵}} must use \\begin{{description}} environment. "
         f"Each paper is a \\item[\\textbf{{N. Title (Year)：}}] with structured paragraphs "
         f"(\\textbf{{技术方法：}}, \\textbf{{关键优势：}}, \\textbf{{核心局限：}}). "
         f"Do NOT use tabular, tabularx, or booktabs environments.\n"
@@ -253,7 +283,7 @@ def build_synthesis_prompt(
         f"error metrics, loss functions, or mathematical formulations. "
         f"This is essential for academic rigor.\n"
         f"13. CRITICAL — CROSS-PAPER DIALECTICAL CONTRADICTION ANALYSIS: "
-        f"In the \\section{{Systematic Review and Deep Critique}} and \\section{{Research Gaps and Future Work}}, "
+        f"In the \\section{{系统评述与深度批判}} and \\section{{研究缺口与未来工作}}, "
         f"you MUST explicitly identify and analyze conflicting claims or methodological trade-offs "
         f"between different papers. For example: \"论文 A 主张多模态融合能显著提升空间感知精度，"
         f"而论文 B 的实验数据则证明多模态数据同步会导致边缘端延迟暴增 40\\%，形成精度与实时性的尖锐矛盾。\" "
@@ -262,7 +292,7 @@ def build_synthesis_prompt(
         f"SECTION GUIDANCE:\n"
         f"{section_guidance_block}\n\n"
         f"CRITICAL: Your output must start with \\title{{...}} on the very first line,\n"
-        f"    followed by \\section{{Abstract and Introduction}}.\n"
+        f"    followed by \\section{{摘要与引言}}.\n"
         f"    Do NOT output \\documentclass, any preamble commands, \\begin{{document}}, or \\end{{document}}.\n"
         f"    These are injected by the system automatically.\n"
     )
@@ -345,6 +375,8 @@ def render_survey_tex_with_llm(
 
         # Strip RAG thinking-chain leaks before returning
         wrapped = _strip_evidence_page_leaks(wrapped)
+        # Strip orphan English section headers that precede Chinese equivalents
+        wrapped = _strip_orphan_english_sections(wrapped)
 
         errors = validate_latex_syntax(wrapped)
 
@@ -393,6 +425,15 @@ def _build_preamble() -> str:
 
 
 SECTION_NAMES = [
+    "摘要与引言",
+    "技术分类体系",
+    "系统评述与深度批判",
+    "学术对比矩阵",
+    "研究缺口与未来工作",
+    "结论",
+]
+
+ENGLISH_SECTION_NAMES = [
     "Abstract and Introduction",
     "Technical Taxonomy",
     "Systematic Review and Deep Critique",
@@ -403,7 +444,7 @@ SECTION_NAMES = [
 
 SECTION_TEMPLATES: list[dict] = [
     {
-        "name": "Abstract and Introduction",
+        "name": "摘要与引言",
         "weight": "heavy",
         "guidance": (
             "根据综述主题【{topic}】编写相关的研究背景、核心应用价值、"
@@ -414,7 +455,7 @@ SECTION_TEMPLATES: list[dict] = [
         ),
     },
     {
-        "name": "Technical Taxonomy",
+        "name": "技术分类体系",
         "weight": "light",
         "guidance": (
             "根据对比矩阵中各文献的方法特征，针对主题【{topic}】"
@@ -424,7 +465,7 @@ SECTION_TEMPLATES: list[dict] = [
         ),
     },
     {
-        "name": "Systematic Review and Deep Critique",
+        "name": "系统评述与深度批判",
         "weight": "heavy",
         "guidance": (
             "针对下方 rows 中校验通过的文献，结合主题【{topic}】进行深入、批判性的横向评述。"
@@ -436,7 +477,7 @@ SECTION_TEMPLATES: list[dict] = [
         ),
     },
     {
-        "name": "Academic Comparison Matrix",
+        "name": "学术对比矩阵",
         "weight": "light",
         "guidance": (
             "针对综述主题【{topic}】，使用 \\begin{{description}} 结构化列表环境，"
@@ -447,7 +488,7 @@ SECTION_TEMPLATES: list[dict] = [
         ),
     },
     {
-        "name": "Research Gaps and Future Work",
+        "name": "研究缺口与未来工作",
         "weight": "heavy",
         "guidance": (
             "从上述已验证的局限性出发，归纳当前在【{topic}】场景下面临的"
@@ -460,7 +501,7 @@ SECTION_TEMPLATES: list[dict] = [
         ),
     },
     {
-        "name": "Conclusion",
+        "name": "结论",
         "weight": "light",
         "guidance": (
             "总结全文核心发现，概括【{topic}】领域当前的研究状态"
@@ -611,6 +652,8 @@ def render_survey_tex_multi_stage(
 
     # Strip RAG thinking-chain leaks
     result = _strip_evidence_page_leaks(result)
+    # Strip orphan English section headers that precede Chinese equivalents
+    result = _strip_orphan_english_sections(result)
 
     # Inject \maketitle after \title{...} so the title renders in the PDF
     title_match = re.search(r'(\\title\{.+?\})', result)

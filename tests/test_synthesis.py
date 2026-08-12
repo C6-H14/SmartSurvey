@@ -7,6 +7,7 @@ from core.synthesis import (
     render_survey_tex_multi_stage,
     validate_latex_syntax,
     SECTION_TEMPLATES,
+    SECTION_NAMES,
 )
 
 
@@ -70,12 +71,12 @@ def test_build_synthesis_prompt_contains_topic_and_rows():
     assert "anomaly detection" in prompt
     assert "Paper A" in prompt
     assert "ctexart" in prompt
-    assert "\\section{Abstract and Introduction}" in prompt
-    assert "\\section{Technical Taxonomy}" in prompt
-    assert "\\section{Systematic Review and Deep Critique}" in prompt
-    assert "\\section{Academic Comparison Matrix}" in prompt
-    assert "\\section{Research Gaps and Future Work}" in prompt
-    assert "\\section{Conclusion}" in prompt
+    assert "\\section{摘要与引言}" in prompt
+    assert "\\section{技术分类体系}" in prompt
+    assert "\\section{系统评述与深度批判}" in prompt
+    assert "\\section{学术对比矩阵}" in prompt
+    assert "\\section{研究缺口与未来工作}" in prompt
+    assert "\\section{结论}" in prompt
     assert "Return ONLY valid LaTeX" in prompt or "Return only" in prompt.lower()
 
 
@@ -94,17 +95,17 @@ class ValidLaTeXExtractor:
     def __call__(self, prompt: str) -> str:
         self.call_count += 1
         return (
-            r"\section{Abstract and Introduction}This is a test review."
-            r"\section{Technical Taxonomy}Categories here."
-            r"\section{Systematic Review and Deep Critique}Critique with evidence."
-            r"\section{Academic Comparison Matrix}\begin{description}"
+            r"\section{摘要与引言}This is a test review."
+            r"\section{技术分类体系}Categories here."
+            r"\section{系统评述与深度批判}Critique with evidence."
+            r"\section{学术对比矩阵}\begin{description}"
             r"\item[\textbf{1. Paper A (2024)：}] \hfill \\"
             r"\textbf{技术方法：}vision \\"
             r"\textbf{关键优势：}fast \\"
             r"\textbf{核心局限：}lighting"
             r"\end{description}"
-            r"\section{Research Gaps and Future Work}Future directions."
-            r"\section{Conclusion}Summary."
+            r"\section{研究缺口与未来工作}Future directions."
+            r"\section{结论}Summary."
         )
 
 
@@ -134,7 +135,7 @@ def test_render_survey_tex_with_llm_valid():
     )
     # Result must be valid LaTeX regardless of retries
     assert r"\documentclass{ctexart}" in result
-    assert r"\section{Abstract and Introduction}" in result
+    assert r"\section{摘要与引言}" in result
     # At minimum, the LLM was called once
     assert extractor.call_count >= 1
 
@@ -235,12 +236,12 @@ def test_render_survey_tex_multi_stage_returns_valid_latex():
         def __init__(self):
             self.call_count = 0
             self.sections = [
-                r"\section{Abstract and Introduction}Test abstract content.",
-                r"\section{Technical Taxonomy}Test taxonomy.",
-                r"\section{Systematic Review and Deep Critique}Test critique.",
-                r"\section{Academic Comparison Matrix}Test matrix.",
-                r"\section{Research Gaps and Future Work}Test gaps.",
-                r"\section{Conclusion}Test conclusion.",
+                r"\section{摘要与引言}Test abstract content.",
+                r"\section{技术分类体系}Test taxonomy.",
+                r"\section{系统评述与深度批判}Test critique.",
+                r"\section{学术对比矩阵}Test matrix.",
+                r"\section{研究缺口与未来工作}Test gaps.",
+                r"\section{结论}Test conclusion.",
             ]
         def __call__(self, prompt: str) -> str:
             result = self.sections[self.call_count]
@@ -262,8 +263,8 @@ def test_render_survey_tex_multi_stage_returns_valid_latex():
 
     # Must have preamble + 6 sections + \end{document}
     assert r"\documentclass{ctexart}" in result
-    assert r"\section{Abstract and Introduction}" in result
-    assert r"\section{Conclusion}" in result
+    assert r"\section{摘要与引言}" in result
+    assert r"\section{结论}" in result
     assert r"\end{document}" in result
     # Must have called LLM exactly 6 times
     assert extractor.call_count == 6
@@ -331,7 +332,7 @@ def test_render_survey_tex_with_llm_has_preamble_wrap():
     class ContentOnlyExtractor:
         def __call__(self, prompt: str) -> str:
             # LLM output starts directly with \section (no preamble)
-            return r"\section{Abstract and Introduction}Test content."
+            return r"\section{摘要与引言}Test content."
 
     result = render_survey_tex_with_llm(
         topic="test",
@@ -344,7 +345,7 @@ def test_render_survey_tex_with_llm_has_preamble_wrap():
     assert r"\usepackage[paper=a4paper, margin=1.8cm]{geometry}" in result
     assert r"\usepackage{amsmath}" in result
     # Must have the LLM content
-    assert r"\section{Abstract and Introduction}" in result
+    assert r"\section{摘要与引言}" in result
     # Must have \end{document}
     assert r"\end{document}" in result
 
@@ -544,8 +545,8 @@ class FlakyGatewayExtractor:
             raise _make_internal_server_error()
         return (
             r"\title{测试综述标题}" + "\n"
-            r"\section{Abstract and Introduction}Gateway recovered." + "\n"
-            r"\section{Conclusion}Done."
+            r"\section{摘要与引言}Gateway recovered." + "\n"
+            r"\section{结论}Done."
         )
 
 

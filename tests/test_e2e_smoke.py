@@ -23,17 +23,17 @@ from core.synthesis import render_survey_tex_with_llm
 
 
 VALID_LATEX = (
-    r"\section{Abstract and Introduction}Intro text."
-    r"\section{Technical Taxonomy}Taxonomy text."
-    r"\section{Systematic Review and Deep Critique}Critique text."
-    r"\section{Academic Comparison Matrix}\begin{description}"
+    r"\section{摘要与引言}Intro text."
+    r"\section{技术分类体系}Taxonomy text."
+    r"\section{系统评述与深度批判}Critique text."
+    r"\section{学术对比矩阵}\begin{description}"
     r"\item[\textbf{1. Paper A (2024)：}] \hfill \\"
     r"\textbf{技术方法：}method \\"
     r"\textbf{关键优势：}fast \\"
     r"\textbf{核心局限：}limit"
     r"\end{description}"
-    r"\section{Research Gaps and Future Work}Gaps text."
-    r"\section{Conclusion}Done."
+    r"\section{研究缺口与未来工作}Gaps text."
+    r"\section{结论}Done."
 )
 
 

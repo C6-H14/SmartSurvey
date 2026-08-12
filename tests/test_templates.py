@@ -38,8 +38,8 @@ def test_render_survey_has_required_sections():
     output = render_survey_tex("test topic", sample_rows())
 
     assert "\\documentclass{ctexart}" in output
-    assert "\\section{Abstract and Introduction}" in output
-    assert "\\section{Conclusion}" in output
+    assert "\\section{摘要与引言}" in output
+    assert "\\section{结论}" in output
 
 
 def test_render_markdown_preview_contains_evidence():
