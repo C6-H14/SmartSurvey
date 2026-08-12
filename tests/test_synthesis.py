@@ -429,17 +429,36 @@ def test_cjk_bracket_detection_error_precision():
 
 
 def test_evidence_page_leak_stripped():
-    """evidence_page= residuals must be stripped from final output."""
+    """evidence_page= residuals must be stripped from final output — all bracket variants."""
     from core.synthesis import _strip_evidence_page_leaks
 
-    # evidence_page= leak patterns
+    # Round brackets
     dirty = (
         r"\section{Test}Some text (evidence_page=2) more text "
         r"(evidence_page=5) and (evidence_page=42) end."
     )
     clean = _strip_evidence_page_leaks(dirty)
-    assert "(evidence_page=" not in clean
-    assert "Some text  more text  and  end." == clean or "Some text  more text  and  end." in clean
+    assert "evidence_page" not in clean
+
+    # Full-width parentheses （ ）— common LLM hallucination
+    assert "evidence_page" not in _strip_evidence_page_leaks(
+        r"该方法存在局限性（evidence_page=17）。"
+    )
+
+    # Square brackets [ ]
+    assert "evidence_page" not in _strip_evidence_page_leaks(
+        r"该方法存在局限性[evidence_page = 3]。"
+    )
+
+    # CJK corner brackets 【 】
+    assert "evidence_page" not in _strip_evidence_page_leaks(
+        r"该方法存在局限性【evidence_page=21】。"
+    )
+
+    # Mixed whitespace tolerance
+    assert "evidence_page" not in _strip_evidence_page_leaks(
+        r"text ( evidence_page = 7 ) more text"
+    )
 
 
 def test_prompt_forbids_evidence_page():
@@ -518,6 +537,101 @@ def test_compile_with_xelatex_importable():
     from core.synthesis import compile_with_xelatex
     assert callable(compile_with_xelatex)
 
+
+# ---- Bibliography auto-injection ----
+
+def test_inject_bibliography_adds_before_end_document():
+    """_inject_bibliography must insert thebibliography before \end{document}."""
+    from core.synthesis import _inject_bibliography
+
+    source = r"\section{结论}Done." + "\n" + r"\end{document}" + "\n"
+    result = _inject_bibliography(source)
+
+    assert r"\begin{thebibliography}{99}" in result
+    assert r"\bibitem{bergmann2022}" in result
+    assert r"\bibitem{costanzino2023}" in result
+    assert r"\bibitem{iodice2025}" in result
+    assert r"\bibitem{soudani2026}" in result
+    assert r"\end{thebibliography}" in result
+    assert r"\end{document}" in result
+    assert result.index(r"\begin{thebibliography}") < result.index(r"\end{document}")
+
+
+def test_inject_bibliography_idempotent():
+    """_inject_bibliography must NOT double-inject if already present."""
+    from core.synthesis import _inject_bibliography
+
+    source = (
+        r"\section{结论}Done." + "\n"
+        + r"\begin{thebibliography}{99}" + "\n"
+        + r"\bibitem{test}Test." + "\n"
+        + r"\end{thebibliography}" + "\n"
+        + r"\end{document}" + "\n"
+    )
+    result = _inject_bibliography(source)
+
+    assert result.count(r"\begin{thebibliography}") == 1
+
+
+def test_inject_bibliography_skips_if_printbibliography():
+    """_inject_bibliography must skip if \printbibliography is present."""
+    from core.synthesis import _inject_bibliography
+
+    source = (
+        r"\section{结论}Done." + "\n"
+        + r"\printbibliography" + "\n"
+        + r"\end{document}" + "\n"
+    )
+    result = _inject_bibliography(source)
+
+    assert r"\begin{thebibliography}" not in result
+
+
+def test_synthesis_output_contains_bibliography():
+    """Single-pass synthesis output must include auto-injected bibliography."""
+    from core.synthesis import render_survey_tex_with_llm
+
+    class BibTestExtractor:
+        def __call__(self, prompt: str) -> str:
+            return r"\title{测试综述}" + "\n" + r"\section{结论}Done."
+
+    result = render_survey_tex_with_llm(
+        topic="test", rows=[], extraction_fn=BibTestExtractor(),
+    )
+    assert r"\begin{thebibliography}{99}" in result
+    assert r"\bibitem{bergmann2022}" in result
+    assert r"\end{thebibliography}" in result
+
+
+# ---- Math operator cleaning ----
+
+def test_clean_math_operators_replaces_or_with_lor():
+    """_clean_math_operators must replace italic 'or' with \\lor inside math mode."""
+    from core.synthesis import _clean_math_operators
+
+    # Inline math
+    assert r"\lor" in _clean_math_operators(r"$x > 0 \text{ or } y < 0$")
+    assert r"$x > 0 \text{ \lor } y < 0$" in _clean_math_operators(r"$x > 0 \text{ or } y < 0$")
+
+    # Display math
+    assert r"\lor" in _clean_math_operators(r"$$a \text{ or } b$$")
+
+    # Whole-word only: "for" and "work" must NOT be changed
+    result = _clean_math_operators(r"$for each x, work or factor$")
+    assert "for" in result
+    assert "work" in result
+    assert r"\lor" in result  # but isolated "or" IS replaced
+    assert "factor" in result
+
+
+def test_clean_math_operators_preserves_non_math_or():
+    """_clean_math_operators must NOT replace 'or' outside math mode."""
+    from core.synthesis import _clean_math_operators
+
+    text = r"This or that sentence in English. $x = a \lor b$ formula."
+    result = _clean_math_operators(text)
+    assert "This or that" in result  # unchanged — outside math
+    assert r"\lor" in result  # already present, preserved
 
 
 # ---- Gateway-transient retry at synthesis LLM-call sites ----

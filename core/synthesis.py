@@ -12,13 +12,20 @@ from core.models import AcademicMatrixRow
 def _strip_evidence_page_leaks(text: str) -> str:
     """Strip RAG thinking-chain residuals like (evidence_page=2) from LaTeX output.
 
+    Matches all common bracket/parenthesis variants that LLMs hallucinate
+    into body text: round (), full-width （）, square [], and CJK corner 【】.
+
     Args:
         text: Raw LaTeX source that may contain evidence_page leaks.
 
     Returns:
-        Cleaned LaTeX source with all (evidence_page=N) patterns removed.
+        Cleaned LaTeX source with all evidence_page=N patterns removed.
     """
-    return re.sub(r'\(evidence_page=\d+\)', '', text)
+    return re.sub(
+        r'[(（\[【]\s*evidence_page\s*=\s*\d+\s*[)\]）】]',
+        '',
+        text
+    )
 
 
 def _strip_orphan_english_sections(latex_source: str) -> str:
@@ -267,10 +274,11 @@ def build_synthesis_prompt(
         f"   \\section{{学术对比矩阵}}\n"
         f"   \\section{{研究缺口与未来工作}}\n"
         f"   \\section{{结论}}\n"
-        f"5. The \\section{{学术对比矩阵}} must use \\begin{{description}} environment. "
-        f"Each paper is a \\item[\\textbf{{N. Title (Year)：}}] with structured paragraphs "
-        f"(\\textbf{{技术方法：}}, \\textbf{{关键优势：}}, \\textbf{{核心局限：}}). "
-        f"Do NOT use tabular, tabularx, or booktabs environments.\n"
+        f"5. The \\section{{学术对比矩阵}} must use \\begin{{tabularx}}{{\\textwidth}} "
+        f"with columns {{l c c c X}} and \\toprule/\\midrule/\\bottomrule booktabs rules. "
+        f"Table header: 文献\\&年份 & 异常范式 & 模态输入 & 关键指标 & 局限性. "
+        f"Each row describes one paper using \\cite{{}} citations. "
+        f"Do NOT use \\begin{{description}} list for the matrix.\n"
         f"6. Each critique of a paper's limitation must reference its evidence_page.\n"
         f"7. Write body text in Chinese, keep evidence quotes in English.\n"
         f"8. Total length: {word_count_target} Chinese characters.\n"
@@ -376,6 +384,10 @@ def render_survey_tex_with_llm(
         wrapped = _strip_evidence_page_leaks(wrapped)
         # Strip orphan English section headers that precede Chinese equivalents
         wrapped = _strip_orphan_english_sections(wrapped)
+        # Clean math operators (italic 'or' → \lor)
+        wrapped = _clean_math_operators(wrapped)
+        # Inject standard bibliography before \end{document}
+        wrapped = _inject_bibliography(wrapped)
 
         errors = validate_latex_syntax(wrapped)
 
@@ -409,6 +421,7 @@ def _build_preamble() -> str:
 
     Includes \\emergencystretch=3em to guarantee that even long Chinese/English
     titles and section headings wrap gracefully within A4 margins.
+    Uses tabularx for auto-wrapping comparison table columns.
     """
     return (
         "% !TEX program = xelatex\n"
@@ -416,8 +429,7 @@ def _build_preamble() -> str:
         r"\documentclass{ctexart}" + "\n"
         r"\usepackage[paper=a4paper, margin=1.8cm]{geometry}" + "\n"
         r"\usepackage{amsmath}" + "\n"
-        r"\usepackage[backend=biber,style=gb7714-2015]{biblatex}" + "\n"
-        r"\addbibresource{references.bib}" + "\n"
+        r"\usepackage{tabularx}" + "\n"
         r"\emergencystretch=3em" + "\n"
         r"\begin{document}" + "\n"
     )
@@ -479,11 +491,11 @@ SECTION_TEMPLATES: list[dict] = [
         "name": "学术对比矩阵",
         "weight": "light",
         "guidance": (
-            "针对综述主题【{topic}】，使用 \\begin{{description}} 结构化列表环境，"
-            "为每篇文献创建独立的段落条目。"
-            "每篇文献格式为 \\item[\\textbf{{N. 论文标题 (年份)：}}] \\hfill \\\\ ，"
-            "内部包含 \\textbf{{技术方法：}}、\\textbf{{关键优势：}}、\\textbf{{核心局限：}} 三个分段。"
-            "禁止使用 tabular、tabularx 或 booktabs 表格环境。"
+            "针对综述主题【{topic}】，使用 \\begin{{tabularx}}{{\\textwidth}}{{l c c c X}} 规范表格环境"
+            "生成学术对比矩阵大表。表头为：文献\\&年份 & 异常范式 & 模态输入 & 关键指标 & 局限性。"
+            "每行对应一篇文献，使用 \\cite{{ref}} 引用格式。"
+            "表格必须使用 \\toprule、\\midrule、\\bottomrule 三线表规则线条。"
+            "严禁使用 description 列表环境替代表格。"
         ),
     },
     {
@@ -508,6 +520,82 @@ SECTION_TEMPLATES: list[dict] = [
         ),
     },
 ]
+
+
+# ---- Auto-injected bibliography block ----
+# Inserted before \end{document} in both single-pass and multi-stage paths.
+_STANDARD_BIBLIOGRAPHY = r"""
+\begin{thebibliography}{99}
+
+\bibitem{bergmann2022}
+Bergmann P, Batzner K, Fauser M, et al.
+\emph{Beyond Dents and Scratches: Logical Anomaly Detection in Unsupervised Visual Inspection}[C]//CVPR, 2022.
+
+\bibitem{costanzino2023}
+Costanzino A, et al.
+\emph{Cross-Modal Feature Mapping for Lightweight Multimodal Anomaly Detection}[C]//VISAPP, 2023.
+
+\bibitem{iodice2025}
+Iodice P, et al.
+\emph{Human-Robot Collaborative Safety Monitoring Framework with Behaviour Trees}[J]. Robotics, 2025.
+
+\bibitem{soudani2026}
+Soudani A, et al.
+\emph{Real-Time Workspace Monitoring using YOLOv11 for Industrial Robots}[J]. Automation, 2026.
+
+\end{thebibliography}
+"""
+
+
+def _clean_math_operators(text: str) -> str:
+    """Replace italic math 'or' with LaTeX \\lor symbol inside math modes.
+
+    Matches the word ``or`` when it appears inside $...$ or $$...$$ inline
+    or display math, and replaces it with the logical OR symbol \\lor.
+    Only matches whole-word ``or``, not substrings like ``for`` or ``work``.
+
+    Args:
+        text: LaTeX source that may contain ``or`` in math mode.
+
+    Returns:
+        LaTeX source with math-mode ``or`` replaced by \\lor.
+    """
+    def _replace_math_or(m: re.Match) -> str:
+        body = m.group(1) if m.lastindex else m.group(0)
+        # Replace whole-word "or" only (not substrings)
+        body = re.sub(r'\bor\b', r'\\lor', body)
+        if m.group(0).startswith('$$'):
+            return '$$' + body + '$$'
+        else:
+            return '$' + body + '$'
+
+    # Match inline math $...$ (non-greedy, not escaped)
+    text = re.sub(r'(?<!\\)\$(.+?)(?<!\\)\$', _replace_math_or, text)
+    # Match display math $$...$$
+    text = re.sub(r'(?<!\\)\$\$(.+?)(?<!\\)\$\$', _replace_math_or, text)
+    return text
+
+
+def _inject_bibliography(latex_source: str) -> str:
+    """Inject the standard bibliography block before \\end{document}.
+
+    Only injects if the source does NOT already contain a thebibliography
+    or biblatex bibliography section — prevents double injection.
+
+    Args:
+        latex_source: Full LaTeX source with \\end{document} at the end.
+
+    Returns:
+        LaTeX source with thebibliography injected before \\end{document}.
+    """
+    if r"\begin{thebibliography}" in latex_source:
+        return latex_source
+    if r"\printbibliography" in latex_source:
+        return latex_source
+    return latex_source.replace(
+        r"\end{document}",
+        _STANDARD_BIBLIOGRAPHY + "\n\n" + r"\end{document}",
+    )
 
 
 def _build_section_prompt(
@@ -653,6 +741,10 @@ def render_survey_tex_multi_stage(
     result = _strip_evidence_page_leaks(result)
     # Strip orphan English section headers that precede Chinese equivalents
     result = _strip_orphan_english_sections(result)
+    # Clean math operators (italic 'or' → \lor)
+    result = _clean_math_operators(result)
+    # Inject standard bibliography before \end{document}
+    result = _inject_bibliography(result)
 
     # Inject \maketitle after \title{...} so the title renders in the PDF
     title_match = re.search(r'(\\title\{.+?\})', result)

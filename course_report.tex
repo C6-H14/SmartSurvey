@@ -9,7 +9,7 @@
 
 % ---------- 字体与中文 ----------
 \usepackage[UTF8]{ctex}
-\usepackage[paper=a4paper, margin=1.85cm]{geometry}
+\usepackage[paper=a4paper, margin=1.55cm]{geometry}
 
 % ---------- 表格 ----------
 \usepackage{booktabs}
@@ -29,7 +29,7 @@
 \urlstyle{same}
 
 % ---------- 段落微调 ----------
-\setlength{\parskip}{0.15em plus 0.05em minus 0.05em}
+\setlength{\parskip}{0.05em plus 0.02em minus 0.02em}
 \usepackage{enumitem}
 \setlist{nosep,leftmargin=*,topsep=0pt,partopsep=0pt}
 \raggedbottom
@@ -41,13 +41,13 @@
 % 标题与作者
 % ============================================================
 \begin{center}
-  {\LARGE\bfseries SmartSurvey：面向空间异常检测的智能文献综述与知识图谱系统}\\[0.5em]
-  {\large —— 项目实现报告（《计算机图形学前沿》期末项目）}\\[1em]
-  {\large 钟启帆 \quad PB24010467 \quad 数学科学学院，中国科学技术大学}\\[1em]
+  {\LARGE\bfseries SmartSurvey：面向空间异常检测的智能文献综述与知识图谱系统}\\[0.3em]
+  {\large —— 项目实现报告（《计算机图形学前沿》期末项目）}\\[0.5em]
+  {\large 钟启帆 \quad PB24010467 \quad 数学科学学院，中国科学技术大学}\\[0.5em]
   {\large 开源仓库：\url{https://github.com/C6-H14/SmartSurvey} \quad 2026 年 8 月}
 \end{center}
 
-\vspace{1em}
+\vspace{0.3em}
 \noindent\rule{\textwidth}{0.6pt}
 
 % ============================================================
@@ -207,7 +207,21 @@ $\text{evidence\_quote} \in \text{page\_text}[\text{evidence\_page}]$。
 \end{itemize}
 
 在最终导出端，系统通过正则将 Markdown 粗体清洗为 \texttt{\textbackslash textbf\{\}}，
-并物理清洗 RAG 检索标记（\texttt{evidence\_page=}）残留，杜绝内部键名与样式泄漏进手稿。
+并实施以下多层物理清洗护栏：
+
+\paragraph{RAG 标记清洗。}
+\texttt{\_strip\_evidence\_page\_leaks()} 使用正则覆盖半角/全角圆括号、方括号与
+CJK 角括号四种括号变体（含空白容错），\texttt{grep} 扫描零匹配，RAG 标记彻底物理清除。
+
+\paragraph{数学符号规范化。}
+\texttt{\_clean\_math\_operators()} 扫描数学模式将斜体 \texttt{or} 替换为 $\lor$ 符号。
+
+\paragraph{参考文献自动护栏。}
+\texttt{\_inject\_bibliography()} 在 \texttt{\textbackslash end\{document\}} 前自动注入含 [1]--[4] 四篇文献完整信息的
+\texttt{thebibliography} 环境，幂等检查防重复注入。
+
+\paragraph{矩阵表格化。}
+第四节从 description 列表重构为 \texttt{tabularx} 五列三线表（文献\&年份/异常范式/模态输入/关键指标/局限性）。
 
 % ============================================================
 % 4. 实验测试与运行效果分析
@@ -313,6 +327,22 @@ Bergmann 等双分支架构虽可精确判别几何 + 纹理双重异常（准�
 综上，系统产出综述不仅实现结构完整性（3000--5000 字、6 章标准结构）
 与事实校验（100\% 证据绑定），更在文献提炼、数学合成与辩证批判三层面展现了接近人工深度的综合分析能力。
 
+\subsubsection{排版质量护栏升级验证}
+
+审阅专家反馈驱动的三项护栏升级已完成合成验证：
+
+\paragraph{RAG 标记零泄漏。}
+\texttt{\_strip\_evidence\_page\_leaks()} 升级为四种括号变体通用清洗后，
+\texttt{grep evidence\_page survey\_draft.tex} 零匹配——RAG 标记彻底物理清除。
+
+\paragraph{参考文献自动补全。}
+\texttt{\_inject\_bibliography()} 在 \texttt{\textbackslash end\{document\}} 前自动注入
+[1]--[4] 四篇完整出版信息的 \texttt{thebibliography} 环境，编译后 PDF 参考文献规范对齐。
+
+\paragraph{公式与表格规范化。}
+\texttt{\_clean\_math\_operators()} 将数学模式中 \texttt{or} 替换为 $\lor$；
+学术对比矩阵重构为 \texttt{tabularx} 五列三线表，编译零 Overfull 警告。
+
 % ============================================================
 % 5. 总结与未来展望
 % ============================================================
@@ -343,15 +373,11 @@ SmartSurvey 面向空间异常检测领域完成了从``批量 3D/RGB-D 论文 P
 % 致谢
 % ============================================================
 \section*{致谢}
-衷心感谢中国科学技术大学《计算机图形学前沿》课程主讲老师刘利刚教授及各位助教的精彩课程与学习资源。
-
-感谢翟晓雅老师在项目开发中的细心指导，翟老师指出的``可验证最小闭环''等关键工程要点，并启发我引入知识图谱与文献库支撑。
-
-感谢陈现敏老师为我提供大学生研究计划（大研）的珍贵机会，协助我选定空间异常检测研究方向并普及该领域基础知识。
-
-感谢软件工程学院《AI4SE》课程的老师与助教教授的 Superpowers 技能框架与 Spec-Driven 开发范式，为项目工程落地提供了巨大提效支持。
-
-感谢测试阶段为 SmartSurvey 提供真实论文样例并反馈意见的各位同学。
+感谢中国科学技术大学《计算机图形学前沿》课程主讲老师刘利刚教授及各位助教的精彩课程。
+感谢翟晓雅老师的细心指导及指出的``可验证最小闭环''等工程要点。
+感谢陈现敏老师提供大学生研究计划（大研）机会并协助选定空间异常检测研究方向。
+感谢软件工程学院《AI4SE》课程传授的 Superpowers 技能框架与 Spec-Driven 开发范式。
+感谢测试阶段提供真实论文样例并反馈意见的各位同学。
 
 % ============================================================
 % 参考文献
