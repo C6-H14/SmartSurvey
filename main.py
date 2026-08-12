@@ -175,10 +175,47 @@ def run_app() -> None:
                     # surface a friendly hint instead of a red-screen stack trace.
                     st.error(APITIMEOUT_ERROR_MESSAGE)
                 else:
-                    st.markdown(artifacts.markdown_preview)
-                    st.download_button("Download survey_draft.tex", artifacts.survey_tex, "survey_draft.tex")
-                    st.download_button("Download matrix_table.tex", artifacts.matrix_table_tex, "matrix_table.tex")
-                    st.download_button("Download references.bib", artifacts.references_bib, "references.bib")
+                    # Persist artifacts in session_state so the download zone
+                    # survives Streamlit reruns (e.g., when a download button is clicked).
+                    st.session_state["artifacts"] = {
+                        "survey_tex": artifacts.survey_tex,
+                        "matrix_table_tex": artifacts.matrix_table_tex,
+                        "references_bib": artifacts.references_bib,
+                        "markdown_preview": artifacts.markdown_preview,
+                    }
+
+    # ── Download zone: rendered from session_state so it persists across reruns ──
+    if "artifacts" in st.session_state:
+        artifacts = st.session_state["artifacts"]
+        st.markdown("---")
+        st.markdown(artifacts["markdown_preview"])
+
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.download_button(
+                "📄 下载 LaTeX 综述手稿",
+                artifacts["survey_tex"],
+                "survey_draft.tex",
+                use_container_width=True,
+            )
+        with col2:
+            st.download_button(
+                "📊 下载对比矩阵表格",
+                artifacts["matrix_table_tex"],
+                "matrix_table.tex",
+                use_container_width=True,
+            )
+        with col3:
+            st.download_button(
+                "📚 下载参考文献",
+                artifacts["references_bib"],
+                "references.bib",
+                use_container_width=True,
+            )
+        with col4:
+            if st.button("🔄 重新生成论文", use_container_width=True):
+                del st.session_state["artifacts"]
+                st.rerun()
 
     _render_knowledge_graph_tab()
 

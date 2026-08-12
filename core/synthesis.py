@@ -220,31 +220,37 @@ def build_synthesis_prompt(
         f"Extracted comparison data:\n"
         f"Paper list:\n{matrix_rows}\n\n"
         f"REQUIREMENTS:\n"
-        f"1. Use \\documentclass{{ctexart}}.\n"
-        f"2. Include EXACTLY these six sections:\n"
+        f"1. Use \\documentclass{{ctexart}}. The system injects preamble, \\title{{...}}, and \\maketitle automatically.\n"
+        f"2. The VERY FIRST line of your output must be:\n"
+        f"   \\title{{\\Large\\bfseries \\parbox{{\\linewidth}}{{\\centering <YOUR TITLE>}}}}\n"
+        f"   Generate a concise, accurate Chinese academic title (e.g., "
+        f"{{工业与机器人场景空间异常检测综述}}). "
+        f"Keep it under 40 Chinese characters. Avoid excessively long English-only titles.\n"
+        f"3. Then include EXACTLY these six sections:\n"
         f"   \\section{{Abstract and Introduction}}\n"
         f"   \\section{{Technical Taxonomy}}\n"
         f"   \\section{{Systematic Review and Deep Critique}}\n"
         f"   \\section{{Academic Comparison Matrix}}\n"
         f"   \\section{{Research Gaps and Future Work}}\n"
         f"   \\section{{Conclusion}}\n"
-        f"3. The \\section{{Academic Comparison Matrix}} must use \\begin{{description}} environment. "
+        f"4. The \\section{{Academic Comparison Matrix}} must use \\begin{{description}} environment. "
         f"Each paper is a \\item[\\textbf{{N. Title (Year)：}}] with structured paragraphs "
         f"(\\textbf{{技术方法：}}, \\textbf{{关键优势：}}, \\textbf{{核心局限：}}). "
         f"Do NOT use tabular, tabularx, or booktabs environments.\n"
-        f"4. Each critique of a paper's limitation must reference its evidence_page.\n"
-        f"5. Write body text in Chinese, keep evidence quotes in English.\n"
-        f"6. Total length: {word_count_target} Chinese characters.\n"
-        f"7. Return ONLY valid LaTeX source. No markdown fences, no explanations.\n"
-        f"8. All $, {{, }}, \\begin, \\end must be properly balanced.\n"
-        f"9. CRITICAL: Do NOT output internal key names like 'evidence_page=' in the body text.\n"
+        f"5. Each critique of a paper's limitation must reference its evidence_page.\n"
+        f"6. Write body text in Chinese, keep evidence quotes in English.\n"
+        f"7. Total length: {word_count_target} Chinese characters.\n"
+        f"8. Return ONLY valid LaTeX source. No markdown fences, no explanations.\n"
+        f"9. All $, {{, }}, \\begin, \\end must be properly balanced.\n"
+        f"10. CRITICAL: Do NOT output internal key names like 'evidence_page=' in the body text.\n"
         f"    Use standard academic citation format [1], [2] instead.\n"
-        f"10. CRITICAL: Use standard LaTeX math formulas ($...$ or $$...$$) when discussing "
+        f"11. CRITICAL: Use standard LaTeX math formulas ($...$ or $$...$$) when discussing "
         f"error metrics, loss functions, or mathematical formulations. "
         f"This is essential for academic rigor.\n\n"
         f"SECTION GUIDANCE:\n"
         f"{section_guidance_block}\n\n"
-        f"CRITICAL: Start your output DIRECTLY from \\section{{Abstract and Introduction}}.\n"
+        f"CRITICAL: Your output must start with \\title{{...}} on the very first line,\n"
+        f"    followed by \\section{{Abstract and Introduction}}.\n"
         f"    Do NOT output \\documentclass, any preamble commands, \\begin{{document}}, or \\end{{document}}.\n"
         f"    These are injected by the system automatically.\n"
     )
@@ -316,6 +322,14 @@ def render_survey_tex_with_llm(
 
         # Wrap with hardcoded preamble
         wrapped = _build_preamble() + raw + "\n\n" + r"\end{document}" + "\n"
+
+        # Inject \maketitle AFTER the \title{...} line so the title renders.
+        # The LLM outputs \title{...} before \section{...}; \maketitle must
+        # come after \title but before the first \section.
+        title_match = re.search(r'(\\title\{.+?\})', wrapped)
+        if title_match:
+            title_cmd = title_match.group(1)
+            wrapped = wrapped.replace(title_cmd, title_cmd + '\n' + r'\maketitle', 1)
 
         # Strip RAG thinking-chain leaks before returning
         wrapped = _strip_evidence_page_leaks(wrapped)
@@ -571,6 +585,12 @@ def render_survey_tex_multi_stage(
 
     # Strip RAG thinking-chain leaks
     result = _strip_evidence_page_leaks(result)
+
+    # Inject \maketitle after \title{...} so the title renders in the PDF
+    title_match = re.search(r'(\\title\{.+?\})', result)
+    if title_match:
+        title_cmd = title_match.group(1)
+        result = result.replace(title_cmd, title_cmd + '\n' + r'\maketitle', 1)
 
     # Validate and log
     errors = validate_latex_syntax(result)

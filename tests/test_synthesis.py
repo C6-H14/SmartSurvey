@@ -543,7 +543,8 @@ class FlakyGatewayExtractor:
         if self.call_count <= self.fail_calls:
             raise _make_internal_server_error()
         return (
-            r"\section{Abstract and Introduction}Gateway recovered."
+            r"\title{测试综述标题}" + "\n"
+            r"\section{Abstract and Introduction}Gateway recovered." + "\n"
             r"\section{Conclusion}Done."
         )
 

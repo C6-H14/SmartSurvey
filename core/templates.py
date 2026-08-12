@@ -67,6 +67,20 @@ def render_matrix_table_tex(rows: list[AcademicMatrixRow]) -> str:
     return "\n\n".join(lines)
 
 
+def _build_title_macro(title: str) -> str:
+    """Build a \\title{} command with automatic line-wrap for long titles.
+
+    Uses \\parbox{\\linewidth}{\\centering ...} to ensure Chinese and English
+    titles stay within A4 page margins without Overfull \\hbox overflows.
+    """
+    escaped = latex_escape(title)
+    return (
+        r"\title{\Large\bfseries \parbox{\linewidth}{\centering "
+        + escaped
+        + r"}}"
+    )
+
+
 def render_survey_tex(topic: str, rows: list[AcademicMatrixRow]) -> str:
     matrix = render_matrix_table_tex(rows)
     paper_list = "、".join(row.title for row in rows) if rows else "missing"
