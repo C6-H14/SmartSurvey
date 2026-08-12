@@ -30,11 +30,11 @@ def _strip_orphan_english_sections(latex_source: str) -> str:
     translation (``\\section{{系统评述与深度批判}}''). This function detects
     such duplicates and removes the English version.
 
-    Detection strategy:
-    1. Find any ``\\section{{<English>}}'' followed (within 5 non-empty lines)
-       by ``\\section{{<Chinese>}}'' where <English> contains primarily ASCII
-       and <Chinese> contains CJK characters.
-    2. Remove the English \\section line entirely.
+    Uses a precise regex that:
+    1. Matches ``\\section`` or ``\\section*`` with English/ASCII content
+       (letters, digits, spaces, &, comma, colon, hyphens).
+    2. Consumes any trailing whitespace/newlines between the two sections.
+    3. Uses a positive lookahead to ensure the next ``\\section`` has CJK content.
 
     Args:
         latex_source: Full LaTeX source.
@@ -42,13 +42,12 @@ def _strip_orphan_english_sections(latex_source: str) -> str:
     Returns:
         Cleaned LaTeX source with orphan English section headers removed.
     """
-    # Pattern: matches \section{...} where content is primarily ASCII (English)
-    # followed by whitespace/newlines and then \section{...} with CJK content
-    english_section_re = re.compile(
-        r'(\\section\{[^}]*[A-Za-z]{4,}[^}]*\})\s*\n\s*\n+'
-        r'(?=\\section\{[^}]*[一-鿿][^}]*\})'
+    return re.sub(
+        r'\\section\*?\{[A-Za-z0-9\s\&,:-]+\}\s*\n*\s*'
+        r'(?=\\section\*?\{[一-龥]+)',
+        '',
+        latex_source
     )
-    return english_section_re.sub('', latex_source)
 
 
 def validate_latex_syntax(latex_source: str) -> list[str]:
