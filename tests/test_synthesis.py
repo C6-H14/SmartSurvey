@@ -381,8 +381,8 @@ def test_section_templates_integrity():
         assert t["weight"] in ("heavy", "light")
     heavy = [t for t in SECTION_TEMPLATES if t["weight"] == "heavy"]
     light = [t for t in SECTION_TEMPLATES if t["weight"] == "light"]
-    assert len(heavy) == 2  # Chapter 1 and Chapter 5
-    assert len(light) == 4
+    assert len(heavy) == 3  # Chapter 1, Chapter 3 (promoted), and Chapter 5
+    assert len(light) == 3
     # heavy guidance must be longer than the shortest light guidance
     min_light_len = min(len(t["guidance"]) for t in light)
     for h in heavy:
