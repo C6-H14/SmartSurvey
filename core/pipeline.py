@@ -103,6 +103,20 @@ def generate_llm_artifacts(
         from core.templates import render_survey_tex
         survey_tex = render_survey_tex(topic, rows)
 
+    # ── ReviewerAgent: static rules + optional Critic LLM second-pass ──
+    if survey_tex and len(survey_tex) >= 100:
+        from core.reviewer import refine_survey_tex
+        if progress_callback:
+            progress_callback(0, 1, "reviewing", "ReviewerAgent: applying static rules + critic review...")
+        survey_tex = refine_survey_tex(
+            survey_tex,
+            papers=rows,
+            extraction_fn=extraction_fn,
+            on_retry=on_retry,
+        )
+        if progress_callback:
+            progress_callback(0, 1, "reviewing", "ReviewerAgent: refinement complete.")
+
     return GeneratedArtifacts(
         markdown_preview=render_markdown_preview(topic, rows, blocked_warnings),
         survey_tex=survey_tex,

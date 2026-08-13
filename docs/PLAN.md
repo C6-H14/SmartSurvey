@@ -4195,3 +4195,37 @@ git commit -m "feat: add 2d interactive knowledge graph with pyvis (Task 25) [Su
 - [x] **Step 2 (GREEN)**: `core/agent.py` 超时 120s + 捕获 APITimeoutError（3/6/12s）；`main.py` 预设下拉框 + 超时 `st.error`；`tests/` 全绿
 - [x] **Step 3**: 全量回归 `126 passed`（124 → 126，含 test_e2e_smoke，零回归）
 - [x] **Step 4**: Commit + Push 至 origin main
+
+---
+
+## Phase 11: ReviewerAgent 审阅专家微调模块 (Current)
+
+**Goal:** 在系统管线中直接内置一个"审阅专家 Subagent（ReviewerAgent）"，在 TeX 初稿产出后自动进行二次审查与微调，杜绝任何语法、引用及表格瑕疵。
+
+**Architecture:** `core/reviewer.py` 实现两阶段审阅管线：Phase 1 静态规则扫描（6 个 regex 规则，零 LLM 成本），Phase 2 Critic LLM 审阅专家（仅当 `extraction_fn` 注入时激活）。`core/pipeline.py` 中形成"合成 → 审阅专家微调 → 编译交付"闭环。
+
+### Task 33.1: 新建 core/reviewer.py（审阅专家微调模块）
+
+**Files:**
+- Create: `core/reviewer.py`
+- Create: `tests/test_reviewer.py`
+
+- [x] **Step 1:** 实现 6 个静态规则函数：`_align_cite_bibitem_keys`、`_remove_duplicate_phrases`、`_fix_table_ref_spacing`、`_fix_formula_operators`、`_fix_bibitem_format`、`_fix_absurd_page_numbers`
+- [x] **Step 2:** 实现 `apply_static_rules()` 聚合函数 + `refine_survey_tex()` 两阶段主入口（static + optional Critic LLM）
+- [x] **Step 3:** 实现 Critic LLM Reviewer Prompt（资深 LaTeX 学术审阅专家，8 项审阅指令）
+- [x] **Step 4:** 32 项单元测试覆盖所有静态规则 + 集成管线
+
+### Task 33.2: 将 ReviewerAgent 接入 core/pipeline.py
+
+**Files:**
+- Modify: `core/pipeline.py`
+
+- [x] **Step 1:** 在 `generate_llm_artifacts()` 中合成后调用 `refine_survey_tex()`，传递 `extraction_fn` 和 `on_retry`
+- [x] **Step 2:** `progress_callback` 报告 "reviewing" 状态
+
+### Task 33.3: 单元测试与端到端验证
+
+- [x] **Step 1:** 32 tests/test_reviewer.py 全部通过
+- [x] **Step 2:** 全量 pytest 185 passed（153 基线 + 32 新增，零回归）
+- [x] **Step 3:** 重新生成 survey_draft.tex，xelatex 两遍编译零 error 零 undefined ref
+- [x] **Step 4:** 重新编译 course_report.tex → 8 页，另存为 PB24010467钟启帆-课程报告.pdf

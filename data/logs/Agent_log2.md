@@ -625,3 +625,21 @@
 - **Commit**: `8417932`
 
 ---
+
+## Task 33 — ReviewerAgent 审阅专家系统级重构
+
+- **Timestamp**: 2026-08-13 +08:00
+- **Triggered Superpowers skills**: None (direct system-architecture subagent work)
+- **Core design**:
+  1. **新建 `core/reviewer.py`**：实现两阶段审阅管线：
+     - **Phase 1 静态规则扫描（零 LLM 成本）**：6 个子规则覆盖 cite/bibitem key 对齐（`_align_cite_bibitem_keys`）、中文/英文词语重复清洗（`_remove_duplicate_phrases`）、`表~\ref{}` 间距自动补全（`_fix_table_ref_spacing`）、数学模式 `or→\lor` + `and→\land` 替换（`_fix_formula_operators`）、`\bibitem` 中 `missing.` 自动替换为 `Unpublished manuscript.`（`_fix_bibitem_format`）、荒谬页码纠错（`_fix_absurd_page_numbers`）
+     - **Phase 2 Critic LLM 审阅专家**：仅在 `extraction_fn` 注入时激活，使用专用 REVIEWER_PROMPT（资深 LaTeX 学术审阅专家角色，8 项审阅指令），LLM 二次校对后以静态规则再次安全网兜底
+  2. **接入 `core/pipeline.py`**：在 `generate_llm_artifacts()` 中，合成 LaTeX → 审阅专家微调 → 编译交付形成闭环，`progress_callback` 全程报告 "reviewing" 状态
+- **测试**: `tests/test_reviewer.py` 32 项单元测试覆盖所有静态规则 + 集成管线（key 对齐大小写/前缀匹配/无匹配保持、中文/英文/ASCII 重复清洗、`~\ref` 间距/防双重插入、数学 `or`/`and` 替换/非数学模式保护、bibitem missing 修复、markdown fence 剥离、空输入/幂等性）
+- **验证**: 全量 185 passed（153 基线 + 32 新增，零回归）；`survey_draft.tex` 重新生成 + xelatex 两遍编译零错误零 undefined ref；`course_report.tex` 重新编译 8 页另存为 `PB24010467钟启帆-课程报告.pdf`
+- **Key decisions**:
+  - `_fix_bibitem_format` 需同时处理单行拼接 (`\bibitem{key}missing.`) 与换行分隔两种格式，采用 regex 先行匹配 + line-by-line 兜底的双路径策略
+  - `_align_cite_bibitem_keys` 的 prefix 匹配阈值为 6 字符，兼顾短 key（如 `berg22` → `bergmann2022dents`）与避免误匹配
+  - Critic LLM review 后重新执行 `apply_static_rules` 作为安全网，确保 LLM 输出不引入新格式错误
+- **Lessons learned**: Python `re.sub` 中 `\1` 反向引用匹配的组必须是 `r'\1'` raw string，否则 `\1` 被解释为八进制转义
+- **Commit**: TBD
