@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartSurvey 项目汇报 — 钟启帆 PB24010467</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --primary: #3b82f6;
+    --accent: #60a5fa;
+    --text: #e2e8f0;
+    --text-muted: #94a3b8;
+    --border: #334155;
+    --success: #22c55e;
+    --warn: #f59e0b;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+    height: 100vh;
+  }
+  .slide-container {
+    width: 100vw; height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .slide {
+    display: none;
+    width: 90vw; max-width: 1100px; height: 85vh;
+    padding: 2.5rem 3.5rem;
+    background: var(--surface);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    flex-direction: column;
+    justify-content: center;
+    box-shadow: 0 25px 80px rgba(0,0,0,0.4);
+    animation: fadeIn 0.4s ease;
+  }
+  .slide.active { display: flex; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  .slide h1 { font-size: 2.4rem; color: var(--accent); margin-bottom: 0.6rem; }
+  .slide h2 { font-size: 1.6rem; color: var(--primary); margin-bottom: 1rem; border-bottom: 2px solid var(--primary); padding-bottom: 0.4rem; display: inline-block; }
+  .slide h3 { font-size: 1.15rem; color: var(--text); margin: 1rem 0 0.4rem 0; }
+  .slide p, .slide li { font-size: 1.1rem; line-height: 1.75; color: var(--text-muted); }
+  .slide ul { padding-left: 1.5rem; }
+  .slide ul li { margin-bottom: 0.35rem; }
+  .subtitle { font-size: 1.3rem; color: var(--text-muted); margin-bottom: 2rem; }
+  .author-block { margin-top: 2rem; font-size: 1.1rem; color: var(--text-muted); }
+  .author-block strong { color: var(--accent); }
+
+  /* Cover special */
+  .cover { text-align: center; align-items: center; }
+  .cover h1 { font-size: 2.8rem; margin-bottom: 0.8rem; }
+  .cover .tagline { font-size: 1.3rem; color: var(--primary); margin-bottom: 1.5rem; }
+  .cover .meta { font-size: 1.15rem; color: var(--text-muted); line-height: 2; }
+
+  /* Architecture grid */
+  .arch-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-top: 1.2rem; }
+  .arch-card { background: rgba(59,130,246,0.08); border: 1px solid var(--border); border-radius: 10px; padding: 1.1rem; text-align: center; }
+  .arch-card .layer-num { font-size: 0.8rem; color: var(--accent); font-weight: bold; text-transform: uppercase; letter-spacing: 2px; }
+  .arch-card .layer-title { font-size: 1.05rem; font-weight: bold; color: var(--text); margin: 0.5rem 0; }
+  .arch-card .layer-detail { font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; }
+
+  /* Stat row */
+  .stat-row { display: flex; gap: 1.5rem; margin-top: 1.5rem; justify-content: center; }
+  .stat-card { background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.3); border-radius: 10px; padding: 1.5rem 2rem; text-align: center; flex: 1; }
+  .stat-card .stat-num { font-size: 2.4rem; font-weight: bold; color: var(--success); }
+  .stat-card .stat-label { font-size: 0.95rem; color: var(--text-muted); margin-top: 0.3rem; }
+
+  /* Bottom nav */
+  .nav { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); display: flex; gap: 0.8rem; z-index: 10; }
+  .nav button { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 1.2rem; cursor: pointer; font-size: 0.95rem; transition: all 0.2s; }
+  .nav button:hover { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .nav .page-indicator { background: transparent; border: none; color: var(--text-muted); font-size: 0.9rem; display: flex; align-items: center; padding: 0.6rem 0.5rem; }
+
+  /* Two-column */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 1rem; }
+
+  /* Thank you */
+  .thanks { text-align: center; align-items: center; }
+  .thanks h1 { font-size: 2.6rem; color: var(--accent); }
+  .thanks .repo { font-size: 1.4rem; color: var(--primary); margin: 1rem 0; }
+  .thanks .thanks-list { text-align: left; max-width: 700px; margin: 1rem auto; font-size: 1.05rem; line-height: 2; }
+
+  /* Diagram placeholder */
+  .diagram-box { background: rgba(59,130,246,0.06); border: 2px dashed var(--border); border-radius: 12px; padding: 1.5rem; text-align: center; margin-top: 1rem; color: var(--text-muted); font-size: 0.95rem; }
+
+  /* Pipeline flow */
+  .pipeline { display: flex; gap: 0.5rem; align-items: center; justify-content: center; margin: 1rem 0; flex-wrap: wrap; }
+  .pipeline-step { background: rgba(59,130,246,0.15); border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 1rem; font-size: 0.9rem; color: var(--text); white-space: nowrap; }
+  .pipeline-arrow { color: var(--accent); font-size: 1.2rem; }
+</style>
+</head>
+<body>
+
+<div class="slide-container" id="slideContainer">
+  <!-- Slide 1: Cover -->
+  <div class="slide cover active" id="slide1">
+    <div class="tagline">《计算机图形学前沿》期末项目答辩</div>
+    <h1>SmartSurvey</h1>
+    <p style="font-size:1.4rem;color:var(--text);margin-bottom:0.5rem;">面向空间异常检测的智能文献综述与知识图谱系统</p>
+    <p style="font-size:1.1rem;color:var(--text-muted);">—— 项目实现报告 ——</p>
+    <div class="author-block" style="margin-top:2.5rem;">
+      <p><strong>汇报人：钟启帆</strong></p>
+      <p>学号：PB24010467 &nbsp;|&nbsp; 数学科学学院，中国科学技术大学</p>
+      <p style="margin-top:1rem;">🔗 github.com/C6-H14/SmartSurvey &nbsp;|&nbsp; 2026 年 8 月</p>
+    </div>
+  </div>
+
+  <!-- Slide 2: Background & Pain Points -->
+  <div class="slide" id="slide2">
+    <h2>课题背景与痛点</h2>
+    <div class="two-col">
+      <div>
+        <h3>🎯 什么是空间异常检测？</h3>
+        <ul>
+          <li>工业制造中的"找茬"：哪个零件不正常？</li>
+          <li>3D 点云、RGB-D 多模态数据驱动</li>
+          <li>自编码重建、记忆库匹配、合成异常扩展……</li>
+          <li>方法层出不穷，<strong style="color:var(--accent);">文献量爆发式增长</strong></li>
+        </ul>
+        <h3>📚 文献梳理三大痛点</h3>
+        <ul>
+          <li><strong style="color:var(--warn);">散：</strong>跨出版社、跨会议，碎片化严重</li>
+          <li><strong style="color:var(--warn);">乱：</strong>缺乏统一横向对比口径</li>
+          <li><strong style="color:var(--warn);">漏：</strong>人工翻阅容易遗漏关键证据</li>
+        </ul>
+      </div>
+      <div class="diagram-box">
+        <p style="font-size:3rem;margin-bottom:0.5rem;">📄 → 🤖 → 📜</p>
+        <p style="font-weight:bold;color:var(--accent);">核心命题</p>
+        <p>能否把一堆异构 PDF 自动转化为<br>结构完整、证据可追溯的中文综述？</p>
+        <p style="margin-top:1rem;color:var(--primary);"><strong>→ SmartSurvey 应运而生</strong></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 3: System Architecture -->
+  <div class="slide" id="slide3">
+    <h2>系统架构：四层分层设计</h2>
+    <p style="margin-bottom:0.3rem;font-size:0.95rem;">"解析 → 提取 → 审查 → 生成" 全自动流水线，10 个可独立单测的 core/ 模块</p>
+    <div class="arch-grid">
+      <div class="arch-card">
+        <div class="layer-num">Layer 1</div>
+        <div class="layer-title">📥 数据接入层</div>
+        <div class="layer-detail">PyMuPDF 混合解析<br>核心章节识别<br>+ 兜底页切片</div>
+      </div>
+      <div class="arch-card">
+        <div class="layer-num">Layer 2</div>
+        <div class="layer-title">🔬 核心提取层</div>
+        <div class="layer-detail">双层 Schema 矩阵<br>Inline Scope Binding<br>零丢纸事实校验</div>
+      </div>
+      <div class="arch-card">
+        <div class="layer-num">Layer 3</div>
+        <div class="layer-title">🔗 图形与安全层</div>
+        <div class="layer-detail">PyVis 2D/3D 拓扑网络<br>三级凭据降级<br>网关指数退避</div>
+      </div>
+      <div class="arch-card">
+        <div class="layer-num">Layer 4</div>
+        <div class="layer-title">📝 合成与排版层</div>
+        <div class="layer-detail">XeLaTeX 物理排版引擎<br>.tex + .bib 标准分离<br>4-pass 零报错编译</div>
+      </div>
+    </div>
+    <h3>🔑 核心技术亮点</h3>
+    <ul>
+      <li><strong>Inline Scope Binding：</strong>evidence_quote 必须在 page_text 中逐字符 containment 验证，3 次自愈失败就地降级但<strong style="color:var(--accent);">强制保留</strong>——100% 杜绝论文静默丢弃</li>
+      <li><strong>XeLaTeX 四遍编译：</strong>xelatex→bibtex→xelatex→xelatex 全自动解析 .aux 交叉引用与 .bib 文献数据库，\cite 与 \ref 零报错</li>
+    </ul>
+  </div>
+
+  <!-- Slide 4: Knowledge Graph & Export -->
+  <div class="slide" id="slide4">
+    <h2>PyVis 知识图谱 & 三件套导出</h2>
+    <div class="two-col">
+      <div>
+        <h3>🌐 图形拓扑网络</h3>
+        <ul>
+          <li>基于 <strong>PyVis + NetworkX</strong> 构建</li>
+          <li>节点 = 论文，边 = 主题/方法关联</li>
+          <li>节点大小与颜色映射领域字段</li>
+          <li>渲染为独立 HTML，支持拖拽、缩放、悬浮高亮</li>
+        </ul>
+        <h3>🎨 可视化策略</h3>
+        <ul>
+          <li>通过 <code style="background:var(--border);padding:2px 6px;border-radius:4px;">st.components.html</code> 嵌入 Streamlit</li>
+          <li>懒加载 + 内存渲染适配无头容器</li>
+          <li>2D/3D 布局透视文献聚类与主题演化</li>
+        </ul>
+      </div>
+      <div>
+        <h3>📦 三件套导出</h3>
+        <div class="pipeline">
+          <span class="pipeline-step">survey_draft.tex</span>
+          <span class="pipeline-arrow">+</span>
+          <span class="pipeline-step">references.bib</span>
+          <span class="pipeline-arrow">+</span>
+          <span class="pipeline-step">matrix_table.tex</span>
+        </div>
+        <div class="diagram-box" style="margin-top:0.5rem;">
+          <p style="font-size:1.5rem;">🕸️</p>
+          <p><strong>文献拓扑网络</strong></p>
+          <p style="font-size:0.9rem;margin-top:0.5rem;">sensor ↔ method ↔ scene</p>
+          <p style="font-size:0.85rem;">节点颜色 → 领域字段映射</p>
+          <p style="font-size:0.85rem;">边权重 → 主题相似度</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 5: Test Data & Results -->
+  <div class="slide" id="slide5">
+    <h2>测试验证与运行效果</h2>
+    <div class="stat-row">
+      <div class="stat-card">
+        <div class="stat-num">126</div>
+        <div class="stat-label">全绿单元测试 (100% PASS)</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">10</div>
+        <div class="stat-label">核心模块覆盖</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num">3</div>
+        <div class="stat-label">部署形态 (Win / Docker / Cloud)</div>
+      </div>
+    </div>
+    <h3>测试覆盖矩阵</h3>
+    <div class="arch-grid" style="grid-template-columns: repeat(5, 1fr);">
+      <div class="arch-card"><div class="layer-title">📄 解析层</div><div class="layer-detail">章节识别 + 兜底切片</div></div>
+      <div class="arch-card"><div class="layer-title">🔍 证据校验层</div><div class="layer-detail">containment 门控<br>零丢纸保证</div></div>
+      <div class="arch-card"><div class="layer-title">🔐 凭据安全层</div><div class="layer-detail">Keyring 降级<br>无明文落盘</div></div>
+      <div class="arch-card"><div class="layer-title">📐 语法扫描层</div><div class="layer-detail">\$ / begin-end<br>CJK 括号</div></div>
+      <div class="arch-card"><div class="layer-title">🌐 网络抗抖动</div><div class="layer-detail">指数退避<br>E2E 冒烟</div></div>
+    </div>
+    <p style="margin-top:1.5rem;text-align:center;color:var(--accent);">
+      ✅ 从原始 PDF → XeLaTeX 手稿，端到端自动化闭环验证通过
+    </p>
+  </div>
+
+  <!-- Slide 6: Future & Thanks -->
+  <div class="slide thanks" id="slide6">
+    <h1>未来展望 & 致谢</h1>
+    <div style="text-align:left;max-width:800px;margin: 1rem auto;">
+      <div class="two-col" style="gap:2rem;">
+        <div>
+          <h3 style="color:var(--accent);">🔌 边缘智联计算</h3>
+          <p style="font-size:1rem;">迁移至<strong>联宝 EA-B310</strong> 工业边缘平台，本地 LLM 推理 + 轻量化图谱渲染，实现离线文献智能服务</p>
+        </div>
+        <div>
+          <h3 style="color:var(--accent);">🤖 机械臂空间视觉</h3>
+          <p style="font-size:1rem;">将 sensor / latency / deployment_scene 指标对齐到<strong>机械臂视觉标定与在线推理</strong>，文献洞见 → 工程落地</p>
+        </div>
+      </div>
+      <div style="margin-top:1.5rem;">
+        <h3 style="color:var(--accent);">📎 批判性评述增强</h3>
+        <p style="font-size:1rem;">跨论文矛盾点自动检测 + 置信度加权 + 自动反事实推理</p>
+      </div>
+    </div>
+    <div class="repo" style="margin-top:1.5rem;">🔗 github.com/C6-H14/SmartSurvey</div>
+    <div class="thanks-list" style="margin-top:1rem;">
+      <p style="color:var(--text);text-align:center;font-size:1.05rem;"><strong>致谢</strong></p>
+      <p style="color:var(--text-muted);text-align:center;font-size:0.95rem;line-height:1.8;">
+        感谢刘利刚教授的《计算机图形学前沿》精彩课程<br>
+        感谢翟晓雅老师的细心指导及工程要点<br>
+        感谢陈现敏老师的大学生研究计划机会<br>
+        感谢软件工程学院 AI4SE 课程与 Superpowers 技能框架<br>
+        感谢测试阶段提供论文样例与反馈的各位同学
+      </p>
+    </div>
+    <p style="font-size:1.3rem;color:var(--text);margin-top:1rem;">感谢各位老师和同学的聆听！</p>
+    <p style="color:var(--text-muted);margin-top:0.5rem;">钟启帆 · PB24010467 · 数学科学学院，中国科学技术大学</p>
+  </div>
+</div>
+
+<!-- Navigation -->
+<div class="nav">
+  <button onclick="prevSlide()">◀ 上一页</button>
+  <span class="page-indicator" id="pageIndicator">1 / 6</span>
+  <button onclick="nextSlide()">下一页 ▶</button>
+</div>
+
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const total = slides.length;
+  const indicator = document.getElementById('pageIndicator');
+
+  function showSlide(n) {
+    slides[current].classList.remove('active');
+    current = ((n % total) + total) % total;
+    slides[current].classList.add('active');
+    indicator.textContent = (current + 1) + ' / ' + total;
+  }
+
+  function nextSlide() { showSlide(current + 1); }
+  function prevSlide() { showSlide(current - 1); }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+      e.preventDefault(); nextSlide();
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault(); prevSlide();
+    } else if (e.key === 'Home') {
+      e.preventDefault(); showSlide(0);
+    } else if (e.key === 'End') {
+      e.preventDefault(); showSlide(total - 1);
+    } else if (e.key === 'f' || e.key === 'F') {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else {
+        document.documentElement.requestFullscreen();
+      }
+    }
+  });
+</script>
+
+</body>
+</html>

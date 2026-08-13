@@ -248,6 +248,13 @@ def render_survey_tex(topic: str, rows: list[AcademicMatrixRow]) -> str:
         "结论": "本文总结结构化矩阵、证据约束和后续研究价值。",
     }
     body = "\n\n".join(f"\\section{{{name}}}\n{content}" for name, content in sections.items())
+
+    # ── Bibliography: external .bib workflow (standard separation) ──
+    bibliography_block = (
+        r"\bibliographystyle{plain}" + "\n"
+        + r"\bibliography{references}"
+    )
+
     preamble = (
         "% !TEX program = xelatex\n"
         r"\documentclass{ctexart}" + "\n"
@@ -258,7 +265,13 @@ def render_survey_tex(topic: str, rows: list[AcademicMatrixRow]) -> str:
         r"\usepackage{array}" + "\n"
         r"\emergencystretch=3em" + "\n"
     )
-    return preamble + r"\begin{document}" + "\n" + body + "\n" + r"\end{document}" + "\n"
+    return (
+        preamble + r"\begin{document}" + "\n"
+        + body + "\n\n"
+        + r"\clearpage" + "\n"
+        + bibliography_block + "\n"
+        + r"\end{document}" + "\n"
+    )
 
 
 def render_markdown_preview(

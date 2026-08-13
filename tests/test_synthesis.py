@@ -541,11 +541,11 @@ def test_compile_with_xelatex_importable():
 # ---- Bibliography auto-injection ----
 
 def test_inject_bibliography_adds_before_end_document():
-    """_inject_bibliography must insert thebibliography before \end{document}."""
+    """_inject_bibliography (embedded mode) must insert thebibliography before \end{document}."""
     from core.synthesis import _inject_bibliography
 
     source = r"\section{结论}Done." + "\n" + r"\end{document}" + "\n"
-    result = _inject_bibliography(source)
+    result = _inject_bibliography(source, use_external_bib=False)
 
     assert r"\begin{thebibliography}{99}" in result
     assert r"\bibitem{bergmann2022}" in result
@@ -555,6 +555,20 @@ def test_inject_bibliography_adds_before_end_document():
     assert r"\end{thebibliography}" in result
     assert r"\end{document}" in result
     assert result.index(r"\begin{thebibliography}") < result.index(r"\end{document}")
+
+
+def test_inject_bibliography_external_bib_mode():
+    """_inject_bibliography (external mode) must inject \bibliographystyle + \bibliography."""
+    from core.synthesis import _inject_bibliography
+
+    source = r"\section{结论}Done." + "\n" + r"\end{document}" + "\n"
+    result = _inject_bibliography(source, use_external_bib=True)
+
+    assert r"\bibliographystyle{plain}" in result
+    assert r"\bibliography{references}" in result
+    assert r"\begin{thebibliography}" not in result
+    assert r"\end{document}" in result
+    assert result.index(r"\bibliographystyle") < result.index(r"\end{document}")
 
 
 def test_inject_bibliography_idempotent():
@@ -568,9 +582,19 @@ def test_inject_bibliography_idempotent():
         + r"\end{thebibliography}" + "\n"
         + r"\end{document}" + "\n"
     )
-    result = _inject_bibliography(source)
+    result = _inject_bibliography(source, use_external_bib=False)
 
     assert result.count(r"\begin{thebibliography}") == 1
+
+    # Also test external bib mode idempotency
+    source2 = (
+        r"\section{结论}Done." + "\n"
+        + r"\bibliographystyle{plain}" + "\n"
+        + r"\bibliography{references}" + "\n"
+        + r"\end{document}" + "\n"
+    )
+    result2 = _inject_bibliography(source2, use_external_bib=True)
+    assert result2.count(r"\bibliography{") == 1
 
 
 def test_inject_bibliography_skips_if_printbibliography():
@@ -588,7 +612,7 @@ def test_inject_bibliography_skips_if_printbibliography():
 
 
 def test_synthesis_output_contains_bibliography():
-    """Single-pass synthesis output must include auto-injected bibliography."""
+    """Single-pass synthesis output must include auto-injected bibliography (external .bib mode)."""
     from core.synthesis import render_survey_tex_with_llm
 
     class BibTestExtractor:
@@ -598,9 +622,12 @@ def test_synthesis_output_contains_bibliography():
     result = render_survey_tex_with_llm(
         topic="test", rows=[], extraction_fn=BibTestExtractor(),
     )
-    assert r"\begin{thebibliography}{99}" in result
-    assert r"\bibitem{bergmann2022}" in result
-    assert r"\end{thebibliography}" in result
+    # External .bib mode: uses \bibliographystyle{plain} + \bibliography{references}
+    assert r"\bibliographystyle{plain}" in result
+    assert r"\bibliography{references}" in result
+    assert r"\end{document}" in result
+    # Verify \bibliographystyle appears before \end{document}
+    assert result.index(r"\bibliographystyle") < result.index(r"\end{document}")
 
 
 # ---- Math operator cleaning ----
@@ -1362,3 +1389,129 @@ def test_parsed_paper_has_canonical_cite_key_field():
         pages=[PageSlice(page_number=1, text="abstract")],
     )
     assert paper2.canonical_cite_key == "missing"
+
+
+# ===== Task: .tex/.bib standard separation architecture =====
+
+def test_export_references_bib_creates_bib_file():
+    """export_references_bib must create a valid .bib file with correct keys."""
+    from core.synthesis import export_references_bib
+
+    cite_key_map = [
+        {"cite_key": "bergmann2022", "authors": "Bergmann P, Batzner K", "title": "Beyond Dents",
+         "year": "2022", "venue": "CVPR"},
+        {"cite_key": "iodice2025", "authors": "Iodice P", "title": "Human-Robot Collaborative",
+         "year": "2025", "venue": "Robotics"},
+    ]
+    import tempfile, os
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = export_references_bib(cite_key_map, output_dir=tmpdir)
+        assert os.path.isfile(path)
+        content = open(path, encoding="utf-8").read()
+        assert "@inproceedings{bergmann2022" in content
+        assert "@article{iodice2025" in content
+        assert "CVPR" in content
+        assert "Robotics" in content
+
+
+def test_export_references_bib_fallback():
+    """export_references_bib must write _STANDARD_BIBTEX_ENTRIES when map is empty."""
+    from core.synthesis import export_references_bib
+
+    import tempfile, os
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = export_references_bib([], output_dir=tmpdir)
+        assert os.path.isfile(path)
+        content = open(path, encoding="utf-8").read()
+        assert "@inproceedings{bergmann2022" in content
+        assert "@article{soudani2026" in content
+
+
+def test_compile_with_xelatex_external_bib_workflow():
+    """compile_with_xelatex must handle external .bib workflow (xelatex→bibtex→xelatex→xelatex)."""
+    from core.synthesis import compile_with_xelatex
+
+    # A document using external .bib workflow with a valid citation
+    tex = (
+        r"\documentclass{article}"
+        r"\begin{document}"
+        r"See \cite{bergmann2022} for details."
+        r"\bibliographystyle{plain}"
+        r"\bibliography{references}"
+        r"\end{document}"
+    )
+    errors = compile_with_xelatex(tex, timeout=30)
+    # Should compile clean — the auto-generated references.bib has bergmann2022
+    assert len(errors) == 0
+
+
+def test_compile_with_xelatex_external_bib_undefined_citation():
+    """External .bib + undefined citation must still raise RuntimeError."""
+    from core.synthesis import compile_with_xelatex
+
+    # A document citing a non-existent key, using external .bib workflow
+    tex = (
+        r"\documentclass{article}"
+        r"\begin{document}"
+        r"See \cite{nonexistent2025} for details."
+        r"\bibliographystyle{plain}"
+        r"\bibliography{references}"
+        r"\end{document}"
+    )
+    raised = False
+    try:
+        compile_with_xelatex(tex, timeout=30)
+    except RuntimeError:
+        raised = True
+    assert raised, "Expected RuntimeError for undefined citation in external .bib workflow"
+
+
+def test_export_references_bib_via_synthesis_pipeline():
+    """The synthesis pipeline must call export_references_bib and produce a .bib file."""
+    from core.synthesis import render_survey_tex_with_llm, export_references_bib
+
+    # Verify that export_references_bib is callable and produces output
+    import tempfile, os
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Simple cite_key_map
+        cite_key_map = [
+            {"cite_key": "bergmann2022", "authors": "Bergmann P, Batzner K",
+             "title": "Beyond Dents and Scratches", "year": "2022", "venue": "CVPR"},
+        ]
+        path = export_references_bib(cite_key_map, output_dir=tmpdir)
+        assert os.path.isfile(path)
+        content = open(path, encoding="utf-8").read()
+        # Must be valid BibTeX
+        assert "@inproceedings{bergmann2022" in content
+        assert "}" in content  # closing brace for entry
+
+    # Also test via synthesis: the output .tex must use \bibliographystyle + \bibliography
+    class BibTestExtractor:
+        def __call__(self, prompt: str) -> str:
+            return r"\title{测试}" + "\n" + r"\section{结论}Done."
+
+    result = render_survey_tex_with_llm(
+        topic="test", rows=[], extraction_fn=BibTestExtractor(),
+    )
+    assert r"\bibliographystyle{plain}" in result
+    assert r"\bibliography{references}" in result
+
+
+def test_compile_with_xelatex_full_recipe_zero_errors():
+    """Full xelatex→bibtex→xelatex→xelatex recipe must compile with zero errors."""
+    from core.synthesis import compile_with_xelatex
+
+    # A complete document using external .bib with cross-references
+    tex = (
+        r"\documentclass{article}"
+        r"\begin{document}"
+        r"\section{Introduction}\label{sec:intro}"
+        r"Bergmann et al.~\cite{bergmann2022} proposed logical anomaly detection."
+        r"In Section~\ref{sec:intro} we introduced the topic."
+        r"\bibliographystyle{plain}"
+        r"\bibliography{references}"
+        r"\end{document}"
+    )
+    errors = compile_with_xelatex(tex, timeout=30)
+    # After full xelatex→bibtex→xelatex→xelatex, both \cite and \ref should resolve
+    assert len(errors) == 0, f"Unexpected errors: {errors}"
