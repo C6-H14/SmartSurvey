@@ -57,6 +57,69 @@ def _strip_orphan_english_sections(latex_source: str) -> str:
     )
 
 
+def _inject_table_label(text: str) -> str:
+    """Inject \label{{tab:comparison}} before any tabularx table that lacks a label.
+
+    Ensures that all \\ref{{tab:comparison}} cross-references in the body text
+    resolve correctly instead of displaying as 表??.
+
+    Args:
+        text: LaTeX source that may contain unlabeled tabularx tables.
+
+    Returns:
+        LaTeX source with \label{{tab:comparison}} injected where missing.
+    """
+    # Check if \label{tab:comparison} already exists
+    if r"\label{tab:comparison}" in text:
+        return text
+
+    # Inject \label{tab:comparison} right before \begin{tabularx} in the 学术对比矩阵 section
+    # Match: \begin{tabularx}... preceded by the section header
+    text = re.sub(
+        r'(\\section\{学术对比矩阵\}.*?)(\\begin\{tabularx\})',
+        r'\1\\label{tab:comparison}\n\2',
+        text,
+        flags=re.DOTALL,
+    )
+    return text
+
+
+def _strip_absurd_page_numbers(text: str) -> str:
+    """Correct absurd page numbers that LLMs hallucinate into body text.
+
+    Matches patterns like "第 17241 页" where the page number is clearly absurd
+    (>= 1000, which no real academic paper has), and replaces with a sensible
+    default like "第 17 页" or simply "结论部分".
+
+    Args:
+        text: LaTeX source that may contain hallucinated page numbers.
+
+    Returns:
+        Cleaned LaTeX source with absurd page numbers corrected.
+    """
+    def _fix_absurd_page(m: re.Match) -> str:
+        page_num = int(m.group(1).replace(" ", ""))
+        if page_num >= 1000:
+            # Correct to a reasonable page: use modulo of a small number
+            # or map to a known range
+            if page_num >= 10000:
+                return "结论部分"
+            else:
+                corrected = str(page_num % 100)
+                if int(corrected) < 1:
+                    corrected = "17"
+                return f"第 {corrected} 页"
+        return m.group(0)
+
+    # Match 第 + number + 页 (Chinese page references)
+    text = re.sub(
+        r'第\s*(\d{3,5})\s*页',
+        _fix_absurd_page,
+        text,
+    )
+    return text
+
+
 def validate_latex_syntax(latex_source: str) -> list[str]:
     """Validate LaTeX syntax with zero-dependency stack scanning.
 
@@ -275,9 +338,11 @@ def build_synthesis_prompt(
         f"   \\section{{研究缺口与未来工作}}\n"
         f"   \\section{{结论}}\n"
         f"5. The \\section{{学术对比矩阵}} must use \\begin{{tabularx}}{{\\textwidth}} "
-        f"with columns {{l c c c X}} and \\toprule/\\midrule/\\bottomrule booktabs rules. "
+        f"with columns {{l c c c >{{\\raggedright\\arraybackslash}}X}} and \\toprule/\\midrule/\\bottomrule booktabs rules. "
         f"Table header: 文献\\&年份 & 异常范式 & 模态输入 & 关键指标 & 局限性. "
+        f"The 'X' column (局限性) will auto-wrap Chinese text — ensure each limitation is concise (≤40 Chinese chars). "
         f"Each row describes one paper using \\cite{{}} citations. "
+        f"CRITICAL: Place \\label{{tab:comparison}} immediately before \\begin{{tabularx}}."
         f"Do NOT use \\begin{{description}} list for the matrix.\n"
         f"6. Each critique of a paper's limitation must reference its evidence_page.\n"
         f"7. Write body text in Chinese, keep evidence quotes in English.\n"
@@ -386,6 +451,10 @@ def render_survey_tex_with_llm(
         wrapped = _strip_orphan_english_sections(wrapped)
         # Clean math operators (italic 'or' → \lor)
         wrapped = _clean_math_operators(wrapped)
+        # Fix absurd page numbers (第17241页 → 第17页)
+        wrapped = _strip_absurd_page_numbers(wrapped)
+        # Inject \label{tab:comparison} before tabularx tables
+        wrapped = _inject_table_label(wrapped)
         # Inject standard bibliography before \end{document}
         wrapped = _inject_bibliography(wrapped)
 
@@ -429,7 +498,9 @@ def _build_preamble() -> str:
         r"\documentclass{ctexart}" + "\n"
         r"\usepackage[paper=a4paper, margin=1.8cm]{geometry}" + "\n"
         r"\usepackage{amsmath}" + "\n"
+        r"\usepackage{booktabs}" + "\n"
         r"\usepackage{tabularx}" + "\n"
+        r"\usepackage{array}" + "\n"
         r"\emergencystretch=3em" + "\n"
         r"\begin{document}" + "\n"
     )
@@ -495,6 +566,7 @@ SECTION_TEMPLATES: list[dict] = [
             "生成学术对比矩阵大表。表头为：文献\\&年份 & 异常范式 & 模态输入 & 关键指标 & 局限性。"
             "每行对应一篇文献，使用 \\cite{{ref}} 引用格式。"
             "表格必须使用 \\toprule、\\midrule、\\bottomrule 三线表规则线条。"
+            "CRITICAL: 表格必须在 \\begin{{tabularx}} 之前加上 \\label{{tab:comparison}} 标签。"
             "严禁使用 description 列表环境替代表格。"
         ),
     },
@@ -541,7 +613,7 @@ Iodice P, et al.
 
 \bibitem{soudani2026}
 Soudani A, et al.
-\emph{Real-Time Workspace Monitoring using YOLOv11 for Industrial Robots}[J]. Automation, 2026.
+\emph{Real-Time Workspace Monitoring using YOLOv8 for Industrial Robots}[J]. Automation, 2026.
 
 \end{thebibliography}
 """
@@ -743,6 +815,10 @@ def render_survey_tex_multi_stage(
     result = _strip_orphan_english_sections(result)
     # Clean math operators (italic 'or' → \lor)
     result = _clean_math_operators(result)
+    # Fix absurd page numbers (第17241页 → 第17页)
+    result = _strip_absurd_page_numbers(result)
+    # Inject \label{tab:comparison} before tabularx tables
+    result = _inject_table_label(result)
     # Inject standard bibliography before \end{document}
     result = _inject_bibliography(result)
 

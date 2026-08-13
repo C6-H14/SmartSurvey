@@ -23,15 +23,17 @@ def sample_rows():
 
 
 def test_render_matrix_table_uses_booktabs():
-    """Matrix table must use \begin{description} environment (replaces tabularx)."""
+    """Matrix table must use tabularx with booktabs three-line table and \label{tab:comparison}."""
     output = render_matrix_table_tex(sample_rows())
 
-    assert "\\begin{description}" in output
-    assert "\\end{description}" in output
+    assert "\\begin{tabularx}" in output
+    assert "\\toprule" in output
+    assert "\\midrule" in output
+    assert "\\bottomrule" in output
+    assert "\\label{tab:comparison}" in output
     assert "Paper A" in output
-    # Must NOT contain old tabular or tabularx
-    assert "\\begin{tabular}" not in output
-    assert "\\begin{tabularx}" not in output
+    # Use raggedright for limitation column
+    assert "\\raggedright" in output
 
 
 def test_render_survey_has_required_sections():
@@ -67,8 +69,8 @@ def test_render_survey_has_abstract_intro_separator():
     assert r"\par\bigskip" in output
 
 
-def test_render_matrix_table_uses_description():
-    """Matrix table must use \begin{description} environment."""
+def test_render_matrix_table_uses_tabularx():
+    """Matrix table must use tabularx with three-line table rules for Overleaf compatibility."""
     from core.templates import render_matrix_table_tex
     from core.models import AcademicMatrixRow
 
@@ -79,18 +81,18 @@ def test_render_matrix_table_uses_description():
     )
     output = render_matrix_table_tex([row])
 
-    assert "\\begin{description}" in output
-    assert "\\end{description}" in output
-    # Must NOT use tabularx or tabular
-    assert "\\begin{tabularx}" not in output
-    assert "\\begin{tabular}" not in output
-    assert "\\toprule" not in output
-    assert "\\midrule" not in output
-    assert "\\bottomrule" not in output
+    assert "\\begin{tabularx}" in output
+    assert "\\end{tabularx}" in output
+    assert "\\toprule" in output
+    assert "\\midrule" in output
+    assert "\\bottomrule" in output
+    assert "\\label{tab:comparison}" in output
+    # Must use X column with raggedright for Chinese text wrapping
+    assert "\\raggedright\\arraybackslash" in output
 
 
 def test_render_matrix_table_has_item_format():
-    """Each paper must be a \item[\textbf{N. Title (Year)：}]."""
+    """Each paper row must reference its title, year, method, and limitation in the tabularx table."""
     from core.templates import render_matrix_table_tex
     from core.models import AcademicMatrixRow
 
@@ -101,12 +103,13 @@ def test_render_matrix_table_has_item_format():
     )
     output = render_matrix_table_tex([row])
 
-    assert r"\item[\textbf{1. Paper A (2024)：}]" in output
-    assert r"\hfill \\" in output
+    assert "Paper A" in output
+    assert "2024" in output
+    assert "\\label{tab:comparison}" in output
 
 
 def test_render_matrix_table_has_section_headers():
-    """Each description item must have 技术方法, 关键优势, 核心局限 headers."""
+    """Table header must contain 局限性 column for Chinese limitation text."""
     from core.templates import render_matrix_table_tex
     from core.models import AcademicMatrixRow
 
@@ -117,16 +120,17 @@ def test_render_matrix_table_has_section_headers():
     )
     output = render_matrix_table_tex([row])
 
-    assert r"\textbf{技术方法：}" in output
-    assert r"\textbf{关键优势：}" in output
-    assert r"\textbf{核心局限：}" in output
-    assert "Vision model" in output
-    assert "Fast" in output
+    assert "局限性" in output
+    assert "异常范式" in output
+    assert "模态输入" in output
+    assert "关键指标" in output
+    assert "\\toprule" in output
+    assert "Fast" in output  # innovation used as key metric
     assert "Lighting" in output
 
 
 def test_render_matrix_table_numbers_items_sequentially():
-    """Multiple papers must be numbered 1, 2, 3..."""
+    """Multiple papers must both appear in the tabularx table rows."""
     from core.templates import render_matrix_table_tex
     from core.models import AcademicMatrixRow
 
@@ -144,12 +148,16 @@ def test_render_matrix_table_numbers_items_sequentially():
     ]
     output = render_matrix_table_tex(rows)
 
-    assert r"\item[\textbf{1. Paper A (2024)：}]" in output
-    assert r"\item[\textbf{2. Paper B (2023)：}]" in output
+    assert "Paper A" in output
+    assert "Paper B" in output
+    assert "2024" in output
+    assert "2023" in output
+    assert "\\toprule" in output
 
 
 def test_render_survey_tex_no_tabularx_in_preamble():
-    """Survey preamble must NOT contain booktabs or tabularx packages."""
+    """Survey preamble must contain tabularx and array packages for the comparison matrix."""
     output = render_survey_tex("test topic", sample_rows())
-    assert "\\usepackage{booktabs}" not in output
-    assert "\\usepackage{tabularx}" not in output
+    assert "\\usepackage{tabularx}" in output
+    assert "\\usepackage{array}" in output
+    assert "\\usepackage{booktabs}" in output

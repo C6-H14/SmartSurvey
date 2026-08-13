@@ -81,7 +81,8 @@ def test_generate_artifacts_returns_all_downloads():
     artifacts = generate_artifacts("topic", [row], [])
 
     assert "Paper A" in artifacts.markdown_preview
-    assert "\\begin{description}" in artifacts.matrix_table_tex
+    assert "\\begin{tabularx}" in artifacts.matrix_table_tex
+    assert "\\label{tab:comparison}" in artifacts.matrix_table_tex
     assert "\\documentclass{ctexart}" in artifacts.survey_tex
     assert "@article" in artifacts.references_bib
 

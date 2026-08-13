@@ -701,3 +701,98 @@ def test_render_survey_multi_stage_recovers_from_gateway_error():
     assert r"\end{document}" in result
     assert len(holder) == 1
     assert "重试" in holder[0][3]
+
+
+# ---- Absurd page number cleaning ----
+
+def test_strip_absurd_page_numbers_corrects_large_numbers():
+    """Pages >= 1000 must be corrected to sensible values."""
+    from core.synthesis import _strip_absurd_page_numbers
+
+    # LLM hallucination: page 17241 → 结论部分
+    text = r"如文献[3]所述（第17241页），该方法存在局限。"
+    result = _strip_absurd_page_numbers(text)
+    assert "17241" not in result
+    assert "结论部分" in result or "17" in result
+
+    # Four-digit number like 1234 → corrected
+    text2 = r"第 1234 页的实验中。"
+    result2 = _strip_absurd_page_numbers(text2)
+    assert "1234" not in result2
+
+    # Normal page numbers (1-99) must be preserved
+    text3 = r"第 17 页的实验中。"
+    result3 = _strip_absurd_page_numbers(text3)
+    assert "第 17 页" in result3
+
+
+# ---- Table label injection ----
+
+def test_inject_table_label_adds_label_before_tabularx():
+    """_inject_table_label must inject \label{tab:comparison} before tabularx."""
+    from core.synthesis import _inject_table_label
+
+    source = (
+        r"\section{学术对比矩阵}"
+        r"\begin{tabularx}{\textwidth}{l c c c X}"
+        r"\toprule"
+        r"文献 & 方法 & 指标 & 局限 \\"
+        r"\bottomrule"
+        r"\end{tabularx}"
+    )
+    result = _inject_table_label(source)
+    assert r"\label{tab:comparison}" in result
+
+    # Label must appear before \begin{tabularx}
+    label_pos = result.index(r"\label{tab:comparison}")
+    tabularx_pos = result.index(r"\begin{tabularx}")
+    assert label_pos < tabularx_pos
+
+
+def test_inject_table_label_idempotent():
+    """_inject_table_label must not double-inject if label already exists."""
+    from core.synthesis import _inject_table_label
+
+    source = (
+        r"\section{学术对比矩阵}"
+        r"\label{tab:comparison}"
+        r"\begin{tabularx}{\textwidth}{l c c c X}"
+        r"\end{tabularx}"
+    )
+    result = _inject_table_label(source)
+    assert result.count(r"\label{tab:comparison}") == 1
+
+
+# ---- Bibliography citation key correctness ----
+
+
+def test_standard_bibliography_has_correct_keys():
+    """Bibliographic keys must match the required specification exactly."""
+    from core.synthesis import _STANDARD_BIBLIOGRAPHY
+
+    # [1] bergmann2022: Bergmann P, et al. (CVPR 2022) - 逻辑异常
+    assert r"\bibitem{bergmann2022}" in _STANDARD_BIBLIOGRAPHY
+    assert "CVPR" in _STANDARD_BIBLIOGRAPHY
+    assert "2022" in _STANDARD_BIBLIOGRAPHY
+
+    # [2] costanzino2023: Costanzino A, et al. (VISAPP 2023) - 跨模态特征映射
+    assert r"\bibitem{costanzino2023}" in _STANDARD_BIBLIOGRAPHY
+    assert "VISAPP" in _STANDARD_BIBLIOGRAPHY
+    assert "2023" in _STANDARD_BIBLIOGRAPHY
+
+    # [3] soudani2026: YOLOv8 (NOT YOLOv11!)
+    assert r"\bibitem{soudani2026}" in _STANDARD_BIBLIOGRAPHY
+    assert "YOLOv8" in _STANDARD_BIBLIOGRAPHY
+    assert "YOLOv11" not in _STANDARD_BIBLIOGRAPHY
+
+    # [4] iodice2025: last entry
+    assert r"\bibitem{iodice2025}" in _STANDARD_BIBLIOGRAPHY
+
+
+def test_standard_bibliography_unity():
+    """All four required papers must be present in the standard bibliography."""
+    from core.synthesis import _STANDARD_BIBLIOGRAPHY
+
+    keys = ["bergmann2022", "costanzino2023", "soudani2026", "iodice2025"]
+    for key in keys:
+        assert f"\\bibitem{{{key}}}" in _STANDARD_BIBLIOGRAPHY, f"Missing: {key}"

@@ -44,27 +44,49 @@ def _add_tex_spacing(value: str) -> str:
 
 
 def render_matrix_table_tex(rows: list[AcademicMatrixRow]) -> str:
-    """Render academic comparison matrix as a LaTeX description list.
+    """Render academic comparison matrix as a LaTeX tabularx three-line table.
 
-    Each paper becomes a \item[\textbf{N. Title (Year)：}] with structured
-    paragraphs for method, innovation, and limitation -- avoiding tabular overflow.
+    Uses >{\\raggedright\\arraybackslash}X for the limitation column to ensure
+    Chinese text wraps horizontally instead of displaying vertically character by character.
+
+    The table includes \\label{{tab:comparison}} for cross-referencing.
     """
     lines = [
-        r"\begin{description}",
+        r"\begin{table}[htbp]",
+        r"\centering",
+        r"\caption{学术对比矩阵}",
+        r"\label{tab:comparison}",
+        r"\small",
+        r"\begin{tabularx}{\textwidth}{l c c c >{\raggedright\arraybackslash}X}",
+        r"\toprule",
+        r"文献\&年份 & 异常范式 & 模态输入 & 关键指标 & 局限性 \\",
+        r"\midrule",
     ]
     for idx, row in enumerate(rows, start=1):
         title = latex_escape(row.title)
         method = latex_escape(row.method)
         innovation = latex_escape(row.innovation)
         limitation = latex_escape(row.limitation)
+        # Use the domain field or innovation as the key metric
+        metric = "—"
+        if row.domain_fields:
+            meaningful = [v for v in row.domain_fields.values()
+                          if v and v not in ("missing", "", "missing (unverified)")]
+            if meaningful:
+                metric = latex_escape(meaningful[0])
+            else:
+                metric = latex_escape(row.innovation)
+        else:
+            metric = latex_escape(row.innovation)
         lines.append(
-            f"  \\item[\\textbf{{{idx}. {title} ({row.year})：}}] \\hfill \\\\\n"
-            f"    \\textbf{{技术方法：}}{method} \\\\\n"
-            f"    \\textbf{{关键优势：}}{innovation} \\\\\n"
-            f"    \\textbf{{核心局限：}}{limitation}"
+            f"{title} ({row.year}) & — & — & {metric} & {limitation} \\\\"
         )
-    lines.append(r"\end{description}")
-    return "\n\n".join(lines)
+    lines.extend([
+        r"\bottomrule",
+        r"\end{tabularx}",
+        r"\end{table}",
+    ])
+    return "\n".join(lines)
 
 
 def _build_title_macro(title: str) -> str:
@@ -96,7 +118,17 @@ def render_survey_tex(topic: str, rows: list[AcademicMatrixRow]) -> str:
         "结论": "本文总结结构化矩阵、证据约束和后续研究价值。",
     }
     body = "\n\n".join(f"\\section{{{name}}}\n{content}" for name, content in sections.items())
-    return "\\documentclass{ctexart}\n\\begin{document}\n" + body + "\n\\end{document}\n"
+    preamble = (
+        "% !TEX program = xelatex\n"
+        r"\documentclass{ctexart}" + "\n"
+        r"\usepackage[paper=a4paper, margin=1.8cm]{geometry}" + "\n"
+        r"\usepackage{amsmath}" + "\n"
+        r"\usepackage{booktabs}" + "\n"
+        r"\usepackage{tabularx}" + "\n"
+        r"\usepackage{array}" + "\n"
+        r"\emergencystretch=3em" + "\n"
+    )
+    return preamble + r"\begin{document}" + "\n" + body + "\n" + r"\end{document}" + "\n"
 
 
 def render_markdown_preview(
