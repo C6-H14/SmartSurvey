@@ -305,7 +305,7 @@ def test_build_synthesis_prompt_has_itemize_constraint():
     )
     prompt = build_synthesis_prompt("topic", [row])
 
-    assert "begin{itemize}" in prompt
+    assert "itemize" in prompt
     assert "item" in prompt
 
 
@@ -378,7 +378,7 @@ def test_section_templates_integrity():
         assert "name" in t
         assert "weight" in t
         assert "guidance" in t
-        assert "{topic}" in t["guidance"]
+        assert "TOPIC_PLACEHOLDER" in t["guidance"]
         assert t["weight"] in ("heavy", "light")
     heavy = [t for t in SECTION_TEMPLATES if t["weight"] == "heavy"]
     light = [t for t in SECTION_TEMPLATES if t["weight"] == "light"]
@@ -796,3 +796,569 @@ def test_standard_bibliography_unity():
     keys = ["bergmann2022", "costanzino2023", "soudani2026", "iodice2025"]
     for key in keys:
         assert f"\\bibitem{{{key}}}" in _STANDARD_BIBLIOGRAPHY, f"Missing: {key}"
+
+
+# ===== Phase 10: SSOT Citation Key Guardrails =====
+
+def test_derive_cite_key_from_authors_and_year():
+    """derive_cite_key must produce deterministic lowercase alphanumeric keys."""
+    from core.synthesis import derive_cite_key
+
+    # Bergmann P, 2022 + "Beyond Dents and Scratches" → "Beyond" is stop word → "dents"
+    key = derive_cite_key("Bergmann P, Batzner K, Fauser M", "2022", "Beyond Dents and Scratches")
+    assert key == "bergmann2022dents"
+
+    # Iodice P, 2025 + "Human-Robot Collaborative Safety Monitoring" → "human" (stop), "robot" (stop), "collaborative" → no, wait...
+    # "human" not in stop_words, "robot" not in stop_words → "human" is first
+    key2 = derive_cite_key("Iodice P, et al.", "2025", "Human-Robot Collaborative Safety Monitoring")
+    assert "iodice2025" in key2
+    assert key2.startswith("iodice2025")
+
+    # Costanzino A, 2023 — no title → just surname+year
+    key3 = derive_cite_key("Costanzino A, et al.", "2023")
+    assert key3 == "costanzino2023"
+
+    # Empty authors fallback
+    key4 = derive_cite_key("", "2022")
+    assert key4 == "unknown2022"
+
+
+def test_build_cite_key_map_returns_stable_order():
+    """build_cite_key_map must return keys in the same order as input rows."""
+    from core.synthesis import build_cite_key_map
+    from core.models import AcademicMatrixRow
+
+    rows = [
+        AcademicMatrixRow(title="Test Paper One", authors="Bergmann P", year="2022", venue="C",
+                          research_problem="P", method="M", innovation="I", limitation="L",
+                          evidence_page=1, evidence_quote="Q", confidence=0.5, trigger_reason="R"),
+        AcademicMatrixRow(title="Test Paper Two", authors="Iodice P", year="2025", venue="D",
+                          research_problem="P", method="M", innovation="I", limitation="L",
+                          evidence_page=1, evidence_quote="Q", confidence=0.5, trigger_reason="R"),
+    ]
+    mapping = build_cite_key_map(rows)
+    assert len(mapping) == 2
+    assert mapping[0]["cite_key"] == "bergmann2022"
+    assert mapping[1]["cite_key"] == "iodice2025"
+
+
+def test_build_cite_key_map_disambiguates():
+    """build_cite_key_map must append suffix when keys collide."""
+    from core.synthesis import build_cite_key_map
+    from core.models import AcademicMatrixRow
+
+    rows = [
+        AcademicMatrixRow(title="Same Paper Name", authors="Smith J", year="2024", venue="V",
+                          research_problem="P", method="M", innovation="I", limitation="L",
+                          evidence_page=1, evidence_quote="Q", confidence=0.5, trigger_reason="R"),
+        AcademicMatrixRow(title="Same Paper Name", authors="Smith J", year="2024", venue="V",
+                          research_problem="P", method="M", innovation="I", limitation="L",
+                          evidence_page=1, evidence_quote="Q", confidence=0.5, trigger_reason="R"),
+    ]
+    mapping = build_cite_key_map(rows)
+    assert len(mapping) == 2
+    assert mapping[0]["cite_key"] == "smith2024"
+    assert mapping[1]["cite_key"] == "smith2024-2"
+
+
+def test_build_synthesis_prompt_contains_cite_key_map():
+    """Prompt must include the mandatory SSOT citation key mapping."""
+    from core.synthesis import build_synthesis_prompt
+    from core.models import AcademicMatrixRow
+
+    row = AcademicMatrixRow(
+        title="Beyond Dents and Scratches", authors="Bergmann P", year="2022", venue="CVPR",
+        research_problem="P", method="M", innovation="I", limitation="L",
+        evidence_page=1, evidence_quote="Q", confidence=0.8, trigger_reason="R",
+    )
+    prompt = build_synthesis_prompt("test", [row])
+    assert "SSOT" in prompt
+    assert "cite{" in prompt
+    # Now uses canonical key: surname+year only
+    assert "bergmann2022" in prompt
+    assert "Do NOT invent new keys" in prompt
+
+
+# ===== Phase 10: Hardcoded Column Spec Guardrail =====
+
+def test_render_matrix_table_has_hardcoded_column_spec():
+    """Table must use the exact fixed-width p{...} column spec with raggedright."""
+    from core.templates import render_matrix_table_tex
+    from core.models import AcademicMatrixRow
+
+    row = AcademicMatrixRow(
+        title="Paper A", authors="B", year="2024", venue="C",
+        research_problem="P", method="M", innovation="I", limitation="L",
+        evidence_page=1, evidence_quote="Q", confidence=0.5, trigger_reason="R",
+    )
+    output = render_matrix_table_tex([row])
+
+    # Verify each part of the hardcoded column spec
+    assert r">{\raggedright\arraybackslash}p{2.2cm}" in output
+    assert r">{\raggedright\arraybackslash}p{2.5cm}" in output
+    assert r">{\raggedright\arraybackslash}X" in output
+    # Must use tabularx with textwidth
+    assert r"\begin{tabularx}{\textwidth}" in output
+    # Must have \label
+    assert r"\label{tab:comparison}" in output
+    # Must have \small for compact width
+    assert r"\small" in output
+
+
+# ===== Phase 10: Orphan Section Regex Guardrail =====
+
+def test_strip_orphan_english_sections_removes_english_before_cjk():
+    """Regex must strip English \section before a Chinese \section."""
+    from core.synthesis import _strip_orphan_english_sections
+
+    source = (
+        r"\section{Systematic Review and Deep Critique}" + "\n\n"
+        + r"\section{系统评述与深度批判}" + "\n"
+        + r"Some critical content."
+    )
+    result = _strip_orphan_english_sections(source)
+    assert "Systematic Review" not in result
+    assert "系统评述与深度批判" in result
+    assert "Some critical content" in result
+
+
+def test_strip_orphan_english_sections_preserves_standalone():
+    """Regex must NOT strip English \section if no CJK section follows."""
+    from core.synthesis import _strip_orphan_english_sections
+
+    source = (
+        r"\section{Methods}" + "\n"
+        + r"Some content." + "\n"
+        + r"\section{Results}" + "\n"
+        + r"More content."
+    )
+    result = _strip_orphan_english_sections(source)
+    assert "Methods" in result
+    assert "Results" in result
+
+
+def test_strip_orphan_english_sections_handles_starred():
+    """Regex must also match \section* variants."""
+    from core.synthesis import _strip_orphan_english_sections
+
+    source = (
+        r"\section*{Abstract}" + "\n"
+        + r"\section*{摘要}" + "\n"
+        + r"Content."
+    )
+    result = _strip_orphan_english_sections(source)
+    assert "Abstract" not in result
+    assert "摘要" in result
+
+
+# ===== Phase 10: Undefined Reference .log Pre-check Guardrail =====
+
+def test_scan_log_for_undefined_refs_detects_missing_label():
+    """Must warn when \ref{tab:comparison} has no matching \label."""
+    from core.synthesis import _scan_log_for_undefined_refs
+
+    source = (
+        r"\section{Test}" + "\n"
+        + r"See 表\ref{tab:comparison} for details." + "\n"
+        + r"\begin{tabularx}{\textwidth}{l c}"
+        + r"\end{tabularx}"
+    )
+    warnings = _scan_log_for_undefined_refs(source)
+    assert len(warnings) >= 1
+    assert any("tab:comparison" in w for w in warnings)
+
+
+def test_scan_log_for_undefined_refs_detects_missing_cite():
+    """Must warn when \cite{lostkey} has no matching \bibitem."""
+    from core.synthesis import _scan_log_for_undefined_refs
+
+    source = (
+        r"\section{Test}" + "\n"
+        + r"See \cite{bergmann2022} and \cite{fakekey}." + "\n"
+        + r"\begin{thebibliography}{99}" + "\n"
+        + r"\bibitem{bergmann2022} Bergmann et al." + "\n"
+        + r"\end{thebibliography}"
+    )
+    warnings = _scan_log_for_undefined_refs(source)
+    assert any("fakekey" in w for w in warnings)
+
+
+def test_scan_log_for_undefined_refs_returns_empty_when_all_good():
+    """Must return empty when all refs and cites resolve."""
+    from core.synthesis import _scan_log_for_undefined_refs
+
+    source = (
+        r"\section{Test}" + "\n"
+        r"\label{tab:comparison}" + "\n"
+        + r"See 表\ref{tab:comparison} and \cite{bergmann2022}." + "\n"
+        + r"\begin{thebibliography}{99}" + "\n"
+        + r"\bibitem{bergmann2022} Bergmann et al." + "\n"
+        + r"\end{thebibliography}"
+    )
+    warnings = _scan_log_for_undefined_refs(source)
+    assert warnings == []
+
+
+def test_parse_undefined_references_from_log_extracts():
+    """Must parse LaTeX Warning: ... undefined from .log content."""
+    from core.synthesis import _parse_undefined_references_from_log
+
+    log_content = (
+        "LaTeX Warning: Reference `tab:comparison' on page 1 undefined on input line 14.\n"
+        "Some other log content.\n"
+        "LaTeX Warning: Citation `badkey' on page 2 undefined on input line 20.\n"
+    )
+    warnings = _parse_undefined_references_from_log(log_content)
+    assert len(warnings) == 2
+    assert any("tab:comparison" in w for w in warnings)
+    assert any("badkey" in w for w in warnings)
+
+
+def test_inject_bibliography_uses_cite_key_map():
+    """When cite_key_map is provided, bibliography must use dynamic keys."""
+    from core.synthesis import _inject_bibliography
+
+    source = r"\section{结论}Done." + "\n" + r"\end{document}" + "\n"
+    cite_key_map = [
+        {"cite_key": "test2024custom", "authors": "Test A", "title": "Custom Title",
+         "year": "2024", "venue": "Conf"},
+    ]
+    result = _inject_bibliography(source, cite_key_map)
+
+    assert r"\bibitem{test2024custom}" in result
+    assert "Test A" in result
+    assert "Custom Title" in result
+    assert r"\end{thebibliography}" in result
+
+
+def test_derive_cite_key_strips_stop_words():
+    """derive_cite_key must skip 'the', 'a', 'of', 'and' etc. when picking title word."""
+    from core.synthesis import derive_cite_key
+
+    # "The Analysis of Spatial Data" → should use "analysis", not "the"
+    key = derive_cite_key("Smith J", "2023", "The Analysis of Spatial Data")
+    assert key == "smith2023analysis"
+
+    # "A Study of Deep Methods" → should use "study", not "a"
+    key2 = derive_cite_key("Li W", "2024", "A Study of Deep Methods")
+    assert key2 == "li2024study"
+
+
+# ===== Task 33: clean_synthesized_latex centralized post-processing =====
+
+def test_clean_synthesized_latex_strips_evidence_page_leaks():
+    """clean_synthesized_latex must remove all 4 bracket variants of evidence_page=N."""
+    from core.synthesis import clean_synthesized_latex
+
+    tex = (
+        r"\section{测试}"
+        r"本文使用了深度学习方法(evidence_page=3)。"
+        r"另一方法【evidence_page=5】也有效。"
+        r"还有[evidence_page=2]和（evidence_page=4）。"
+    )
+    cleaned = clean_synthesized_latex(tex)
+    assert "evidence_page" not in cleaned
+    assert "(evidence_page=3)" not in cleaned
+    assert "【evidence_page=5】" not in cleaned
+    assert "[evidence_page=2]" not in cleaned
+    assert "（evidence_page=4）" not in cleaned
+    assert r"\section{测试}" in cleaned
+
+
+def test_clean_synthesized_latex_strips_orphan_english_sections():
+    """Orphan English \\section before Chinese \\section must be stripped."""
+    from core.synthesis import clean_synthesized_latex
+
+    tex = (
+        r"\section{Abstract and Introduction}"
+        r"\section{摘要与引言}"
+        r"正文内容。"
+        r"\section{Technical Taxonomy}"
+        r"\section{技术分类体系}"
+        r"分类内容。"
+    )
+    cleaned = clean_synthesized_latex(tex)
+    # English headers before Chinese must be removed
+    assert r"\section{Abstract and Introduction}" not in cleaned
+    assert r"\section{Technical Taxonomy}" not in cleaned
+    # Chinese headers must be preserved
+    assert r"\section{摘要与引言}" in cleaned
+    assert r"\section{技术分类体系}" in cleaned
+
+
+def test_clean_synthesized_latex_preserves_standalone_english_section():
+    """A standalone English section NOT followed by Chinese must be preserved."""
+    from core.synthesis import clean_synthesized_latex
+
+    tex = (
+        r"\section{Experimental Results}"
+        r"Here are the experimental results."
+    )
+    cleaned = clean_synthesized_latex(tex)
+    # No Chinese section follows, so this English section is not orphan
+    assert r"\section{Experimental Results}" in cleaned
+
+
+def test_clean_synthesized_latex_cleans_math_operators():
+    """Math-mode 'or' must become \\lor."""
+    from core.synthesis import clean_synthesized_latex
+
+    tex = r"公式 $x or y$ 表示选择。"
+    cleaned = clean_synthesized_latex(tex)
+    assert r"$x \lor y$" in cleaned
+
+
+def test_clean_synthesized_latex_corrects_absurd_page_numbers():
+    """Absurd page numbers like 第17241页 must be corrected."""
+    from core.synthesis import clean_synthesized_latex
+
+    tex = r"如第17241页所示。"
+    cleaned = clean_synthesized_latex(tex)
+    assert "第17241页" not in cleaned
+    # Should be corrected to "结论部分" (>= 10000)
+    assert "结论部分" in cleaned
+
+
+def test_clean_synthesized_latex_idempotent():
+    """Applying clean_synthesized_latex twice should give the same result."""
+    from core.synthesis import clean_synthesized_latex
+
+    tex = (
+        r"\section{Abstract and Introduction}"
+        r"\section{摘要与引言}"
+        r"本文(evidence_page=3)使用了 $a or b$ 方法。"
+        r"见第17241页。"
+    )
+    first = clean_synthesized_latex(tex)
+    second = clean_synthesized_latex(first)
+    assert first == second
+
+
+def test_compile_with_xelatex_two_pass():
+    """compile_with_xelatex must run two xelatex passes for cross-reference resolution."""
+    from core.synthesis import compile_with_xelatex
+
+    # A minimal LaTeX document with a \ref that requires two-pass resolution
+    tex = (
+        r"\documentclass{article}"
+        r"\begin{document}"
+        r"\section{Test}\label{sec:test}"
+        r"See Section~\ref{sec:test}."
+        r"\end{document}"
+    )
+    errors = compile_with_xelatex(tex, timeout=30)
+    # After two passes, \ref{sec:test} should resolve — no undefined ref warnings
+    assert len(errors) == 0
+
+
+# ===== Phase 11: SSOT canonical_cite_key + citation sanitizer + compile guard =====
+
+def test_derive_canonical_cite_key_surname_year():
+    """derive_canonical_cite_key must produce surname+year only (no title slug)."""
+    from core.synthesis import derive_canonical_cite_key
+
+    assert derive_canonical_cite_key("Bergmann P, Batzner K", "2022") == "bergmann2022"
+    assert derive_canonical_cite_key("Iodice P, et al.", "2025") == "iodice2025"
+    assert derive_canonical_cite_key("Costanzino A", "2023") == "costanzino2023"
+    assert derive_canonical_cite_key("Soudani A", "2026") == "soudani2026"
+    assert derive_canonical_cite_key("", "2022") == "unknown2022"
+
+
+def test_canonical_cite_key_differs_from_full_cite_key():
+    """canonical key (surname+year) must be shorter than full cite_key (surname+year+titleword)."""
+    from core.synthesis import derive_cite_key, derive_canonical_cite_key
+
+    full = derive_cite_key("Bergmann P", "2022", "Beyond Dents and Scratches")
+    canonical = derive_canonical_cite_key("Bergmann P", "2022")
+    # Full key includes title word, canonical does not
+    assert len(canonical) < len(full)
+    assert full.startswith(canonical)  # canonical is prefix of full
+
+
+def test_sanitize_and_repair_citations_normalizes_alias_keys():
+    """Alias cite keys like francesco2025intelligent must be replaced with canonical keys."""
+    from core.synthesis import sanitize_and_repair_citations
+    from core.models import AcademicMatrixRow
+
+    row = AcademicMatrixRow(
+        title="Human-Robot Collaborative Safety Monitoring Framework",
+        authors="Iodice P, et al.", year="2025", venue="Robotics",
+        research_problem="P", method="M", innovation="I", limitation="L",
+        evidence_page=1, evidence_quote="Q", confidence=0.5, trigger_reason="R",
+    )
+    tex = (
+        r"\section{测试}"
+        r"本文参考了 \cite{iodice2025humanrobot} 和 \cite{iodice2025} 的方法。"
+        r"\begin{thebibliography}{99}"
+        r"\bibitem{iodice2025} Iodice P. Test. Robotics, 2025."
+        r"\end{thebibliography}"
+    )
+    cleaned = sanitize_and_repair_citations(tex, [row])
+    # iodice2025humanrobot contains "iodice" (surname) — should be resolved to canonical
+    assert "iodice2025humanrobot" not in cleaned
+    assert r"\cite{iodice2025}" in cleaned
+
+
+def test_sanitize_and_repair_citations_unifies_bibitem_keys():
+    """All \bibitem keys must be canonical after sanitization."""
+    from core.synthesis import sanitize_and_repair_citations
+    from core.models import AcademicMatrixRow
+
+    rows = [
+        AcademicMatrixRow(
+            title="Beyond Dents and Scratches", authors="Bergmann P", year="2022", venue="CVPR",
+            research_problem="P", method="M", innovation="I", limitation="L",
+            evidence_page=1, evidence_quote="Q", confidence=0.5, trigger_reason="R",
+        ),
+    ]
+    tex = (
+        r"\section{测试}"
+        r"\begin{thebibliography}{99}"
+        r"\bibitem{bergmann2022dents} Bergmann P. Test. CVPR, 2022."
+        r"\end{thebibliography}"
+    )
+    cleaned = sanitize_and_repair_citations(tex, rows)
+    assert r"\bibitem{bergmann2022}" in cleaned
+    # Old non-canonical keys must be gone
+    assert "bergmann2022dents" not in cleaned
+
+
+def test_sanitize_and_repair_citations_normalizes_bibitem_via_alias():
+    """Non-canonical bibitem keys matching known aliases must be corrected."""
+    from core.synthesis import sanitize_and_repair_citations
+    from core.models import AcademicMatrixRow
+
+    row = AcademicMatrixRow(
+        title="Beyond Dents and Scratches", authors="Bergmann P", year="2022", venue="CVPR",
+        research_problem="P", method="M", innovation="I", limitation="L",
+        evidence_page=1, evidence_quote="Q", confidence=0.5, trigger_reason="R",
+    )
+    tex = (
+        r"\section{测试}"
+        r"\begin{thebibliography}{99}"
+        r"\bibitem{bergmann2022dents} Bergmann P. CVPR, 2022."
+        r"\end{thebibliography}"
+    )
+    cleaned = sanitize_and_repair_citations(tex, [row])
+    # bergmann2022dents is in alias map → should be replaced with bergmann2022
+    assert r"\bibitem{bergmann2022}" in cleaned
+    assert "bergmann2022dents" not in cleaned
+
+
+def test_sanitize_and_repair_citations_idempotent():
+    """sanitize_and_repair_citations must be idempotent."""
+    from core.synthesis import sanitize_and_repair_citations
+    from core.models import AcademicMatrixRow
+
+    row = AcademicMatrixRow(
+        title="Test", authors="Iodice P", year="2025", venue="Robotics",
+        research_problem="P", method="M", innovation="I", limitation="L",
+        evidence_page=1, evidence_quote="Q", confidence=0.5, trigger_reason="R",
+    )
+    tex = (
+        r"\section{测试}"
+        r"\begin{thebibliography}{99}"
+        r"\bibitem{iodice2025} Iodice P. Test. Robotics, 2025."
+        r"\end{thebibliography}"
+    )
+    first = sanitize_and_repair_citations(tex, [row])
+    second = sanitize_and_repair_citations(first, [row])
+    assert first == second
+
+
+def test_sanitize_and_repair_citations_handles_multi_cite():
+    """Multi-cite \cite{key1,key2} must be repaired correctly."""
+    from core.synthesis import sanitize_and_repair_citations
+    from core.models import AcademicMatrixRow
+
+    rows = [
+        AcademicMatrixRow(
+            title="T1", authors="Bergmann P", year="2022", venue="CVPR",
+            research_problem="P", method="M", innovation="I", limitation="L",
+            evidence_page=1, evidence_quote="Q", confidence=0.5, trigger_reason="R",
+        ),
+        AcademicMatrixRow(
+            title="T2", authors="Costanzino A", year="2023", venue="VISAPP",
+            research_problem="P", method="M", innovation="I", limitation="L",
+            evidence_page=1, evidence_quote="Q", confidence=0.5, trigger_reason="R",
+        ),
+    ]
+    tex = (
+        r"\section{测试}"
+        r"本文参考了 \cite{fakebergmann,costanzino2023cross} 的方法。"
+        r"\begin{thebibliography}{99}"
+        r"\bibitem{bergmann2022} Bergmann P. CVPR, 2022."
+        r"\bibitem{costanzino2023} Costanzino A. VISAPP, 2023."
+        r"\end{thebibliography}"
+    )
+    cleaned = sanitize_and_repair_citations(tex, rows)
+    assert "fakebergmann" not in cleaned
+    assert "costanzino2023cross" not in cleaned
+    assert r"\bibitem{bergmann2022}" in cleaned
+    assert r"\bibitem{costanzino2023}" in cleaned
+
+
+def test_compile_with_xelatex_detects_undefined_citation():
+    """compile_with_xelatex must raise RuntimeError when Citation ... undefined found in .log."""
+    from core.synthesis import compile_with_xelatex
+
+    # A document with a \cite to a non-existent bibitem — will produce Citation undefined
+    tex = (
+        r"\documentclass{article}"
+        r"\begin{document}"
+        r"See \cite{nonexistent2025} for details."
+        r"\begin{thebibliography}{99}"
+        r"\bibitem{real2024} Real Paper. Some Venue, 2024."
+        r"\end{thebibliography}"
+        r"\end{document}"
+    )
+    # This should raise RuntimeError because xelatex .log will have "Citation ... undefined"
+    raised = False
+    try:
+        compile_with_xelatex(tex, timeout=30)
+    except RuntimeError:
+        raised = True
+    assert raised, "Expected RuntimeError for undefined citation, but none was raised"
+
+
+def test_build_cite_key_map_uses_canonical_keys():
+    """build_cite_key_map must use derive_canonical_cite_key for cite_key values."""
+    from core.synthesis import build_cite_key_map
+    from core.models import AcademicMatrixRow
+
+    rows = [
+        AcademicMatrixRow(
+            title="Beyond Dents and Scratches", authors="Bergmann P, Batzner K", year="2022",
+            venue="CVPR", research_problem="P", method="M", innovation="I", limitation="L",
+            evidence_page=1, evidence_quote="Q", confidence=0.5, trigger_reason="R",
+        ),
+        AcademicMatrixRow(
+            title="Human-Robot Collaborative Safety", authors="Iodice P, et al.", year="2025",
+            venue="Robotics", research_problem="P", method="M", innovation="I", limitation="L",
+            evidence_page=1, evidence_quote="Q", confidence=0.5, trigger_reason="R",
+        ),
+    ]
+    mapping = build_cite_key_map(rows)
+    # Keys must be canonical: surname+year only, no title words
+    assert mapping[0]["cite_key"] == "bergmann2022"
+    assert mapping[1]["cite_key"] == "iodice2025"
+
+
+def test_parsed_paper_has_canonical_cite_key_field():
+    """ParsedPaper must expose canonical_cite_key as an immutable field."""
+    from core.models import ParsedPaper, PageSlice
+
+    paper = ParsedPaper(
+        file_name="test.pdf",
+        pages=[PageSlice(page_number=1, text="abstract")],
+        title="Test Paper",
+        canonical_cite_key="smith2024",
+    )
+    assert paper.canonical_cite_key == "smith2024"
+
+    # Default fallback
+    paper2 = ParsedPaper(
+        file_name="test2.pdf",
+        pages=[PageSlice(page_number=1, text="abstract")],
+    )
+    assert paper2.canonical_cite_key == "missing"

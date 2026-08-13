@@ -642,4 +642,40 @@
   - `_align_cite_bibitem_keys` 的 prefix 匹配阈值为 6 字符，兼顾短 key（如 `berg22` → `bergmann2022dents`）与避免误匹配
   - Critic LLM review 后重新执行 `apply_static_rules` 作为安全网，确保 LLM 输出不引入新格式错误
 - **Lessons learned**: Python `re.sub` 中 `\1` 反向引用匹配的组必须是 `r'\1'` raw string，否则 `\1` 被解释为八进制转义
-- **Commit**: TBD
+- **Commit**: `8b21579`
+
+---
+
+## Phase 12 — SSOT Citation Key 根治 + 引用清洗器 + 强制 .log 预检
+
+- **Timestamp**: 2026-08-13 +08:00
+- **Triggered Superpowers skills**: None (direct system-architecture subagent work)
+- **Branch**: main (direct commit per user request)
+- **Core design**:
+  1. **`core/models.py`**：在 `ParsedPaper` 中新增 `canonical_cite_key: str = "missing"` 字段（SSOT 单真源，surname+year 格式，如 `iodice2025`）
+  2. **`core/synthesis.py`**：
+     - 新增 `derive_canonical_cite_key(authors, year)` — 仅取 surname+year，不含 title slug，与 `derive_cite_key()` 共存
+     - 新增 `build_alias_map(rows)` — 为每篇论文生成 5 种别名变体（derive_cite_key 全称、surname、surname+year、surname+first_initial、firstname+year）→ canonical 映射
+     - 切换 `build_cite_key_map()` 为使用 `derive_canonical_cite_key()`，使所有 `\cite{}/`\bibitem{}` key 统一为 canonical 格式
+     - 新增 `sanitize_and_repair_citations(tex_content, rows)` — 3-pass 引用清洗器：
+       - Pass 1: alias map 精确替换 `\cite{...}` 中的 LLM 别名
+       - Pass 2: 模糊孤儿修正（case-insensitive + 6-char prefix + surname substring 三策略）
+       - Pass 3: `\bibitem{...}` key 强制统一为 canonical
+     - 增强 `compile_with_xelatex()` — 编译后扫描 `.log`，若存在 `Citation ... undefined` 关键字 → 抛出 `RuntimeError` 阻断交付
+     - 修复 `RuntimeError` 被内部 `except Exception` 吞噬的 Bug
+     - 集成点到 `render_survey_tex_with_llm()` 和 `render_survey_tex_multi_stage()`（`_inject_bibliography()` → `sanitize_and_repair_citations()` → `compile_with_xelatex()`）
+- **测试**:
+  - `tests/test_synthesis.py` 新增 8 个测试：`derive_canonical_cite_key`、`sanitize_and_repair_citations` 正则化/幂等性/多 cite/bibitem 统一/alias 修复、`build_cite_key_map` canonical 验证、`compile_with_xelatex` RuntimeError 验证
+  - `tests/test_synthesis.py` 更新 3 个旧测试适应 canonical key 变更（`stable_order`、`disambiguates`、`prompt_contains_cite_key_map`）
+  - `test_parsed_paper_has_canonical_cite_key_field` 内联于 test_synthesis.py
+- **验证**: 全量 `pytest` **207 passed, 0 failed**（197 基线 + 10 新增/更新，零回归）
+- **Key decisions**:
+  - `canonical_cite_key` 是**新字段**，与 `cite_key` 共存，不破坏向后兼容
+  - `build_alias_map` 生成 5 种别名以覆盖 LLM 常见发明模式：全称（如 `bergmann2022dents`）、姓氏（`bergmann`）、姓氏+年份（`bergmann2022`）、姓氏+名字首字母（`bergmannp`）、名字+年份（`p2022`）
+  - `sanitize_and_repair_citations` 的 Pass 2 模糊匹配策略为三级降级：alias prefix → canonical 6-char prefix → surname substring（≥4 字符）
+  - `[?]` 是 xelatex 渲染产物，不在 `.tex` 源码中出现 → 唯一可靠修复路径为编译前 cite/bibitem key 对齐 + 编译后 .log 预检阻断
+  - `except RuntimeError: raise` 必须在 `except Exception` 之前，否则被静默吞下
+- **Lessons learned**:
+  - `ParsedPaper.cite_key` 虽声明为"不可变 SSOT"，但实际从未被 pdf_parser 赋值（默认 `"missing"`）— 现有引用链路完全依赖 `AcademicMatrixRow` 上的 `derive_cite_key()`；新增 `canonical_cite_key` 时必须同时迁移 `build_cite_key_map()`
+  - `build_alias_map` 的 first_name 别名（如 `francesco2025`）依赖 author 字段包含完整名字（`Iodice Francesco`），若仅存储缩写（`Iodice P`）则无法生成该别名 — 此时只能依赖 surname substring 兜底策略
+- **Commit**: `4df85c9`

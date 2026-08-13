@@ -24,6 +24,13 @@ class ParsedPaper:
     sections: dict[str, str] = field(default_factory=lambda: dict(DEFAULT_SECTIONS))
     warnings: list[str] = field(default_factory=list)
     error: str | None = None
+    # Immutable citation key, computed once from title+year at construction time.
+    # Locked as a dataclass field so it is available to every downstream consumer
+    # (synthesis, templates, pipeline) without re-derivation.
+    cite_key: str = "missing"
+    # SSOT canonical citation key: first-author-surname + year only (e.g. "iodice2025").
+    # All \cite{} and \bibitem{} keys in the LaTeX manuscript must resolve to this.
+    canonical_cite_key: str = "missing"
 
     def page_text_by_number(self) -> dict[int, str]:
         return {page.page_number: page.text for page in self.pages}

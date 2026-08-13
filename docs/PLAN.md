@@ -4229,3 +4229,36 @@ git commit -m "feat: add 2d interactive knowledge graph with pyvis (Task 25) [Su
 - [x] **Step 2:** 全量 pytest 185 passed（153 基线 + 32 新增，零回归）
 - [x] **Step 3:** 重新生成 survey_draft.tex，xelatex 两遍编译零 error 零 undefined ref
 - [x] **Step 4:** 重新编译 course_report.tex → 8 页，另存为 PB24010467钟启帆-课程报告.pdf
+
+---
+
+## Phase 12: SSOT Citation Key 根治 + 引用清洗器 + 强制 .log 预检 (Current)
+
+**Goal:** 从底层治理 PDF 中的引用断链 `[?]` 问题：1) 建立 canonical_cite_key SSOT；2) 实现引用清洗器自动归一化 LLM 别名；3) 强制 .log 预检阻断交付。
+
+### Task 34.1: 在 core/models.py 中增加 canonical_cite_key（SSOT 单真源）
+
+**Files:**
+- Modify: `core/models.py`
+- Modify: `core/synthesis.py`
+
+- [x] **Step 1:** 在 `ParsedPaper` 中新增 `canonical_cite_key: str = "missing"` 字段
+- [x] **Step 2:** 新增 `derive_canonical_cite_key(authors, year)` 函数（surname+year）
+- [x] **Step 3:** 新增 `build_alias_map(rows)` 函数（5 种别名变体 → canonical 映射）
+- [x] **Step 4:** 切换 `build_cite_key_map()` 为使用 `derive_canonical_cite_key()`
+
+### Task 34.2: 实现引用清洗器 + 强制 .log 预检
+
+**Files:**
+- Modify: `core/synthesis.py`
+
+- [x] **Step 1:** 实现 `sanitize_and_repair_citations(tex_content, rows)` — 3-pass 清洗：别名归一化 + 模糊孤儿修正 + bibitem key 统一
+- [x] **Step 2:** 增强 `compile_with_xelatex()` — 检测 `Citation.*undefined` → 抛出 `RuntimeError` 阻断交付
+- [x] **Step 3:** 集成到 `render_survey_tex_with_llm()` 和 `render_survey_tex_multi_stage()`
+- [x] **Step 4:** 修复 `RuntimeError` 被 `except Exception` 吞噬的 Bug
+
+### Task 34.3: 单元测试与验证
+
+- [x] **Step 1:** 新增 9 项单元测试（test_synthesis.py +8，test_models 内联 +1）
+- [x] **Step 2:** 更新 3 项现有测试以适应 canonical key 变更
+- [x] **Step 3:** 全量 pytest 207 passed，0 failed，零回归

@@ -46,18 +46,37 @@ def _add_tex_spacing(value: str) -> str:
 def render_matrix_table_tex(rows: list[AcademicMatrixRow]) -> str:
     """Render academic comparison matrix as a LaTeX tabularx three-line table.
 
-    Uses >{\\raggedright\\arraybackslash}X for the limitation column to ensure
-    Chinese text wraps horizontally instead of displaying vertically character by character.
+    Column spec is HARD-CODED to fixed-width ``>{\\raggedright\\arraybackslash}p{...}``
+    columns for all five columns, ensuring that any long Chinese/English text wraps
+    beautifully within A4 margins without vertical character displacement.
 
-    The table includes \\label{{tab:comparison}} for cross-referencing.
+    The final column uses ``X`` (auto-stretch) so the table fills \\textwidth.
+
+    Always includes ``\\label{{tab:comparison}}`` for cross-referencing.
+
+    **Row safety guarantees:**
+    1. Every data row is explicitly terminated with ``\\\\`` (double-backslash newline).
+    2. ``\\addlinespace`` is only ever emitted immediately after a ``\\\\``-terminated
+       line, never on its own — preventing ``Misplaced \\noalign`` errors.
+    3. Each row contains exactly 4 ``&`` separators (5 columns), verified at render time.
     """
+    # SSOT column spec — locked against accidental drift
+    COL_SPEC = (
+        r">{\raggedright\arraybackslash}p{2.2cm} "
+        r">{\raggedright\arraybackslash}p{2.5cm} "
+        r">{\raggedright\arraybackslash}p{2.5cm} "
+        r">{\raggedright\arraybackslash}p{2.5cm} "
+        r">{\raggedright\arraybackslash}X"
+    )
+    EXPECTED_AMPERSANDS = 4  # 5 columns → exactly 4 & separators per row
+
     lines = [
         r"\begin{table}[htbp]",
         r"\centering",
         r"\caption{学术对比矩阵}",
         r"\label{tab:comparison}",
         r"\small",
-        r"\begin{tabularx}{\textwidth}{l c c c >{\raggedright\arraybackslash}X}",
+        r"\begin{tabularx}{\textwidth}{" + COL_SPEC + "}",
         r"\toprule",
         r"文献\&年份 & 异常范式 & 模态输入 & 关键指标 & 局限性 \\",
         r"\midrule",
@@ -67,26 +86,137 @@ def render_matrix_table_tex(rows: list[AcademicMatrixRow]) -> str:
         method = latex_escape(row.method)
         innovation = latex_escape(row.innovation)
         limitation = latex_escape(row.limitation)
-        # Use the domain field or innovation as the key metric
+        # Use the first meaningful domain field as key metric; fall back to innovation
         metric = "—"
         if row.domain_fields:
-            meaningful = [v for v in row.domain_fields.values()
-                          if v and v not in ("missing", "", "missing (unverified)")]
+            meaningful = [
+                v for v in row.domain_fields.values()
+                if v and v not in ("missing", "", "missing (unverified)")
+            ]
             if meaningful:
                 metric = latex_escape(meaningful[0])
             else:
                 metric = latex_escape(row.innovation)
         else:
             metric = latex_escape(row.innovation)
-        lines.append(
-            f"{title} ({row.year}) & — & — & {metric} & {limitation} \\\\"
-        )
+
+        # Build the row cell string with explicit \\ terminator
+        row_line = f"{title} ({row.year}) & — & — & {metric} & {limitation} \\\\"
+        # Defensive: verify exact ampersand count before appending
+        ampersand_count = row_line.count("&")
+        if ampersand_count != EXPECTED_AMPERSANDS:
+            print(
+                f"[templates] WARNING: row {idx} has {ampersand_count} & separators "
+                f"(expected {EXPECTED_AMPERSANDS}) — auto-correcting column count."
+            )
+            # Truncate or pad to match expected column count
+            parts = row_line.split("&")
+            if len(parts) > EXPECTED_AMPERSANDS + 1:
+                # Too many columns: drop excess cells before the last one
+                parts = parts[:EXPECTED_AMPERSANDS] + [parts[-1]]
+            elif len(parts) < EXPECTED_AMPERSANDS + 1:
+                # Too few columns: pad with "—"
+                parts = parts[:-1] + [" —"] * (EXPECTED_AMPERSANDS + 1 - len(parts)) + [parts[-1]]
+            row_line = "&".join(parts)
+
+        lines.append(row_line)
     lines.extend([
         r"\bottomrule",
         r"\end{tabularx}",
         r"\end{table}",
     ])
     return "\n".join(lines)
+
+
+def sanitize_latex_table(table_tex: str, expected_columns: int = 5) -> str:
+    """Post-process LaTeX table source to prevent Misplaced \\noalign and Extra alignment tab errors.
+
+    This is a safety-net function that can be applied to LLM-generated table LaTeX
+    before compilation. It performs three fixes:
+
+    1. **\\\\addlinespace guard**: Ensures ``\\addlinespace`` is always preceded by
+       a ``\\\\`` row terminator. If a bare ``\\addlinespace`` (without preceding
+       ``\\\\``) is found, a ``\\\\`` is inserted before it.
+
+    2. **Ampersand normalization**: Ensures each data row contains exactly
+       ``expected_columns - 1`` ampersand (``&``) separators.
+
+    3. **Stray ``\\addlinespace`` cleanup**: Removes ``\\addlinespace`` after
+       ``\\bottomrule`` or ``\\end{tabularx}``.
+
+    Args:
+        table_tex: Raw LaTeX table source (may include \\begin/\\end environment).
+        expected_columns: Number of columns in the table (default 5).
+
+    Returns:
+        Sanitized LaTeX table source.
+    """
+    expected_ampersands = expected_columns - 1
+
+    # Fix 1: Remove \addlinespace after \bottomrule or \end{tabularx} FIRST
+    #         (before \\-insertion, so \bottomrule\addlinespace is matched directly)
+    table_tex = re.sub(
+        r'\\(?:bottomrule|end\{tabularx\})\s*\n?\s*\\addlinespace',
+        lambda m: re.sub(r'\\addlinespace\s*', '', m.group(0)),
+        table_tex,
+    )
+
+    # Fix 2: Ensure remaining \addlinespace is always preceded by \\
+    table_tex = re.sub(
+        r'(?<!\\\\)\s*\\addlinespace',
+        r' \\\\\n\\addlinespace',
+        table_tex,
+    )
+    table_tex = re.sub(
+        r'^\s*\\addlinespace',
+        r' \\\\\n\\addlinespace',
+        table_tex,
+        flags=re.MULTILINE,
+    )
+    # Remove double \\\\ before \addlinespace
+    table_tex = re.sub(
+        r'\\\\\s*\n\s*\\\\\s*\n\s*\\addlinespace',
+        r' \\\\\n\\addlinespace',
+        table_tex,
+    )
+
+    # Fix 3: Normalize ampersand count per data row
+    def _fix_ampersand_count(m: re.Match) -> str:
+        line = m.group(0).strip()
+        if not line or any(
+            kw in line for kw in [
+                r'\begin', r'\end', r'\toprule', r'\midrule',
+                r'\bottomrule', r'\addlinespace', r'\hline',
+                r'\caption', r'\label',
+            ]
+        ):
+            return m.group(0)
+
+        amp_count = line.count("&")
+        if amp_count == expected_ampersands:
+            return m.group(0)
+
+        stripped = re.sub(r'\\\\\s*$', '', line).strip()
+        parts = stripped.split("&")
+        if len(parts) > expected_columns:
+            parts = parts[:expected_ampersands] + [parts[-1].strip()]
+        elif len(parts) < expected_columns:
+            parts = [p.strip() for p in parts]
+            parts = parts + ["—"] * (expected_columns - len(parts))
+
+        fixed = " & ".join(p.strip() for p in parts[:expected_columns])
+        if r'\\' in line:
+            fixed += r' \\'
+        return fixed
+
+    table_tex = re.sub(
+        r'^.*&.*$',
+        _fix_ampersand_count,
+        table_tex,
+        flags=re.MULTILINE,
+    )
+
+    return table_tex
 
 
 def _build_title_macro(title: str) -> str:

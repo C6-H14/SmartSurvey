@@ -6,7 +6,148 @@ import os
 from typing import Callable
 
 from core.agent import gateway_retry
-from core.models import AcademicMatrixRow
+from core.models import AcademicMatrixRow, ParsedPaper
+
+
+def derive_cite_key(authors: str, year: str, title: str = "") -> str:
+    """Derive a deterministic, immutable citation key from paper metadata.
+
+    Pattern: ``firstAuthorSurnameYYYYfirstMeaningfulTitleWord`` (lowercase, alphanumeric).
+    Examples:
+        - ``Bergmann P, ...`` + 2022 + ``Beyond Dents and Scratches`` → ``bergmann2022beyond``
+        - ``Iodice P, ...`` + 2025 + ``Human-Robot Collaborative...`` → ``iodice2025humanrobot``
+
+    Args:
+        authors: Raw author string (e.g. "Bergmann P, Batzner K, ...").
+        year: Publication year as string (e.g. "2022").
+        title: Paper title (optional fallback for disambiguation).
+
+    Returns:
+        Lowercase alphanumeric citation key, always non-empty.
+    """
+    # Extract first author surname: take everything before the first comma or space
+    first_author = authors.split(",")[0].strip().split(" ")[0].strip() if authors else "unknown"
+    surname = re.sub(r"[^a-zA-Z]+", "", first_author).lower() or "unknown"
+
+    # Extract first meaningful title word (skip stop words)
+    if title and title != "missing":
+        stop_words = {"a", "an", "the", "and", "or", "of", "in", "on", "to", "for",
+                      "with", "is", "are", "was", "were", "be", "been", "being",
+                      "have", "has", "had", "do", "does", "did", "but", "not",
+                      "from", "by", "at", "as", "into", "through", "during", "before",
+                      "after", "above", "below", "between", "under", "over",
+                      "beyond", "toward", "towards"}
+        title_words = re.sub(r"[^a-zA-Z\s]", " ", title).split()
+        meaningful = [w.lower() for w in title_words if w.lower() not in stop_words]
+        title_slug = meaningful[0] if meaningful else ""
+    else:
+        title_slug = ""
+
+    if title_slug:
+        return f"{surname}{year}{title_slug}"
+    return f"{surname}{year}"
+
+
+def derive_canonical_cite_key(authors: str, year: str) -> str:
+    """Derive a canonical citation key using ONLY first-author-surname + year.
+
+    Rule: ``firstAuthorSurname.lower() + year`` — no title words appended.
+    Examples:
+        - "Bergmann P, Batzner K, ..." + 2022 → "bergmann2022"
+        - "Iodice P, et al." + 2025 → "iodice2025"
+
+    This is the SINGLE SOURCE OF TRUTH canonical key. All other key variants
+    (from derive_cite_key, LLM-invented aliases) MUST resolve to this.
+
+    Args:
+        authors: Raw author string (e.g. "Bergmann P, Batzner K, ...").
+        year: Publication year as string (e.g. "2022").
+
+    Returns:
+        Lowercase alphanumeric canonical citation key, always non-empty.
+    """
+    first_author = authors.split(",")[0].strip().split(" ")[0].strip() if authors else "unknown"
+    surname = re.sub(r"[^a-zA-Z]+", "", first_author).lower() or "unknown"
+    return f"{surname}{year}"
+
+
+def build_alias_map(rows: list[AcademicMatrixRow]) -> dict[str, str]:
+    """Build a mapping from known alias cite keys to canonical cite keys.
+
+    For each paper, generates:
+    - The derive_cite_key() variant (e.g., "bergmann2022dents")
+    - First-author surname (e.g., "bergmann")
+    - First-author surname + first initial (e.g., "bergmannp")
+
+    All map to the canonical key (e.g., "bergmann2022").
+
+    Args:
+        rows: Academic matrix rows with author/year/title metadata.
+
+    Returns:
+        Dict mapping lowercase alias strings to canonical cite keys.
+    """
+    alias_map: dict[str, str] = {}
+    for row in rows:
+        canonical = derive_canonical_cite_key(row.authors, row.year)
+
+        # Alias 1: the full derive_cite_key() variant (with title word)
+        full_key = derive_cite_key(row.authors, row.year, row.title)
+        alias_map[full_key.lower()] = canonical
+
+        # Alias 2: just the surname as a prefix
+        first_author = row.authors.split(",")[0].strip().split(" ")[0].strip() if row.authors else ""
+        surname = re.sub(r"[^a-zA-Z]+", "", first_author).lower()
+        if surname:
+            alias_map[surname] = canonical
+
+            # Alias 3: surname + year (slightly different from canonical but LLM may use)
+            alias_map[f"{surname}{row.year}"] = canonical
+
+            # Alias 4: surname + first name initial (e.g., "bergmannp", "iodicep")
+            parts = row.authors.split(",")[0].strip().split(" ")
+            first_name = ""
+            if len(parts) >= 2:
+                first_name = re.sub(r"[^a-zA-Z]+", "", parts[1]).lower()
+            if first_name:
+                alias_map[f"{surname}{first_name}"] = canonical
+
+            # Alias 5: first name + year (LLM may use first name instead of surname)
+            if first_name:
+                alias_map[f"{first_name}{row.year}"] = canonical
+
+    return alias_map
+
+
+def build_cite_key_map(rows: list[AcademicMatrixRow]) -> list[dict]:
+    """Build a deterministic citation key → paper metadata mapping for SSOT injection.
+
+    Returns a list of dicts with keys: cite_key, title, authors, year, venue.
+    The list order is stable and determines [1], [2], ... numbering in the manuscript.
+
+    This mapping is the single source of truth passed to:
+    - Prompt building (so the LLM knows which \\cite{key} to use)
+    - Bibliography rendering (so \\bibitem{key} matches exactly)
+    """
+    mapping = []
+    seen_keys: set[str] = set()
+    for row in rows:
+        key = derive_canonical_cite_key(row.authors, row.year)
+        # Disambiguate if duplicate (append -2, -3, ...)
+        base_key = key
+        counter = 2
+        while key in seen_keys:
+            key = f"{base_key}-{counter}"
+            counter += 1
+        seen_keys.add(key)
+        mapping.append({
+            "cite_key": key,
+            "title": row.title,
+            "authors": row.authors,
+            "year": row.year,
+            "venue": row.venue,
+        })
+    return mapping
 
 
 def _strip_evidence_page_leaks(text: str) -> str:
@@ -29,19 +170,16 @@ def _strip_evidence_page_leaks(text: str) -> str:
 
 
 def _strip_orphan_english_sections(latex_source: str) -> str:
-    """Strip orphan English \\section{{...}} headers that appear immediately before
-    a Chinese \\section{{...}} header with equivalent semantics.
+    """Strip orphan English ``\\section``/``\\section*`` headers that appear
+    immediately before a Chinese ``\\section``/``\\section*`` header.
 
     The LLM sometimes generates both an English section title (e.g.
     ``\\section{{Systematic Review and Deep Critique}}'') followed by a Chinese
     translation (``\\section{{系统评述与深度批判}}''). This function detects
     such duplicates and removes the English version.
 
-    Uses a precise regex that:
-    1. Matches ``\\section`` or ``\\section*`` with English/ASCII content
-       (letters, digits, spaces, &, comma, colon, hyphens).
-    2. Consumes any trailing whitespace/newlines between the two sections.
-    3. Uses a positive lookahead to ensure the next ``\\section`` has CJK content.
+    Uses a lookahead to only remove the English header when a CJK header follows
+    immediately — standalone English sections are NOT stripped.
 
     Args:
         latex_source: Full LaTeX source.
@@ -55,6 +193,55 @@ def _strip_orphan_english_sections(latex_source: str) -> str:
         '',
         latex_source
     )
+
+
+def clean_synthesized_latex(text: str) -> str:
+    """Post-process LLM-synthesized LaTeX to eliminate RAG leaks and orphan artifacts.
+
+    This is the central cleanup function applied to all synthesis output before
+    compilation. It runs four hardening passes in order:
+
+    1. **RAG evidence_page leak removal** (已扩展至 4 种括号变体):
+       ``(evidence_page=2)``, ``（evidence_page=3）``, ``[evidence_page=4]``,
+       ``【evidence_page=5】`` → empty string.
+
+    2. **Orphan English section header stripping**:
+       ``\\section*{Abstract and Introduction}`` followed immediately by
+       ``\\section{摘要与引言}`` → removes the English header, keeps the Chinese.
+
+    3. **Math operator normalization**: ``or`` → ``\\lor``, ``and`` → ``\\land``
+       inside math mode ($...$ and $$...$$).
+
+    4. **Absurd page number correction**: ``第17241页`` → ``结论部分``.
+
+    Args:
+        text: Raw LaTeX source from LLM synthesis.
+
+    Returns:
+        Cleaned LaTeX source ready for preamble wrapping and compilation.
+    """
+    # Pass 1: RAG evidence_page leak — 4 bracket variants
+    text = re.sub(
+        r'[\(（\[【]\s*evidence_page\s*=\s*\d+\s*[\)\]）】]',
+        '',
+        text,
+    )
+
+    # Pass 2: Orphan English \\section / \\section* before Chinese \\section
+    text = re.sub(
+        r'\\section\*?\{[A-Za-z0-9\s\&,:-]+\}\s*\n*\s*'
+        r'(?=\\section\*?\{[一-龥]+)',
+        '',
+        text,
+    )
+
+    # Pass 3: Math-mode or → \\lor, and → \\land
+    text = _clean_math_operators(text)
+
+    # Pass 4: Absurd page numbers
+    text = _strip_absurd_page_numbers(text)
+
+    return text
 
 
 def _inject_table_label(text: str) -> str:
@@ -208,6 +395,74 @@ def validate_latex_syntax(latex_source: str) -> list[str]:
     return errors
 
 
+def _scan_log_for_undefined_refs(latex_source: str) -> list[str]:
+    """Scan LaTeX source for potential undefined references.
+
+    Scans for \\ref{{...}} and \\cite{{...}} keys and checks against defined
+    \\label{{...}} and \\bibitem{{...}} keys. Returns mismatch warnings.
+
+    This is a fast regex-based pre-check that runs without needing access to
+    xelatex or the .log file.
+
+    Args:
+        latex_source: Full LaTeX source.
+
+    Returns:
+        List of warning strings about undefined references. Empty = all good.
+    """
+    warnings: list[str] = []
+
+    # Collect all defined labels and bibitems
+    defined_labels: set[str] = set()
+    for m in re.finditer(r'\\label\{([^}]+)\}', latex_source):
+        defined_labels.add(m.group(1))
+    defined_bibitems: set[str] = set()
+    for m in re.finditer(r'\\bibitem\{([^}]+)\}', latex_source):
+        defined_bibitems.add(m.group(1))
+
+    # Check \ref{...} calls
+    for m in re.finditer(r'\\ref\{([^}]+)\}', latex_source):
+        ref_key = m.group(1)
+        if ref_key not in defined_labels:
+            warnings.append(f"Undefined ref: \\ref{{{ref_key}}} has no matching \\label")
+
+    # Check \cite{...} calls
+    for m in re.finditer(r'\\cite\{([^}]+)\}', latex_source):
+        cite_key = m.group(1)
+        if cite_key not in defined_bibitems:
+            warnings.append(f"Undefined citation: \\cite{{{cite_key}}} has no matching \\bibitem")
+
+    return warnings
+
+
+def _parse_undefined_references_from_log(log_content: str) -> list[str]:
+    """Scan xelatex .log for ``undefined reference`` warnings.
+
+    XeLaTeX outputs warnings like:
+        LaTeX Warning: Reference `tab:comparison' on page 1 undefined on input line 14.
+    or:
+        LaTeX Warning: Citation `citelostkey' on page 1 undefined on input line 20.
+
+    This parser extracts and deduplicates these warnings so the self-healing
+    pipeline can trigger correction.
+
+    Args:
+        log_content: Raw content of survey_draft.log.
+
+    Returns:
+        Deduplicated list of warning strings, max 5. Empty = no undefined refs.
+    """
+    warnings: list[str] = []
+    seen: set[str] = set()
+    for line in log_content.splitlines():
+        if "undefined" in line.lower() and ("reference" in line.lower() or "citation" in line.lower()):
+            stripped = line.strip()
+            if stripped not in seen:
+                seen.add(stripped)
+                warnings.append(stripped)
+    return warnings[:5]
+
+
 def _parse_xelatex_log(log_content: str) -> list[str]:
     """Extract LaTeX compilation errors from .log file content.
 
@@ -232,18 +487,28 @@ def _parse_xelatex_log(log_content: str) -> list[str]:
 
 
 def compile_with_xelatex(latex_source: str, timeout: int = 60) -> list[str]:
-    """Compile LaTeX source with xelatex and extract compilation errors.
+    """Compile LaTeX source with xelatex using TWO PASSES and extract compilation errors.
+
+    **Two-pass design:** The first pass generates ``.aux`` and ``.toc`` files;
+    the second pass reads them to resolve ``\\ref{}`` and ``\\cite{}``
+    cross-references. Without two passes, ``\\ref{tab:comparison}`` will display
+    as ``??`` even when the label exists — the first pass writes the label to
+    ``.aux``, the second pass reads it.
 
     Runs in a temporary directory to avoid polluting the working tree.
     If xelatex is not available, or compilation times out, returns empty list
     (silent degradation — does not crash the pipeline).
 
+    After both passes, scans the .log for ``undefined reference`` warnings
+    (LaTeX Warning: Reference `...' on page ... undefined) and returns them
+    alongside any error lines.
+
     Args:
         latex_source: Complete .tex file content (with preamble and \\end{{document}}).
-        timeout: Max seconds to wait for xelatex to finish (default 60).
+        timeout: Max seconds to wait for each xelatex pass (default 60).
 
     Returns:
-        Deduplicated error lines from .log, max 5. Empty = compiled OK or unavailable.
+        Deduplicated error/warning lines from .log, max 5. Empty = compiled OK or unavailable.
     """
     if not shutil.which("xelatex"):
         return []
@@ -254,28 +519,64 @@ def compile_with_xelatex(latex_source: str, timeout: int = 60) -> list[str]:
             with open(tex_path, "w", encoding="utf-8") as f:
                 f.write(latex_source)
 
-            result = subprocess.run(
-                ["xelatex", "-interaction=nonstopmode", "-halt-on-error",
-                 os.path.basename(tex_path)],
+            basename = os.path.basename(tex_path)
+            xelatex_args = [
+                "xelatex", "-interaction=nonstopmode", "-halt-on-error", basename,
+            ]
+
+            # ── Pass 1: generate .aux ──
+            result1 = subprocess.run(
+                xelatex_args,
                 cwd=tmpdir,
                 capture_output=True,
                 text=True,
                 timeout=timeout,
             )
 
-            if result.returncode == 0:
-                return []
+            # ── Pass 2: resolve cross-references from .aux ──
+            result2 = subprocess.run(
+                xelatex_args,
+                cwd=tmpdir,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+            )
 
+            # Use the second-pass log for diagnostics
             log_path = os.path.join(tmpdir, "survey_draft.log")
+            errors: list[str] = []
+            citation_undefined = False
             if os.path.exists(log_path):
                 with open(log_path, "r", encoding="utf-8", errors="replace") as f:
                     log_content = f.read()
-                return _parse_xelatex_log(log_content)
-            return []
+                errors = _parse_xelatex_log(log_content)
+                # Also scan for "undefined reference" warnings in .log
+                undefined_refs = _parse_undefined_references_from_log(log_content)
+                # Check for Citation-specific undefined — blocks delivery
+                for ref in undefined_refs:
+                    if "citation" in ref.lower():
+                        citation_undefined = True
+                        break
+                errors.extend(undefined_refs)
+
+            if citation_undefined:
+                # Block delivery: undefined citations mean [?] in the PDF
+                raise RuntimeError(
+                    f"XeLaTeX: Citation undefined detected in .log — "
+                    f"blocking delivery to prevent [?] in PDF. "
+                    f"Undefined refs: {', '.join(e for e in errors if 'citation' in e.lower())[:200]}"
+                )
+
+            if result2.returncode == 0 and not errors:
+                return []
+
+            return errors[:5]
 
     except subprocess.TimeoutExpired:
-        print("[XeLaTeX] Compilation timed out after {timeout}s — falling back to static validation.")
+        print("[XeLaTeX] Compilation timed out — falling back to static validation.")
         return []
+    except RuntimeError:
+        raise  # Re-raise: citation undefined must block delivery
     except Exception:
         return []
 
@@ -293,9 +594,15 @@ def build_synthesis_prompt(
     - Embed the booktabs matrix table from provided row data.
     - Return ONLY valid LaTeX source (no markdown fences, no explanations).
     """
+    cite_key_map = build_cite_key_map(rows)
     paper_list = "\n".join(
-        f"  - {row.title} ({row.authors}, {row.year}, {row.venue})"
-        for row in rows
+        f"  - \\cite{{{m['cite_key']}}} {m['title']} ({m['authors']}, {m['year']}, {m['venue']})"
+        for m in cite_key_map
+    )
+
+    cite_key_table = "\n".join(
+        f"    [{idx}] \\cite{{{m['cite_key']}}} → {m['title']} ({m['authors']}, {m['year']})"
+        for idx, m in enumerate(cite_key_map, start=1)
     )
 
     matrix_rows = "\n".join(
@@ -308,7 +615,7 @@ def build_synthesis_prompt(
     for i, tmpl in enumerate(SECTION_TEMPLATES):
         section_guidance_lines.append(
             f"  Section {i+1} ({tmpl['name']}) [{tmpl['weight'].upper()}]: "
-            f"{tmpl['guidance'].format(topic=topic)}"
+            f"{tmpl['guidance'].replace('TOPIC_PLACEHOLDER', topic)}"
         )
     section_guidance_block = "\n".join(section_guidance_lines)
 
@@ -316,6 +623,11 @@ def build_synthesis_prompt(
         f"You are an academic writing assistant. Generate a Chinese academic survey manuscript in LaTeX.\n\n"
         f"Review topic: {topic}\n\n"
         f"Papers to review ({len(rows)} total):\n{paper_list}\n\n"
+        f"MANDATORY CITATION KEY MAP (SSOT — use EXACTLY these \\cite{{}} keys):\n"
+        f"{cite_key_table}\n\n"
+        f"CRITICAL: Every \\cite in the body MUST use one of these exact keys: "
+        f"{', '.join(m['cite_key'] for m in cite_key_map)}. "
+        f"Do NOT invent new keys or use numeric [1] without \\cite.\n\n"
         f"Extracted comparison data:\n"
         f"Paper list:\n{matrix_rows}\n\n"
         f"REQUIREMENTS:\n"
@@ -338,7 +650,7 @@ def build_synthesis_prompt(
         f"   \\section{{研究缺口与未来工作}}\n"
         f"   \\section{{结论}}\n"
         f"5. The \\section{{学术对比矩阵}} must use \\begin{{tabularx}}{{\\textwidth}} "
-        f"with columns {{l c c c >{{\\raggedright\\arraybackslash}}X}} and \\toprule/\\midrule/\\bottomrule booktabs rules. "
+        "with columns {>{\\raggedright\\arraybackslash}p{2.2cm} >{\\raggedright\\arraybackslash}p{2.5cm} >{\\raggedright\\arraybackslash}p{2.5cm} >{\\raggedright\\arraybackslash}p{2.5cm} >{\\raggedright\\arraybackslash}X} and \\toprule/\\midrule/\\bottomrule booktabs rules. " +
         f"Table header: 文献\\&年份 & 异常范式 & 模态输入 & 关键指标 & 局限性. "
         f"The 'X' column (局限性) will auto-wrap Chinese text — ensure each limitation is concise (≤40 Chinese chars). "
         f"Each row describes one paper using \\cite{{}} citations. "
@@ -445,27 +757,37 @@ def render_survey_tex_with_llm(
             title_cmd = title_match.group(1)
             wrapped = wrapped.replace(title_cmd, title_cmd + '\n' + r'\maketitle', 1)
 
-        # Strip RAG thinking-chain leaks before returning
-        wrapped = _strip_evidence_page_leaks(wrapped)
-        # Strip orphan English section headers that precede Chinese equivalents
-        wrapped = _strip_orphan_english_sections(wrapped)
-        # Clean math operators (italic 'or' → \lor)
-        wrapped = _clean_math_operators(wrapped)
-        # Fix absurd page numbers (第17241页 → 第17页)
-        wrapped = _strip_absurd_page_numbers(wrapped)
+        # ── Centralized post-processing: RAG leak cleanup + orphan section strip + math + pages ──
+        wrapped = clean_synthesized_latex(wrapped)
         # Inject \label{tab:comparison} before tabularx tables
         wrapped = _inject_table_label(wrapped)
-        # Inject standard bibliography before \end{document}
-        wrapped = _inject_bibliography(wrapped)
+        # Inject bibliography with SSOT cite_key mapping
+        cite_key_map = build_cite_key_map(rows)
+        wrapped = _inject_bibliography(wrapped, cite_key_map)
+        # ── Citation sanitization: normalize alias keys + unify bibitem keys ──
+        wrapped = sanitize_and_repair_citations(wrapped, rows)
 
         errors = validate_latex_syntax(wrapped)
 
         # Physical xelatex compilation check (only if static validation passes)
         if not errors:
-            xelatex_errors = compile_with_xelatex(wrapped)
+            try:
+                xelatex_errors = compile_with_xelatex(wrapped)
+            except RuntimeError as e:
+                print(f"[XeLaTeX] {e}")
+                # Build a synthetic error for self-healing
+                log_warnings = _scan_log_for_undefined_refs(wrapped)
+                if log_warnings:
+                    print(f"[XeLaTeX] Undefined references detected: {log_warnings}")
+                    errors.extend(log_warnings)
+                xelatex_errors = []
             if xelatex_errors:
                 print(f"[XeLaTeX] {len(xelatex_errors)} compilation error(s) detected.")
-                errors = xelatex_errors
+                # Scan .log for undefined references — trigger self-healing
+                log_warnings = _scan_log_for_undefined_refs(wrapped)
+                if log_warnings:
+                    print(f"[XeLaTeX] Undefined references detected: {log_warnings}")
+                    errors.extend(log_warnings)
 
         if not errors:
             if progress_callback:
@@ -529,7 +851,7 @@ SECTION_TEMPLATES: list[dict] = [
         "name": "摘要与引言",
         "weight": "heavy",
         "guidance": (
-            "根据综述主题【{topic}】编写相关的研究背景、核心应用价值、"
+            "根据综述主题【TOPIC_PLACEHOLDER】编写相关的研究背景、核心应用价值、"
             "面临的核心挑战以及本文综述结构。"
             "必须严格且强制采用 \\noindent\\textbf{{摘要：}}..."
             "\\par\\bigskip\\noindent\\textbf{{引言：}}..."
@@ -540,7 +862,7 @@ SECTION_TEMPLATES: list[dict] = [
         "name": "技术分类体系",
         "weight": "light",
         "guidance": (
-            "根据对比矩阵中各文献的方法特征，针对主题【{topic}】"
+            "根据对比矩阵中各文献的方法特征，针对主题【TOPIC_PLACEHOLDER】"
             "划分出清晰的技术体系与分类。"
             "必须采用 \\begin{{itemize}} 列表环境，各类别独立 \\item，"
             "严禁在单行内用长句堆叠。"
@@ -550,7 +872,7 @@ SECTION_TEMPLATES: list[dict] = [
         "name": "系统评述与深度批判",
         "weight": "heavy",
         "guidance": (
-            "针对下方 rows 中校验通过的文献，结合主题【{topic}】进行深入、批判性的横向评述。"
+            "针对下方 rows 中校验通过的文献，结合主题【TOPIC_PLACEHOLDER】进行深入、批判性的横向评述。"
             "每篇文献的局限性评论必须引用其 evidence_page。"
             "【跨论文辩证矛盾分析（必选）】：你必须显式挖掘并梳理不同论文之间的观点矛盾与技术权衡。"
             "例如：论文 A 主张多模态融合能提升空间感知精度，而论文 B 证明多模态数据同步会导致"
@@ -562,7 +884,10 @@ SECTION_TEMPLATES: list[dict] = [
         "name": "学术对比矩阵",
         "weight": "light",
         "guidance": (
-            "针对综述主题【{topic}】，使用 \\begin{{tabularx}}{{\\textwidth}}{{l c c c X}} 规范表格环境"
+            "针对综述主题【TOPIC_PLACEHOLDER】，使用 \\begin{{tabularx}}{{\\textwidth}}"
+            "{{>{\\raggedright\\arraybackslash}p{{2.2cm}} >{\\raggedright\\arraybackslash}p{{2.5cm}}"
+            " >{\\raggedright\\arraybackslash}p{{2.5cm}} >{\\raggedright\\arraybackslash}p{{2.5cm}}"
+            " >{\\raggedright\\arraybackslash}X}} 规范表格环境"
             "生成学术对比矩阵大表。表头为：文献\\&年份 & 异常范式 & 模态输入 & 关键指标 & 局限性。"
             "每行对应一篇文献，使用 \\cite{{ref}} 引用格式。"
             "表格必须使用 \\toprule、\\midrule、\\bottomrule 三线表规则线条。"
@@ -574,7 +899,7 @@ SECTION_TEMPLATES: list[dict] = [
         "name": "研究缺口与未来工作",
         "weight": "heavy",
         "guidance": (
-            "从上述已验证的局限性出发，归纳当前在【{topic}】场景下面临的"
+            "从上述已验证的局限性出发，归纳当前在【TOPIC_PLACEHOLDER】场景下面临的"
             "重大研究缺口。必须采用 \\begin{{itemize}} 列表环境，"
             "输出至少 3 个具体的研究缺口（Gap），每项以 \\textbf{{...：}} 开头"
             "（加粗并以中文冒号结尾），内容不少于 500 字。"
@@ -587,7 +912,7 @@ SECTION_TEMPLATES: list[dict] = [
         "name": "结论",
         "weight": "light",
         "guidance": (
-            "总结全文核心发现，概括【{topic}】领域当前的研究状态"
+            "总结全文核心发现，概括【TOPIC_PLACEHOLDER】领域当前的研究状态"
             "与未来发展方向。"
         ),
     },
@@ -648,14 +973,19 @@ def _clean_math_operators(text: str) -> str:
     return text
 
 
-def _inject_bibliography(latex_source: str) -> str:
-    """Inject the standard bibliography block before \\end{document}.
+def _inject_bibliography(latex_source: str, cite_key_map: list[dict] | None = None) -> str:
+    """Inject the bibliography block before \\end{document}.
+
+    When cite_key_map is provided, generates \\bibitem entries dynamically from the
+    SSOT key map so keys match exactly between body \\cite and bibliography \\bibitem.
+    Falls back to _STANDARD_BIBLIOGRAPHY when no map is provided.
 
     Only injects if the source does NOT already contain a thebibliography
     or biblatex bibliography section — prevents double injection.
 
     Args:
         latex_source: Full LaTeX source with \\end{document} at the end.
+        cite_key_map: Optional list of dicts from build_cite_key_map().
 
     Returns:
         LaTeX source with thebibliography injected before \\end{document}.
@@ -664,10 +994,169 @@ def _inject_bibliography(latex_source: str) -> str:
         return latex_source
     if r"\printbibliography" in latex_source:
         return latex_source
+
+    if cite_key_map:
+        bib_lines = [r"\begin{thebibliography}{99}", ""]
+        for m in cite_key_map:
+            bib_lines.append(
+                f"\\bibitem{{{m['cite_key']}}}\n"
+                f"{m['authors']}.\n"
+                f"\\emph{{{m['title']}}}. {m['venue']}, {m['year']}."
+            )
+            bib_lines.append("")
+        bib_lines.append(r"\end{thebibliography}")
+        bib_block = "\n".join(bib_lines)
+    else:
+        bib_block = _STANDARD_BIBLIOGRAPHY
+
     return latex_source.replace(
         r"\end{document}",
-        _STANDARD_BIBLIOGRAPHY + "\n\n" + r"\end{document}",
+        bib_block + "\n\n" + r"\end{document}",
     )
+
+
+def sanitize_and_repair_citations(tex_content: str, rows: list[AcademicMatrixRow]) -> str:
+    """Repair broken citation keys in LaTeX source after bibliography injection.
+
+    This function runs AFTER _inject_bibliography() to ensure that every
+    ``\\cite{...}`` key matches a ``\\bibitem{...}`` key exactly.
+
+    Three repair passes:
+
+    1. **Alias normalization**: Builds a mapping from known aliases (derive_cite_key
+       variants, author surname prefixes) to canonical keys. Replaces any ``\\cite{...}``
+       key found in the alias map with its canonical equivalent.
+
+    2. **Fuzzy orphan correction**: For any ``\\cite{...}`` key that does NOT have a
+       matching ``\\bibitem{...}``, attempts to find the closest canonical key by
+       substring/prefix matching against bibitem keys and alias map.
+
+    3. **\\bibitem key unification**: Ensures that every ``\\bibitem{...}`` inside
+       ``\\begin{thebibliography}`` uses the canonical key.
+
+    Args:
+        tex_content: Full LaTeX source with bibliography already injected.
+        rows: List of AcademicMatrixRow used to build the alias map.
+
+    Returns:
+        Repaired LaTeX source with consistent canonical citation keys.
+    """
+    # ── Pass 0: Build alias map ──────────────────────────────────────────
+    alias_map = build_alias_map(rows)
+
+    # ── Pass 1: Replace known aliases in \cite{...} with canonical keys ──
+    def _replace_cite_alias(m: re.Match) -> str:
+        keys = [k.strip() for k in m.group(1).split(",")]
+        replaced = []
+        for k in keys:
+            k_lower = k.lower()
+            if k_lower in alias_map:
+                replaced.append(alias_map[k_lower])
+            else:
+                replaced.append(k)
+        return "\\cite{" + ", ".join(replaced) + "}"
+
+    tex_content = re.sub(r'\\cite\{([^}]+)\}', _replace_cite_alias, tex_content)
+
+    # ── Pass 2: Collect bibitem keys and fuzzy-match orphan cites ─────────
+    defined_bibitems: set[str] = set()
+    for m in re.finditer(r'\\bibitem\{([^}]+)\}', tex_content):
+        defined_bibitems.add(m.group(1))
+
+    canonical_keys: set[str] = {
+        derive_canonical_cite_key(row.authors, row.year) for row in rows
+    }
+
+    # Build lower-case bibitem lookup for case-insensitive matching
+    bib_lower_map: dict[str, str] = {bk.lower(): bk for bk in defined_bibitems}
+
+    def _fuzzy_match_cite_key(cite_key: str) -> str | None:
+        """Try to fuzzy-match an orphan cite key to a canonical/bibitem key."""
+        ck_lower = cite_key.lower().strip()
+
+        # Case-insensitive exact match in defined bibitems
+        if ck_lower in bib_lower_map:
+            return bib_lower_map[ck_lower]
+
+        # Try alias map exact match
+        if ck_lower in alias_map:
+            return alias_map[ck_lower]
+
+        # Try alias map prefix match: check if cite key starts with any alias
+        for alias, canonical in alias_map.items():
+            if len(alias) >= 5 and ck_lower.startswith(alias):
+                return canonical
+
+        # Try prefix match (first 6 chars) against canonical keys
+        ck_prefix = ck_lower[:6]
+        for ck in canonical_keys:
+            if ck.lower().startswith(ck_prefix):
+                return ck
+
+        # Try prefix match against bibitem keys
+        for bk in defined_bibitems:
+            if bk.lower().startswith(ck_prefix):
+                return bk
+        for bk in defined_bibitems:
+            if ck_lower.startswith(bk.lower()[:6]):
+                return bk
+
+        # If cite_key contains an author surname, map to that author's canonical key
+        for row in rows:
+            first_author = row.authors.split(",")[0].strip().split(" ")[0].strip() if row.authors else ""
+            surname = re.sub(r"[^a-zA-Z]+", "", first_author).lower()
+            if surname and len(surname) >= 4 and surname in ck_lower:
+                return derive_canonical_cite_key(row.authors, row.year)
+
+        return None
+
+    def _replace_orphan_cite(m: re.Match) -> str:
+        keys = [k.strip() for k in m.group(1).split(",")]
+        replaced = []
+        for k in keys:
+            if k in defined_bibitems:
+                replaced.append(k)
+                continue
+            # Case-insensitive match against bibitems
+            if k.lower() in bib_lower_map:
+                replaced.append(bib_lower_map[k.lower()])
+                continue
+            corrected = _fuzzy_match_cite_key(k)
+            if corrected:
+                print(f"[sanitize_citations] Auto-corrected cite key: {k} → {corrected}")
+                replaced.append(corrected)
+            else:
+                print(f"[sanitize_citations] WARNING: Cannot resolve cite key: {k}")
+                replaced.append(k)
+        return "\\cite{" + ", ".join(replaced) + "}"
+
+    tex_content = re.sub(r'\\cite\{([^}]+)\}', _replace_orphan_cite, tex_content)
+
+    # ── Pass 3: Unify \bibitem{...} keys in thebibliography ───────────────
+    def _replace_bibitem_key(m: re.Match) -> str:
+        bib_key = m.group(1)
+        bib_key_lower = bib_key.lower()
+
+        # Already canonical — keep
+        if bib_key in canonical_keys:
+            return m.group(0)
+
+        # Case-insensitive match against canonical
+        for ck in canonical_keys:
+            if bib_key_lower == ck.lower():
+                return "\\bibitem{" + ck + "}"
+
+        # Try alias map
+        if bib_key_lower in alias_map:
+            corrected = alias_map[bib_key_lower]
+            print(f"[sanitize_citations] Corrected bibitem key: {bib_key} → {corrected}")
+            return "\\bibitem{" + corrected + "}"
+
+        return m.group(0)
+
+    tex_content = re.sub(r'\\bibitem\{([^}]+)\}', _replace_bibitem_key, tex_content)
+
+    return tex_content
 
 
 def _build_section_prompt(
@@ -692,15 +1181,26 @@ def _build_section_prompt(
     section_name = SECTION_NAMES[section_index]
     section_word_target = max(300, word_count_target // 6)
 
+    cite_key_map = build_cite_key_map(rows)
     paper_list = "\n".join(
-        f"  - {row.title} ({row.authors}, {row.year}, {row.venue})"
-        for row in rows
+        f"  - \\cite{{{m['cite_key']}}} {m['title']} ({m['authors']}, {m['year']}, {m['venue']})"
+        for m in cite_key_map
+    )
+
+    cite_key_table = "\n".join(
+        f"    [{idx}] \\cite{{{m['cite_key']}}} → {m['title']} ({m['authors']}, {m['year']})"
+        for idx, m in enumerate(cite_key_map, start=1)
     )
 
     full_prompt = (
         f"You are an academic writing assistant. Generate ONE section of a Chinese academic survey manuscript in LaTeX.\n\n"
         f"Review topic: {topic}\n\n"
         f"All papers in the review ({len(rows)} total):\n{paper_list}\n\n"
+        f"MANDATORY CITATION KEY MAP (SSOT — use EXACTLY these \\cite{{}} keys):\n"
+        f"{cite_key_table}\n\n"
+        f"CRITICAL: Every \\cite in this section MUST use one of these exact keys: "
+        f"{', '.join(m['cite_key'] for m in cite_key_map)}. "
+        f"Do NOT invent new keys.\n\n"
         f"Full extracted comparison data (rows JSON):\n"
         f"{rows}\n\n"
         f"YOUR TASK: Generate ONLY the LaTeX content for this section:\n"
@@ -728,7 +1228,7 @@ def _build_section_prompt(
     tmpl = SECTION_TEMPLATES[section_index]
     full_prompt += (
         f"\nSECTION GUIDANCE:\n"
-        f"  {tmpl['guidance'].format(topic=topic)}\n"
+        f"  {tmpl['guidance'].replace('TOPIC_PLACEHOLDER', topic)}\n"
     )
 
     full_prompt += (
@@ -809,18 +1309,15 @@ def render_survey_tex_multi_stage(
 
     result = "".join(parts)
 
-    # Strip RAG thinking-chain leaks
-    result = _strip_evidence_page_leaks(result)
-    # Strip orphan English section headers that precede Chinese equivalents
-    result = _strip_orphan_english_sections(result)
-    # Clean math operators (italic 'or' → \lor)
-    result = _clean_math_operators(result)
-    # Fix absurd page numbers (第17241页 → 第17页)
-    result = _strip_absurd_page_numbers(result)
+    # ── Centralized post-processing: RAG leak cleanup + orphan section strip + math + pages ──
+    result = clean_synthesized_latex(result)
     # Inject \label{tab:comparison} before tabularx tables
     result = _inject_table_label(result)
-    # Inject standard bibliography before \end{document}
-    result = _inject_bibliography(result)
+    # Inject bibliography with SSOT cite_key mapping
+    cite_key_map = build_cite_key_map(rows)
+    result = _inject_bibliography(result, cite_key_map)
+    # ── Citation sanitization: normalize alias keys + unify bibitem keys ──
+    result = sanitize_and_repair_citations(result, rows)
 
     # Inject \maketitle after \title{...} so the title renders in the PDF
     title_match = re.search(r'(\\title\{.+?\})', result)
@@ -836,12 +1333,19 @@ def render_survey_tex_multi_stage(
             print(f"  - {e}")
     else:
         # Physical xelatex compilation check
-        xelatex_errors = compile_with_xelatex(result)
+        try:
+            xelatex_errors = compile_with_xelatex(result)
+        except RuntimeError as e:
+            print(f"[XeLaTeX] Multi-stage: {e}")
+            xelatex_errors = []
         if xelatex_errors:
             print(f"[XeLaTeX] Multi-stage: {len(xelatex_errors)} compilation error(s) detected.")
             for e in xelatex_errors:
                 print(f"  - {e}")
-
+        # Scan .log for undefined references
+        log_warnings = _scan_log_for_undefined_refs(result)
+        if log_warnings:
+            print(f"[XeLaTeX] Undefined references detected: {log_warnings}")
     if progress_callback:
         progress_callback(0, 1, "completed",
             f"Multi-stage synthesis complete: {len(parts)} sections, {len(result)} chars.")
